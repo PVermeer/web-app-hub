@@ -684,40 +684,34 @@ impl DesktopFile {
             field: Keys::Version,
             message: "Missing".to_string(),
         })?;
-        let url = self
+
+        let url_object = self
             .get_url()
             .ok_or(ValidationError {
                 field: Keys::Url,
                 message: "Missing".to_string(),
             })
-            .ok()
-            .filter(|url| Url::parse(url).is_ok())
+            .and_then(|url| {
+                Url::parse(&url).map_err(|_| ValidationError {
+                    field: Keys::Url,
+                    message: "Invalid".to_string(),
+                })
+            })?;
+        let url = url_object.to_string();
+        let domain = url_object
+            .domain()
+            .or_else(|| url_object.host_str())
             .ok_or(ValidationError {
                 field: Keys::Url,
-                message: "Invalid".to_string(),
-            })?;
+                message: "Invalid domain".to_string(),
+            })?
+            .to_string();
+        let url_path = url_object.path().to_string();
+        
         let browser = self.get_browser().ok_or(ValidationError {
             field: Keys::BrowserId,
             message: "Missing".to_string(),
         })?;
-        let domain = Url::parse(&url)
-            .map_err(|_| ValidationError {
-                field: Keys::Url,
-                message: "Invalid url".to_string(),
-            })?
-            .domain()
-            .and_then(map_to_string_option)
-            .ok_or(ValidationError {
-                field: Keys::Url,
-                message: "Invalid domain".to_string(),
-            })?;
-        let url_path = Url::parse(&url)
-            .map_err(|_| ValidationError {
-                field: Keys::Url,
-                message: "Invalid url".to_string(),
-            })?
-            .path()
-            .to_string();
         let isolate = self.get_isolated().ok_or(ValidationError {
             field: Keys::Isolate,
             message: "Missing".to_string(),
