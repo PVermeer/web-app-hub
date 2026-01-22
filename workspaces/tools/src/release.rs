@@ -191,7 +191,7 @@ fn generate_changelog() -> Result<(String, Version)> {
 
     let Ok(last_released_version) = changelog
         .releases
-        .last()
+        .first()
         .and_then(|release| {
             release
                 .version
