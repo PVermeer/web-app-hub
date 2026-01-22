@@ -1,9 +1,38 @@
+## [0.3.0] - 2026-01-22
+
+### 🚀 Features
+
+- Show update status + add release notes to about
+- *(desktop-file)* Allow local ip as domain
+
+### 🐛 Bug Fixes
+
+- *(icon-picker)* Previous custom icon now shows when online fetch fails
+- *(icon-picker)* Currently used icon is now also loaded
+- *(web-app-view)* Url validator now also validates local ips
+
+### 🚜 Refactor
+
+- *(desktop-file)* Move validation to url package
+
+### 📚 Documentation
+
+- *(readme)* Added flathub link
+
+### ⚙️ Miscellaneous Tasks
+
+- *(screenshots)* Reorder
+- Added copywrite
 ## [0.2.2] - 2026-01-10
 
 ### 🐛 Bug Fixes
 
 - *(desktop-file)* Also try to create profile dir when copying profile config
 - *(browsers)* Remove unneeded flatpak install type
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.2.2
 ## [0.2.1] - 2026-01-08
 
 ### 🐛 Bug Fixes
@@ -44,16 +73,3 @@
 - *(release)* Make sure screenshots order is preserved
 - *(release)* Added --dry-run option
 - *(release)* V0.1.2
-## [0.1.1] - 2026-01-03
-
-### 🐛 Bug Fixes
-
-- *(firefox)* Firefox based browsers now show permission popups
-
-### 💼 Other
-
-- *(release)* Remove unnecessay quotes on flathub PR
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V0.1.1

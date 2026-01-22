@@ -4121,7 +4121,7 @@ dependencies = [
 
 [[package]]
 name = "web-app-hub"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "common",
