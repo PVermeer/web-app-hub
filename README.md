@@ -94,7 +94,7 @@ profiles/
 └── brave/            # Applied only to Brave browser
 ```
 
-Files are copied in order of specificity: base type (firefox/chromium) first, then browser-specific overrides.
+**Important:** Base type (firefox/chromium) is only used if there is no specific browser configuration folder. Browser-specific folders take precedence over base type folders.
 
 ## Building from Source
 
