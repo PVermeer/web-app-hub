@@ -1,44 +1,51 @@
 # Web App Hub
 
-A Web App Manager, written in rust with GTK and beautiful Adwaita. With Web App Hub you can manage your Web App with ease. All apps will have their own icon and can be isolated from the normal normal browser profile.
+A modern Web App Manager built with Rust, GTK, and the Adwaita design language. Web App Hub enables seamless management of web applications, each with its own icon and isolated browser profile.
 
 [![Flathub](https://flathub.org/api/badge)](https://flathub.org/apps/org.pvermeer.WebAppHub)
 
-### Features
+## Features
 
-- Easy browser switching
-- Uses your installed browsers
-- Isolation build in if the browser supports it
-- Apps will have their own icon and dock indicator
-- Add custom browser configs with a yaml and a desktop file
+- Seamless browser switching between all installed browsers
+- Leverages your existing browser installations
+- Profile isolation for enhanced privacy and organization
+- Dedicated icons and dock indicators for each web application
+- Extensible configuration system via YAML and desktop files
 
 <img src="assets/screenshots/1-Web-App.png">
 
-## Custom browser config
+## Custom Browser Configuration
 
-Browsers are added via config files in `~/.var/app/org.pvermeer.WebAppHub/config/web-app-hub`. The shipped browser configs cannot be editted and will be overwritten everytime the app starts. New configs can be added via these folders. Look in `assets/config` for examples.
+### Configuration Location
 
-### Browser config
+Browser configurations are located at:
+```
+~/.var/app/org.pvermeer.WebAppHub/config/web-app-hub
+```
 
-`browsers` Folder must have a `.yml` config file:
+Default browser configurations are read-only and reset on application startup. To add custom browsers, create new configuration files in the appropriate directories. Example configurations are available in `assets/config`.
+
+### Browser Config File
+
+Create a `.yml` file in the `browsers` directory:
 
 ```yaml
 name: Chromium
-flatpak: org.chromium.Chromium # Optional
-system_bin: chromium-browser # Optional
-can_isolate: true
-can_start_maximized: true
+flatpak: org.chromium.Chromium          # Optional: Flatpak app ID
+system_bin: chromium-browser            # Optional: System binary path
+can_isolate: true                       # Supports profile isolation
+can_start_maximized: true               # Supports maximized launch
 desktop_file_name_prefix: org.chromium.Chromium.chromium
-base: chromium
-issues: # Optional
+base: chromium                          # Base browser type: chromium or firefox
+issues:                                 # Optional: Known limitations
   - Does not remember window size and position
 ```
 
-### Desktop file
+### Desktop File
 
-`desktop-files` Folder must have a `.desktop` file with the same name
+Create a matching `.desktop` file in the `desktop-files` directory:
 
-```
+```desktop
 [Desktop Entry]
 Version=1.0
 Type=Application
@@ -50,45 +57,57 @@ Icon=%{icon}
 StartupWMClass=chrome-%{domain_path}-Default
 ```
 
-#### Variables
+### Template Variables
 
-`%{replace_me}` Will be replaced with values from the browser config or app config.
+The desktop file supports variable substitution using the `%{variable}` syntax.
 
-**Supported keys:**
+#### Standard Variables
 
+| Variable | Description |
+|----------|-------------|
+| `%{command}` | Browser launch command (Flatpak or system binary) |
+| `%{name}` | Web application name |
+| `%{url}` | Complete application URL |
+| `%{domain}` | Domain portion of the URL |
+| `%{domain_path}` | Sanitized domain and path combination |
+| `%{icon}` | Path to the application icon |
+| `%{app_id}` | Generated application identifier |
+
+#### Conditional Variables
+
+Conditional variables use the syntax `%{condition ? value}` and are only included when the condition is met.
+
+| Conditional | Description |
+|-------------|-------------|
+| `%{is_isolated ? --flag}` | Expands to `--flag=<profile-path>` when profile isolation is enabled |
+| `%{is_maximized ? --flag}` | Expands to `--flag` when start maximized is enabled |
+
+### Profile Extras
+
+The `profiles` directory can contain browser-specific subdirectories with additional files to be copied into isolated browser profiles.
+
+**Directory structure:**
 ```
-%{command}      # Flatpak or binary launch command
-%{name}"        # App name
-%{url}"         # Complete url
-%{domain}       # Domain part of url
-%{domain_path}  # Domain/<path> part of url (sanitized)
-%{icon}         # Icon location
-%{app_id}       # Generated app id
+profiles/
+├── firefox/          # Applied to all Firefox-based browsers
+├── chromium/         # Applied to all Chromium-based browsers
+└── brave/            # Applied only to Brave browser
 ```
 
-#### Optional variables
+**Important:** Base type (firefox/chromium) is only used if there is no specific browser configuration folder. Browser-specific folders take precedence over base type folders.
 
-`%{optional_key ? if_optional_key_add_me}` Conditional variable
-
-**Supported keys:**
-
-```
-%{is_isolated ? --some-var} # Replaced with `--some-var=<profile-path>` if user selected `isolated profile`
-%{is_maximized ? --some-var} # Replaced with `--some-var` if user selected `start maximized`
-```
-
-### Profile extras (optional)
-
-`profiles` Folder can have an optonal folder with the browser config name that holds files to be copied into the isolated browser profile folder. By default it also loads `firefox` or `chromium` for browsers with that base unless there is a specific config folder for that browser.
-
-## Building
+## Building from Source
 
 ```sh
 cargo build
 ```
 
-Flatpak
+**Flatpak:**
 
 ```sh
 ./flatpak/build.sh
 ```
+
+## License
+
+This project is licensed under the GPL-3.0 License. See the [LICENSE](LICENSE) file for details.
