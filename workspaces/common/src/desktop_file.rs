@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use freedesktop_desktop_entry::DesktopEntry;
-use gtk::{Image, gdk_pixbuf::Pixbuf, prelude::WidgetExt};
+use gtk::{Image, prelude::WidgetExt};
 use rand::{Rng, distributions::Alphanumeric};
 use regex::Regex;
 use semver::Version;
@@ -17,10 +17,6 @@ use std::{
 };
 use tracing::{debug, error, info};
 use url::Url;
-
-pub struct Icon {
-    pub pixbuf: Pixbuf,
-}
 
 pub struct DesktopFileEntries {
     name: String,

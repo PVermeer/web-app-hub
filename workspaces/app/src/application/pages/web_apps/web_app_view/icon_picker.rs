@@ -1,15 +1,18 @@
+mod icon;
 mod icon_fetcher;
 
 use crate::application::App;
 use anyhow::{Context, Result, bail};
-use common::desktop_file::{DesktopFile, Icon};
+use common::desktop_file::DesktopFile;
 use gtk::{
     self, Align, Button, ContentFit, FileDialog, FileFilter, FlowBox, Label, Orientation, Picture,
     SelectionMode,
-    gdk_pixbuf::Pixbuf,
+    gdk_pixbuf::{Pixbuf, PixbufFormat},
     gio::prelude::FileExt,
+    glib::GString,
     prelude::{BoxExt, ButtonExt, FlowBoxChildExt, ListBoxRowExt, WidgetExt},
 };
+use icon::Icon;
 use icon_fetcher::IconFetcher;
 use libadwaita::{
     AlertDialog, ButtonContent, ButtonRow, PreferencesGroup, PreferencesPage, PreferencesRow,
@@ -339,13 +342,8 @@ impl IconPicker {
         let Some(current_icon_path) = self.desktop_file.borrow().get_icon_path() else {
             bail!("No icon saved")
         };
-        let pixbuf = match Pixbuf::from_file(&current_icon_path) {
-            Err(error) => {
-                bail!("Could not load current image into a Pixbuf: '{error:?}'");
-            }
-            Ok(pixbuf) => pixbuf,
-        };
-        let current_icon = Rc::new(Icon { pixbuf });
+        let current_icon =
+            Rc::new(Icon::from_path(&current_icon_path).context("Could not load current image")?);
         let mut icons_ordered_borrow = self.icons_ordered.borrow_mut();
 
         let is_new_icon = self
@@ -355,13 +353,11 @@ impl IconPicker {
             .is_none();
 
         if is_new_icon {
-            dbg!(Self::CURRENT_ICON_KEY);
             icons_ordered_borrow.insert(0, (Self::CURRENT_ICON_KEY.into(), current_icon.clone()));
         } else if let Some(index) = icons_ordered_borrow
             .iter()
             .position(|(key, _icon)| key == Self::CURRENT_ICON_KEY)
         {
-            dbg!(index);
             let _ = mem::replace(
                 &mut icons_ordered_borrow[index],
                 (Self::CURRENT_ICON_KEY.into(), current_icon.clone()),
@@ -398,8 +394,13 @@ impl IconPicker {
 
         let file_filter = FileFilter::new();
         file_filter.set_name(Some("Images"));
-        file_filter.add_mime_type("image/png");
-        file_filter.add_mime_type("image/jpeg");
+        let mimetypes: Vec<GString> = Pixbuf::formats()
+            .iter()
+            .flat_map(PixbufFormat::mime_types)
+            .collect();
+        for mimetype in &mimetypes {
+            file_filter.add_mime_type(mimetype);
+        }
 
         let file_dialog = FileDialog::builder()
             .title("Pick an image")
@@ -414,30 +415,29 @@ impl IconPicker {
             None::<&Cancellable>,
             move |file| {
                 let Ok(file) = file else {
-                    error!("Could not get file");
+                    error!("Failed to get file");
                     return;
                 };
                 let Some(path) = file.path() else {
                     error!("Could not get path");
                     return;
                 };
-
                 let filename = file.parse_name().to_string();
+
                 debug!("Loading image: '{filename}'");
 
-                let pixbuf = match Pixbuf::from_file(&path) {
+                let icon = match Icon::from_path(&path) {
+                    Ok(icon) => icon,
                     Err(error) => {
-                        error!("Could not load image into a Pixbuf: '{error:?}'");
+                        error!("Failed to load image: '{error:?}'");
                         return;
                     }
-                    Ok(pixbuf) => pixbuf,
                 };
 
-                let icon = Rc::new(Icon { pixbuf });
                 self_clone
                     .icons
                     .borrow_mut()
-                    .insert(filename.clone(), icon.clone());
+                    .insert(filename.clone(), Rc::new(icon));
 
                 self_clone.set_icons_ordered();
                 self_clone.reload_icon_flowbox();

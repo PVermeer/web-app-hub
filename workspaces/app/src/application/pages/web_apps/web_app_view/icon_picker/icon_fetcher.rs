@@ -1,11 +1,7 @@
-use crate::application::App;
+use crate::application::{App, pages::web_apps::web_app_view::icon_picker::icon::Icon};
 use anyhow::{Result, bail};
-use common::{desktop_file::Icon, url::UrlExt};
-use gtk::{
-    gdk_pixbuf::Pixbuf,
-    gio::{Cancellable, MemoryInputStream},
-    glib::{self},
-};
+use common::{fetch::Response, url::UrlExt};
+use gtk::glib::{self};
 use scraper::{Html, Selector};
 use serde::Deserialize;
 use std::{
@@ -61,7 +57,9 @@ impl IconFetcher {
             let Some(url) = url else {
                 continue;
             };
-            let html_text = self.app.fetch.get_as_string(url.as_str()).await?;
+            let Response {
+                data: html_text, ..
+            } = self.app.fetch.get_as_string(url.as_str()).await?;
             let fragment = Html::parse_document(&html_text);
 
             self.set_default_icon_urls(&url);
@@ -145,10 +143,14 @@ impl IconFetcher {
         }
 
         for ((base_path_url, manifest_url), handle) in manifest_handles {
-            let Ok(Ok(manifest_json)) = handle.await else {
+            let Ok(Ok(response)) = handle.await else {
                 error!("Failed to fetch manifest: '{manifest_url}'");
                 continue;
             };
+            let Response {
+                data: manifest_json,
+                ..
+            } = response;
             let Ok(manifest) = serde_json::from_str::<ManifestJson>(&manifest_json) else {
                 continue;
             };
@@ -186,17 +188,21 @@ impl IconFetcher {
         }
 
         for (url, handle) in icon_handles {
-            let Ok(Ok(image_bytes)) = handle.await else {
+            let Ok(Ok(response)) = handle.await else {
                 error!(url, "Failed to fetch image");
                 continue;
             };
-            let g_bytes = glib::Bytes::from(&image_bytes);
-            let stream = MemoryInputStream::from_bytes(&g_bytes);
-            let Ok(pixbuf) = Pixbuf::from_stream(&stream, Cancellable::NONE) else {
-                error!(url, "Failed to convert image");
-                continue;
+            let Response {
+                data: image_bytes,
+                mimetype,
+            } = response;
+            let icon = match Icon::from_bytes(&image_bytes, mimetype) {
+                Ok(icon) => icon,
+                Err(error) => {
+                    error!(url, ?error, "Failed to convert image");
+                    continue;
+                }
             };
-            let icon = Icon { pixbuf };
             icons.push((url.clone(), Rc::new(icon)));
         }
 
