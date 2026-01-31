@@ -7,7 +7,7 @@ use crate::application::{
 };
 use common::{
     browsers::{Base, Browser},
-    desktop_file::{DesktopFile, DesktopFileError},
+    desktop_file::{DesktopFile, error::DesktopFileError},
     utils,
 };
 use gtk::{

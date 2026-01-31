@@ -1,6 +1,6 @@
 use crate::application::App;
 use anyhow::{Error, Result, anyhow};
-use common::desktop_file::{Category, DesktopFile};
+use common::desktop_file::{DesktopFile, category::Category};
 use gtk::{
     InputPurpose, Label, ListItem, SignalListItemFactory, gio,
     glib::{BoxedAnyObject, object::Cast},

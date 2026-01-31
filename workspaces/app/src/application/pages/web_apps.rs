@@ -3,7 +3,7 @@ mod web_app_view;
 use super::NavPage;
 use crate::application::{App, pages::PrefNavPage};
 use common::{
-    desktop_file::{DesktopFile, DesktopFileError},
+    desktop_file::{DesktopFile, error::DesktopFileError},
     utils,
 };
 use gtk::{

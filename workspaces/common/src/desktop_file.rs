@@ -1,22 +1,30 @@
+pub mod category;
+pub mod error;
+mod key;
+mod utils;
+
 use crate::{
     app_dirs::AppDirs,
     browsers::{Base, Browser, BrowserConfigs},
     config::{self, OnceLockExt},
 };
 use anyhow::{Context, Result, bail};
+use category::Category;
+use error::{DesktopFileError, ValidationError};
 use freedesktop_desktop_entry::DesktopEntry;
 use gtk::{Image, prelude::WidgetExt};
+use key::Key;
 use rand::{Rng, distributions::Alphanumeric};
 use regex::Regex;
 use semver::Version;
 use std::{
-    fmt::Display,
     fs::{self},
     path::{Path, PathBuf},
     rc::Rc,
 };
 use tracing::{debug, error, info};
 use url::Url;
+use utils::{map_to_bool_option, map_to_path_option, map_to_string_option};
 
 pub struct DesktopFileEntries {
     name: String,
@@ -30,206 +38,6 @@ pub struct DesktopFileEntries {
     maximize: bool,
     icon_path: PathBuf,
     profile_path: PathBuf,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Key {
-    Gwa,
-    Version,
-    Url,
-    Id,
-    BrowserId,
-    Isolate,
-    Maximize,
-    Profile,
-    Name,
-    Exec,
-    Icon,
-    StartupWMClass,
-    Categories,
-    Comment,
-}
-impl Display for Key {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let identifier = config::APP_NAME_SHORT.get_value().to_uppercase();
-
-        match self {
-            Self::Gwa => write!(f, "X-{}", &identifier),
-            Self::Version => write!(f, "X-{}-VERSION", &identifier),
-            Self::Id => write!(f, "X-{}-ID", &identifier),
-            Self::Url => write!(f, "X-{}-URL", &identifier),
-            Self::BrowserId => write!(f, "X-{}-BROWSER-ID", &identifier),
-            Self::Isolate => write!(f, "X-{}-ISOLATE", &identifier),
-            Self::Maximize => write!(f, "X-{}-MAXIMIZE", &identifier),
-            Self::Profile => write!(f, "X-{}-PROFILE", &identifier),
-            Self::Name => write!(f, "Name"),
-            Self::Exec => write!(f, "Exec"),
-            Self::Icon => write!(f, "Icon"),
-            Self::StartupWMClass => write!(f, "StartupWMClass"),
-            Self::Categories => write!(f, "Categories"),
-            Self::Comment => write!(f, "Comment"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum DesktopFileError {
-    ValidationError(ValidationError),
-    Other(anyhow::Error),
-}
-impl From<ValidationError> for DesktopFileError {
-    fn from(e: ValidationError) -> Self {
-        DesktopFileError::ValidationError(e)
-    }
-}
-impl From<anyhow::Error> for DesktopFileError {
-    fn from(e: anyhow::Error) -> Self {
-        DesktopFileError::Other(e)
-    }
-}
-impl Display for DesktopFileError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::ValidationError(validation_error) => {
-                write!(f, "{validation_error}")
-            }
-            Self::Other(error) => {
-                write!(f, "{error}")
-            }
-        }
-    }
-}
-impl std::error::Error for DesktopFileError {}
-#[derive(Debug, Clone)]
-pub struct ValidationError {
-    pub field: Key,
-    pub message: String,
-}
-impl Display for ValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}: {}", self.message, self.field)
-    }
-}
-impl std::error::Error for ValidationError {}
-
-fn map_to_string_option(value: &str) -> Option<String> {
-    if value.is_empty() {
-        None
-    } else {
-        Some(value.to_string())
-    }
-}
-
-fn map_to_bool_option(value: &str) -> Option<bool> {
-    if value.is_empty() {
-        None
-    } else {
-        Some(value.eq("true"))
-    }
-}
-
-fn map_to_path_option(value: &str) -> Option<PathBuf> {
-    if value.is_empty() {
-        None
-    } else {
-        Some(Path::new(value).to_path_buf())
-    }
-}
-
-/// <https://specifications.freedesktop.org/menu/latest/category-registry.html>
-#[derive(Copy, Clone)]
-pub enum Category {
-    AudioVideo,
-    Audio,
-    Video,
-    Development,
-    Education,
-    Game,
-    Graphics,
-    Network,
-    Office,
-    Science,
-    Settings,
-    System,
-    Utility,
-}
-impl Display for Category {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::AudioVideo => write!(f, "AudioVideo"),
-            Self::Audio => write!(f, "AudioVideo;Audio"),
-            Self::Video => write!(f, "AudioVideo;Video"),
-            Self::Development => write!(f, "Development"),
-            Self::Education => write!(f, "Education"),
-            Self::Game => write!(f, "Game"),
-            Self::Graphics => write!(f, "Graphics"),
-            Self::Network => write!(f, "Network"),
-            Self::Office => write!(f, "Office"),
-            Self::Science => write!(f, "Science"),
-            Self::Settings => write!(f, "Settings"),
-            Self::System => write!(f, "System"),
-            Self::Utility => write!(f, "Utility"),
-        }
-    }
-}
-impl Category {
-    pub fn to_string_ui(&self) -> &str {
-        match self {
-            Self::AudioVideo => "Multimedia",
-            Self::Audio => "Audio",
-            Self::Video => "Video",
-            Self::Development => "Development",
-            Self::Education => "Education",
-            Self::Game => "Game",
-            Self::Graphics => "Graphics",
-            Self::Network => "Network / Internet",
-            Self::Office => "Office",
-            Self::Science => "Science",
-            Self::Settings => "Settings",
-            Self::System => "System",
-            Self::Utility => "Utility",
-        }
-    }
-
-    pub fn get_all() -> [Category; 13] {
-        let list: [Category; 13] = [
-            Self::AudioVideo,
-            Self::Audio,
-            Self::Video,
-            Self::Development,
-            Self::Education,
-            Self::Game,
-            Self::Graphics,
-            Self::Network,
-            Self::Office,
-            Self::Science,
-            Self::Settings,
-            Self::System,
-            Self::Utility,
-        ];
-
-        list
-    }
-
-    pub fn get_icon(&self) -> Image {
-        let icon_name = match self {
-            Self::AudioVideo => "applications-multimedia-symbolic",
-            Self::Audio => "audio-x-generic-symbolic",
-            Self::Video => "video-x-generic-symbolic",
-            Self::Development => "applications-engineering-symbolic",
-            Self::Education => "emoji-symbols-symbolic",
-            Self::Game => "applications-games-symbolic",
-            Self::Graphics => "applications-graphics-symbolic",
-            Self::Network => "web-browser-symbolic",
-            Self::Office => "x-office-document-symbolic",
-            Self::Science => "applications-science-symbolic",
-            Self::Settings => "preferences-other-symbolic",
-            Self::System => "preferences-system-symbolic",
-            Self::Utility => "applications-utilities-symbolic",
-        };
-
-        Image::from_icon_name(icon_name)
-    }
 }
 
 #[derive(Clone)]
@@ -517,10 +325,8 @@ impl DesktopFile {
     }
 
     pub fn set_profile_path(&mut self, path: &Path) {
-        self.desktop_entry.add_desktop_entry(
-            Key::Profile.to_string(),
-            path.to_string_lossy().to_string(),
-        );
+        self.desktop_entry
+            .add_desktop_entry(Key::Profile.to_string(), path.to_string_lossy().to_string());
 
         debug!(
             "Set '{}' on desktop file: {}",
