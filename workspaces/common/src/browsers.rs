@@ -1,7 +1,7 @@
-use crate::utils;
+use crate::utils::{self, OnceLockExt};
 use crate::{
     app_dirs::AppDirs,
-    config::{self, OnceLockExt},
+    config::{self},
 };
 use anyhow::{Context, Result, bail};
 use freedesktop_desktop_entry::DesktopEntry;
@@ -12,8 +12,8 @@ use tracing::{debug, error, info};
 
 #[derive(PartialEq)]
 pub enum Installation {
-    Flatpak,
-    System,
+    Flatpak(String),
+    System(String),
     None,
 }
 
@@ -96,12 +96,9 @@ impl Browser {
         let issues = browser_config.config.issues.clone();
 
         let id = match &installation {
-            Installation::Flatpak => flatpak_id.clone().unwrap(),
-            Installation::System => executable.clone().unwrap(),
-            Installation::None => flatpak_id
-                .clone()
-                .or(executable.clone())
-                .expect("Could not create id for Browser"),
+            Installation::Flatpak(id) => id.clone(),
+            Installation::System(executable) => executable.clone(),
+            Installation::None => "Not installed".to_string(),
         };
 
         Self {
@@ -125,11 +122,11 @@ impl Browser {
     }
 
     pub fn is_flatpak(&self) -> bool {
-        matches!(self.installation, Installation::Flatpak)
+        matches!(self.installation, Installation::Flatpak(_))
     }
 
     pub fn is_system(&self) -> bool {
-        matches!(self.installation, Installation::System)
+        matches!(self.installation, Installation::System(_))
     }
 
     pub fn is_installed(&self) -> bool {
@@ -141,10 +138,10 @@ impl Browser {
         let _ = write!(txt, "{}", self.name);
 
         match self.installation {
-            Installation::Flatpak => {
+            Installation::Flatpak(_) => {
                 let _ = write!(txt, " (Flatpak)");
             }
-            Installation::System => {
+            Installation::System(_) => {
                 let _ = write!(txt, " (System)");
             }
             Installation::None => {}
@@ -153,20 +150,10 @@ impl Browser {
         txt
     }
 
-    pub fn get_command(&self) -> Result<String> {
+    pub fn get_run_command(&self) -> Result<String> {
         match &self.installation {
-            Installation::Flatpak => {
-                let Some(flatpak_id) = &self.flatpak_id else {
-                    bail!("No flatpak id with flatpak installation")
-                };
-                Ok(format!("flatpak run {flatpak_id}"))
-            }
-            Installation::System => {
-                let Some(executable) = &self.executable else {
-                    bail!("No executable with system installation")
-                };
-                Ok(executable.clone())
-            }
+            Installation::Flatpak(id) => Ok(format!("flatpak run {id}")),
+            Installation::System(executable) => Ok(executable.clone()),
             Installation::None => bail!("Browser is not installed"),
         }
     }
@@ -186,26 +173,6 @@ impl Browser {
         Image::from_icon_name(Self::FALLBACK_IMAGE)
     }
 
-    pub fn get_run_command(&self) -> Result<String> {
-        match self.installation {
-            Installation::Flatpak => {
-                let Some(flatpak_id) = self.flatpak_id.clone() else {
-                    bail!("No flatpak id on flatpak installation???")
-                };
-
-                let command = format!("flatpak run {flatpak_id}");
-                Ok(command)
-            }
-            Installation::System => {
-                let Some(executable) = self.executable.clone() else {
-                    bail!("No flatpak id on flatpak installation???")
-                };
-                Ok(executable)
-            }
-            Installation::None => bail!("No installation type on 'Browser'"),
-        }
-    }
-
     pub fn get_profile_path(&self) -> Result<PathBuf> {
         if !self.can_isolate {
             bail!("Browser cannot isolate")
@@ -213,7 +180,7 @@ impl Browser {
 
         // Save in own app
         let app_profile_path = || -> Result<PathBuf> {
-            let path = self.app_dirs.profiles().join(&self.id);
+            let path = self.app_dirs.profiles.join(&self.id);
             Ok(path)
         };
 
@@ -221,7 +188,7 @@ impl Browser {
         let browser_profile_path = || -> Result<PathBuf> {
             let path = self
                 .app_dirs
-                .flatpak()
+                .flatpak
                 .join(&self.id)
                 .join("data")
                 .join(config::APP_NAME_HYPHEN.get_value())
@@ -241,9 +208,9 @@ impl Browser {
                Chromium based just created the provided profile path
             */
             Base::Chromium | Base::Firefox => match self.installation {
-                Installation::Flatpak => browser_profile_path()?,
-                Installation::System => app_profile_path()?,
-                Installation::None => bail!("No installation type on 'Browser'"),
+                Installation::Flatpak(_) => browser_profile_path()?,
+                Installation::System(_) => app_profile_path()?,
+                Installation::None => bail!("Browser is not installed"),
             },
 
             Base::None => {
@@ -295,12 +262,14 @@ impl BrowserConfigs {
         self.set_browsers_from_files();
     }
 
-    pub fn get_all_browsers(&self) -> Vec<Rc<Browser>> {
-        self.all_browsers.get().unwrap().clone()
+    pub fn get_all_browsers(&self) -> &Vec<Rc<Browser>> {
+        self.all_browsers
+            .get()
+            .expect("Browsers are uninitialized")
     }
 
     pub fn get_flatpak_browsers(&self) -> Vec<Rc<Browser>> {
-        let all_browsers_borrow = self.all_browsers.get().unwrap();
+        let all_browsers_borrow = self.get_all_browsers();
         all_browsers_borrow
             .iter()
             .filter(|browser| browser.is_flatpak())
@@ -309,31 +278,30 @@ impl BrowserConfigs {
     }
 
     pub fn get_system_browsers(&self) -> Vec<Rc<Browser>> {
-        let all_browsers_borrow = self.all_browsers.get().unwrap();
+        let all_browsers_borrow = self.get_all_browsers();
         all_browsers_borrow
             .iter()
-            .filter(|browser| browser.installation == Installation::System)
+            .filter(|browser| browser.is_system())
             .cloned()
             .collect()
     }
 
     pub fn get_uninstalled_browsers(&self) -> Vec<Rc<Browser>> {
-        self.uninstalled_browsers.get().unwrap().clone()
+        self.uninstalled_browsers
+            .get()
+            .expect("Uninstalled browsers are uninitialized")
+            .clone()
     }
 
     pub fn get_by_id(&self, id: &str) -> Option<Rc<Browser>> {
-        self.all_browsers
-            .get()
-            .unwrap()
+        self.get_all_browsers()
             .iter()
             .find(|browser| browser.id == id)
             .cloned()
     }
 
     pub fn get_index(&self, browser: &Browser) -> Option<usize> {
-        self.all_browsers
-            .get()
-            .unwrap()
+        self.get_all_browsers()
             .iter()
             .position(|browser_iter| browser_iter.id == browser.id)
     }
@@ -386,7 +354,7 @@ impl BrowserConfigs {
 
                     let browser = Rc::new(Browser::new(
                         &browser_config,
-                        Installation::Flatpak,
+                        Installation::Flatpak(flatpak.clone()),
                         self,
                         &self.icon_theme,
                         &self.app_dirs,
@@ -417,7 +385,7 @@ impl BrowserConfigs {
 
                     let browser = Rc::new(Browser::new(
                         &browser_config,
-                        Installation::System,
+                        Installation::System(system_bin.clone()),
                         self,
                         &self.icon_theme,
                         &self.app_dirs,
@@ -521,7 +489,7 @@ impl BrowserConfigs {
 
         let mut browser_configs = Vec::new();
         let browser_config_files =
-            utils::files::get_entries_in_dir(&self.app_dirs.browser_configs()).unwrap_or_default();
+            utils::files::get_entries_in_dir(&self.app_dirs.browser_configs).unwrap_or_default();
 
         for file in &browser_config_files {
             let file_name = file.file_name().to_string_lossy().to_string();
@@ -558,7 +526,7 @@ impl BrowserConfigs {
             let desktop_file = match (|| -> Result<DesktopEntry> {
                 let desktop_file_path = self
                     .app_dirs
-                    .browser_desktop_files()
+                    .browser_desktop_files
                     .join(
                         file_path
                             .file_stem()

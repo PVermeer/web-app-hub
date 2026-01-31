@@ -17,6 +17,7 @@ use std::{
     cell::{OnceCell, RefCell},
     rc::Rc,
 };
+use tracing::error;
 
 pub struct OptionalSettings {
     init: OnceCell<bool>,
@@ -124,12 +125,18 @@ impl OptionalSettings {
         }
         let factory = SignalListItemFactory::new();
         factory.connect_bind(|_, list_item| {
-            let list_item = list_item.downcast_ref::<ListItem>().unwrap();
-            let category_item_boxed = list_item
+            let Some(list_item) = list_item.downcast_ref::<ListItem>() else {
+                error!(?list_item, "Failed to downcast list item");
+                return;
+            };
+            let Some(category_item_boxed) = list_item
                 .item()
-                .unwrap()
-                .downcast::<BoxedAnyObject>()
-                .unwrap();
+                .and_then(|item| item.downcast::<BoxedAnyObject>().ok())
+            else {
+                error!(?list_item, "Failed to downcast boxed list item");
+                return;
+            };
+
             let category = category_item_boxed.borrow::<Category>();
             let box_container = gtk::Box::new(gtk::Orientation::Horizontal, 6);
             let icon = category.get_icon();
@@ -151,8 +158,9 @@ impl OptionalSettings {
             && let Some(index) = all_categories
                 .iter()
                 .position(|category| current_category == category.to_string())
+            && let Ok(index) = index.try_into()
         {
-            combo_row.set_selected(index.try_into().unwrap());
+            combo_row.set_selected(index);
         }
 
         combo_row

@@ -169,10 +169,10 @@ impl WebAppsPage {
         debug!("Reading user desktop files");
 
         let mut owned_desktop_files = Vec::new();
-        let applications_path = app.dirs.applications();
+        let applications_path = &app.dirs.applications;
         let mut app_has_updated = false;
 
-        for file in utils::files::get_entries_in_dir(&applications_path).unwrap_or_default() {
+        for file in utils::files::get_entries_in_dir(applications_path).unwrap_or_default() {
             let Ok(mut desktop_file) =
                 DesktopFile::from_path(&file.path(), &app.browser_configs, &app.dirs)
             else {

@@ -1,6 +1,9 @@
 use crate::application::App;
 use anyhow::Error;
-use common::config::{self, OnceLockExt};
+use common::{
+    config::{self},
+    utils::OnceLockExt,
+};
 use gtk::Orientation;
 use libadwaita::{
     AlertDialog, ResponseAppearance,

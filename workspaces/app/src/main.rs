@@ -2,8 +2,8 @@ mod application;
 
 use application::App;
 use common::{
-    config::{self, OnceLockExt},
-    utils,
+    config::{self},
+    utils::{self, OnceLockExt},
 };
 use libadwaita::gio::prelude::{ApplicationExt, ApplicationExtManual};
 use tracing::Level;

@@ -1,6 +1,7 @@
 use crate::{
     app_dirs::AppDirs,
-    config::{self, OnceLockExt},
+    config::{self},
+    utils::OnceLockExt,
 };
 use anyhow::{Context, Result};
 use freedesktop_desktop_entry::DesktopEntry;
@@ -25,7 +26,7 @@ pub fn init(app_dirs: &AppDirs) -> Result<()> {
 }
 
 pub fn reset_config_files(app_dirs: &AppDirs) -> Result<()> {
-    let config_dir = app_dirs.config();
+    let config_dir = &app_dirs.config;
 
     if config_dir.is_dir() {
         info!("Deleting config files");
@@ -39,8 +40,8 @@ pub fn reset_config_files(app_dirs: &AppDirs) -> Result<()> {
 
 pub fn create_stand_alone_desktop_file(app_dirs: &AppDirs) -> Result<DesktopEntry> {
     let app_id = config::APP_ID.get_value();
-    let app_name = config::APP_NAME.get_value().clone();
-    let user_data_dir = app_dirs.user_data();
+    let app_name = config::APP_NAME.get_value();
+    let user_data_dir = &app_dirs.user_data;
     let extension = "desktop";
     let file_name = format!("{app_id}.{extension}");
     let applications_dir = user_data_dir.join("applications");
@@ -84,11 +85,11 @@ pub fn get_desktop_file_in() -> &'static str {
 
 fn extract_config_dir(app_dirs: &AppDirs) -> Result<()> {
     debug!("Extracting config dir");
-    let config_dir = app_dirs.config();
+    let config_dir = &app_dirs.config;
 
-    CONFIG.extract(&config_dir).context(format!(
+    CONFIG.extract(config_dir).context(format!(
         "Failed to extract config dir from ASSETS in: {}",
-        &config_dir.display()
+        config_dir.display()
     ))?;
 
     Ok(())

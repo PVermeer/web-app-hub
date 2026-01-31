@@ -5,6 +5,7 @@ use crate::application::{
     App,
     pages::{NavPage, PrefPage, web_apps::web_app_view::optional_settings::OptionalSettings},
 };
+use anyhow::anyhow;
 use common::{
     browsers::{Base, Browser},
     desktop_file::{DesktopFile, error::DesktopFileError},
@@ -398,18 +399,24 @@ impl WebAppView {
         // First create all data structures, then set data from ListStore.
         // Why is this so unnecessary complicated? ¯\_(ツ)_/¯
         let list = gio::ListStore::new::<BoxedAnyObject>();
-        for browser in &all_browsers {
+        for browser in all_browsers {
             let boxed = BoxedAnyObject::new(browser.clone());
             list.append(&boxed);
         }
         let factory = SignalListItemFactory::new();
         factory.connect_bind(|_, list_item| {
-            let list_item = list_item.downcast_ref::<ListItem>().unwrap();
-            let browser_item_boxed = list_item
+            let Some(list_item) = list_item.downcast_ref::<ListItem>() else {
+                error!(?list_item, "Failed to downcast list item");
+                return;
+            };
+            let Some(browser_item_boxed) = list_item
                 .item()
-                .unwrap()
-                .downcast::<BoxedAnyObject>()
-                .unwrap();
+                .and_then(|item| item.downcast::<BoxedAnyObject>().ok())
+            else {
+                error!(?list_item, "Failed to downcast boxed list item");
+                return;
+            };
+
             let browser = browser_item_boxed.borrow::<Rc<Browser>>();
             let box_container = gtk::Box::new(gtk::Orientation::Horizontal, 6);
             let icon = browser.get_icon();
@@ -438,8 +445,9 @@ impl WebAppView {
             .borrow()
             .get_browser()
             .and_then(|browser| browser.get_index())
+            && let Ok(index) = browser_index.try_into()
         {
-            combo_row.set_selected(browser_index.try_into().unwrap());
+            combo_row.set_selected(index);
         } else if let Some(browser) = all_browsers.first() {
             // ComboRow has already a selected item on load, so sync this if empty.
             desktop_file.borrow_mut().set_browser(browser);
@@ -820,7 +828,13 @@ impl WebAppView {
                 let Some(selected_item) = selected_item else {
                     return;
                 };
-                let browser_item_boxed = selected_item.downcast::<BoxedAnyObject>().unwrap();
+                let Ok(browser_item_boxed) = selected_item.downcast::<BoxedAnyObject>() else {
+                    self_clone.on_error(
+                        "Failed to save browser",
+                        Some(&anyhow!("Failed to downcast selected item in browser_row")),
+                    );
+                    return;
+                };
                 let browser = browser_item_boxed.borrow::<Rc<Browser>>();
 
                 desktop_file_clone.borrow_mut().set_browser(&browser);

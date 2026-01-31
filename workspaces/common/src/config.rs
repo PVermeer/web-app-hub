@@ -1,4 +1,7 @@
-use crate::{assets, utils::strings::capitalize_all_words};
+use crate::{
+    assets,
+    utils::{OnceLockExt, strings::capitalize_all_words},
+};
 use serde::Deserialize;
 use std::sync::OnceLock;
 use tracing::debug;
@@ -82,19 +85,19 @@ fn set_from_cargo_toml() {
     let issues_url = format!("{repository}/issues");
     let bin_name = bin.first().map(|bin| bin.name.clone()).unwrap_or_default();
 
-    APP_ID.set(id).unwrap_or_default();
-    VERSION.set(version).unwrap_or_default();
-    APP_NAME.set(name).unwrap_or_default();
-    APP_NAME_DENSE.set(name_dense).unwrap_or_default();
-    APP_NAME_HYPHEN.set(name_hyphen).unwrap_or_default();
-    APP_NAME_UNDERSCORE.set(name_underscore).unwrap_or_default();
-    APP_NAME_SHORT.set(name_short).unwrap_or_default();
-    APP_SUMMARY.set(description).unwrap_or_default();
-    DEVELOPER.set(developer).unwrap_or_default();
-    LICENSE.set(license).unwrap_or_default();
-    REPOSITORY.set(repository).unwrap_or_default();
-    ISSUES_URL.set(issues_url).unwrap_or_default();
-    BIN_NAME.set(bin_name).unwrap_or_default();
+    let _ = APP_ID.set(id);
+    let _ = VERSION.set(version);
+    let _ = APP_NAME.set(name);
+    let _ = APP_NAME_DENSE.set(name_dense);
+    let _ = APP_NAME_HYPHEN.set(name_hyphen);
+    let _ = APP_NAME_UNDERSCORE.set(name_underscore);
+    let _ = APP_NAME_SHORT.set(name_short);
+    let _ = APP_SUMMARY.set(description);
+    let _ = DEVELOPER.set(developer);
+    let _ = LICENSE.set(license);
+    let _ = REPOSITORY.set(repository);
+    let _ = ISSUES_URL.set(issues_url);
+    let _ = BIN_NAME.set(bin_name);
 }
 
 fn set_from_assets() {
@@ -117,13 +120,4 @@ pub fn log_all_values_debug() {
         LICENSE = format!("{:?}", LICENSE.get_value()),
         BIN = BIN_NAME.get_value()
     );
-}
-
-pub trait OnceLockExt<T> {
-    fn get_value(&self) -> &T;
-}
-impl<T> OnceLockExt<T> for OnceLock<T> {
-    fn get_value(&self) -> &T {
-        self.get().unwrap()
-    }
 }

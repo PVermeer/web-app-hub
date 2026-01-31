@@ -1,8 +1,8 @@
 use super::NavPage;
 use crate::application::{App, pages::Page};
 use common::{
-    config::{self, OnceLockExt},
-    utils,
+    config::{self},
+    utils::{self, OnceLockExt},
 };
 use libadwaita::{
     ActionRow, HeaderBar, NavigationPage, ToolbarView,

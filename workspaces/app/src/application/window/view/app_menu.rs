@@ -1,7 +1,8 @@
 use crate::application::App;
 use common::{
     assets,
-    config::{self, OnceLockExt},
+    config::{self},
+    utils::OnceLockExt,
 };
 use libadwaita::{
     AlertDialog, ResponseAppearance,

@@ -1,4 +1,7 @@
-use crate::config::{self, OnceLockExt};
+use crate::{
+    config::{self},
+    utils::OnceLockExt,
+};
 use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Clone)]

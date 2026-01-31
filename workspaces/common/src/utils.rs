@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 pub mod files {
     use anyhow::{Context, Result, bail};
     use std::{
@@ -201,5 +203,14 @@ pub mod command {
 
     pub fn parse_output(std_descriptor: &[u8]) -> String {
         String::from_utf8_lossy(std_descriptor).trim().to_string()
+    }
+}
+
+pub trait OnceLockExt<T> {
+    fn get_value(&self) -> &T;
+}
+impl<T> OnceLockExt<T> for OnceLock<T> {
+    fn get_value(&self) -> &T {
+        self.get().expect("OnceCell not initialized")
     }
 }

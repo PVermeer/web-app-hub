@@ -6,9 +6,10 @@ mod utils;
 use crate::{
     app_dirs::AppDirs,
     browsers::{Base, Browser, BrowserConfigs},
-    config::{self, OnceLockExt},
+    config::{self},
+    utils::OnceLockExt,
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use category::Category;
 use error::{DesktopFileError, ValidationError};
 use freedesktop_desktop_entry::DesktopEntry;
@@ -426,7 +427,7 @@ impl DesktopFile {
 
         let config_path = self
             .app_dirs
-            .config()
+            .config
             .join("profiles")
             .join(&browser.config_name);
         if config_path.is_dir() {
@@ -435,11 +436,11 @@ impl DesktopFile {
 
         match browser.base {
             Base::Chromium => {
-                let config_path = self.app_dirs.config().join("profiles").join("chromium");
+                let config_path = self.app_dirs.config.join("profiles").join("chromium");
                 copy_profile_config(&config_path)
             }
             Base::Firefox => {
-                let config_path = self.app_dirs.config().join("profiles").join("firefox");
+                let config_path = self.app_dirs.config.join("profiles").join("firefox");
                 copy_profile_config(&config_path)
             }
             Base::None => Ok(()),
@@ -718,7 +719,7 @@ impl DesktopFile {
     }
 
     fn get_save_path(&self) -> Result<PathBuf> {
-        let applications_dir = self.app_dirs.applications();
+        let applications_dir = &self.app_dirs.applications;
         let file_name = format!(
             "{}-{}-{}",
             self.get_browser()
@@ -738,14 +739,22 @@ impl DesktopFile {
         set_value: bool,
         with_value: Option<&str>,
         d_str: &mut String,
-    ) {
+    ) -> Result<()> {
         let optional_replace_value = Regex::new(&format!(r"%\{{{conditional_key}\s*\?\s*([^}}]+)"))
-            .unwrap()
+            .context(format!(
+                "Failed to compile regex for captures with conditional key: {conditional_key}"
+            ))
+            .inspect_err(|error| error!(?error))?
             .captures(&*d_str)
             .and_then(|caps| caps.get(1).map(|value| value.as_str().to_string()));
 
         if let Some(replace_value) = optional_replace_value {
-            let re = Regex::new(&format!(r"%\{{{conditional_key}\s*\?\s*[^}}]+\}}",)).unwrap();
+            let re = Regex::new(&format!(r"%\{{{conditional_key}\s*\?\s*[^}}]+\}}",))
+                .context(format!(
+                    "Failed to compile regex for replacement with conditional key:
+                    {conditional_key}"
+                ))
+                .inspect_err(|error| error!(?error))?;
 
             let replacement = if set_value && let Some(with_value) = with_value {
                 format!("{replace_value}={with_value}")
@@ -757,6 +766,8 @@ impl DesktopFile {
 
             *d_str = re.replace_all(&*d_str, replacement).to_string();
         }
+
+        Ok(())
     }
 
     fn to_new_from_browser(&self) -> Result<DesktopFile, DesktopFileError> {
@@ -781,20 +792,32 @@ impl DesktopFile {
         };
 
         let mut d_str = entries.browser.desktop_file.clone().to_string();
-        d_str = d_str.replace("%{command}", &entries.browser.get_command()?);
+        d_str = d_str.replace("%{command}", &entries.browser.get_run_command()?);
         d_str = d_str.replace("%{name}", &entries.name);
         d_str = d_str.replace("%{url}", &entries.url);
         d_str = d_str.replace("%{domain}", &entries.domain);
         d_str = d_str.replace("%{domain_path}", domain_path);
         d_str = d_str.replace("%{icon}", &entries.icon_path.to_string_lossy());
         d_str = d_str.replace("%{app_id}", &app_id);
-        Self::replace_conditional(
+
+        if Self::replace_conditional(
             "is_isolated",
             entries.isolate,
             Some(&entries.profile_path.to_string_lossy()),
             &mut d_str,
-        );
-        Self::replace_conditional("is_maximized", entries.maximize, None, &mut d_str);
+        )
+        .is_err()
+        {
+            return Err(DesktopFileError::Other(anyhow!(
+                "Failed to replace conditional 'is_isolated' in desktop file"
+            )));
+        }
+
+        if Self::replace_conditional("is_maximized", entries.maximize, None, &mut d_str).is_err() {
+            return Err(DesktopFileError::Other(anyhow!(
+                "Failed to replace conditional 'is_maximized' in desktop file"
+            )));
+        }
 
         let mut new_desktop_file =
             Self::from_string(&save_path, &d_str, &self.browser_configs, &self.app_dirs)?;

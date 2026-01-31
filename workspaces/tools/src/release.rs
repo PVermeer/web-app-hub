@@ -3,8 +3,8 @@ use chrono::DateTime;
 use clap::Parser;
 use common::{
     assets,
-    config::{self, OnceLockExt},
-    utils::{self, command},
+    config::{self},
+    utils::{self, OnceLockExt, command},
 };
 use freedesktop_desktop_entry::DesktopEntry;
 use git_cliff::args::Opt;

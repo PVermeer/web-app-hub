@@ -378,7 +378,10 @@ impl IconPicker {
         let now = SystemTime::now();
         let throttle_duration = Duration::from_secs(Self::ONLINE_FETCH_THROTTLE);
         let previous_fetch_ts = *self.fetched_icons_ts.borrow();
-        let previous_fetch_duration = now.duration_since(previous_fetch_ts).unwrap();
+        let Ok(previous_fetch_duration) = now.duration_since(previous_fetch_ts) else {
+            error!("Could not calculate duration for throttle");
+            return false;
+        };
 
         if previous_fetch_duration < throttle_duration {
             return true;
@@ -458,7 +461,7 @@ impl IconPicker {
             .get_id()
             .context("No file id on DesktopFile")?;
 
-        let icon_dir = self.app.dirs.icons();
+        let icon_dir = &self.app.dirs.icons;
         let file_name = sanitize_filename::sanitize(format!("{app_id}.png"));
         let save_path = icon_dir.join(&file_name);
 

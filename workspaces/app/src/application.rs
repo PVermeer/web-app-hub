@@ -7,9 +7,9 @@ use common::{
     app_dirs::AppDirs,
     assets,
     browsers::BrowserConfigs,
-    config::{self, OnceLockExt},
+    config::{self},
     fetch::Fetch,
-    utils,
+    utils::{self, OnceLockExt},
 };
 use error_dialog::ErrorDialog;
 use gtk::{IconTheme, Image, Settings, gdk, glib::object::ObjectExt};
@@ -35,9 +35,9 @@ impl App {
             let settings = Settings::default().expect("Could not load gtk settings");
             settings.set_property("gtk-icon-theme-name", "Adwaita");
             let icon_theme = Rc::new(IconTheme::for_display(
-                &gdk::Display::default().expect("Could not connect to display"),
+                &gdk::Display::default().expect("Failed to connect to display"),
             ));
-            let app_dirs = AppDirs::new();
+            let app_dirs = AppDirs::new().expect("Failed to get all needed directories");
             let window = AppWindow::new(adw_application);
             let fetch = Fetch::new();
             let pages = Pages::new();
@@ -66,7 +66,6 @@ impl App {
             self.window.init(self);
             self.error_dialog.init(self);
 
-            self.dirs.init()?;
             assets::init(&self.dirs)?;
             self.add_system_icon_paths();
             self.browser_configs.init();
@@ -127,9 +126,9 @@ impl App {
 
     fn add_system_icon_paths(self: &Rc<Self>) {
         if utils::env::is_flatpak_container() {
-            for path in self.dirs.system_icons() {
+            for path in &self.dirs.system_icons {
                 debug!(path = %path.display(), "Adding system icon path");
-                self.add_icon_search_path(&path);
+                self.add_icon_search_path(path);
             }
         }
     }

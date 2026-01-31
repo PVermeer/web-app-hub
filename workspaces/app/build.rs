@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use common::{
     app_dirs::AppDirs,
-    config::{self, OnceLockExt},
-    utils,
+    config::{self},
+    utils::{self, OnceLockExt},
 };
 use std::{
     fs::{self},
@@ -12,8 +12,7 @@ use std::{
 fn main() -> Result<()> {
     println!("cargo:warning=Debug: build script is running!");
     config::init();
-    let app_dirs = AppDirs::new();
-    app_dirs.init()?;
+    let app_dirs = AppDirs::new()?;
 
     create_config_symlinks(&app_dirs);
     create_data_symlinks(&app_dirs);
@@ -27,19 +26,19 @@ fn main() -> Result<()> {
 
 fn create_config_symlinks(app_dirs: &AppDirs) {
     let config_path = dev_config_path();
-    let _ = utils::files::create_symlink(&config_path, &app_dirs.config());
+    let _ = utils::files::create_symlink(&config_path, &app_dirs.config);
 }
 
 fn create_data_symlinks(app_dirs: &AppDirs) {
     let data_path = dev_data_path();
 
-    let _ = utils::files::create_symlink(&data_path, &app_dirs.data());
-    let _ = utils::files::create_symlink(&data_path.join("applications"), &app_dirs.applications());
+    let _ = utils::files::create_symlink(&data_path, &app_dirs.data);
+    let _ = utils::files::create_symlink(&data_path.join("applications"), &app_dirs.applications);
 }
 
 fn copy_dev_web_apps(app_dirs: &AppDirs) {
     let dev_desktop_files = dev_assets_path().join("desktop-files");
-    let user_applications_dir = app_dirs.applications();
+    let user_applications_dir = &app_dirs.applications;
 
     for desktop_file in &utils::files::get_entries_in_dir(&dev_desktop_files).unwrap() {
         let id = desktop_file
@@ -51,7 +50,7 @@ fn copy_dev_web_apps(app_dirs: &AppDirs) {
             .to_string();
 
         let mut exists = false;
-        for file in &utils::files::get_entries_in_dir(&user_applications_dir).unwrap() {
+        for file in &utils::files::get_entries_in_dir(user_applications_dir).unwrap() {
             if file.file_name().to_string_lossy().ends_with(&id) {
                 exists = true;
             }
@@ -71,7 +70,7 @@ fn copy_dev_web_apps(app_dirs: &AppDirs) {
 fn install_app_desktop_file(app_dirs: &AppDirs) -> Result<()> {
     let file_name = desktop_file_name();
     let desktop_file = assets_path().join("desktop").join(&file_name);
-    let save_file = app_dirs.applications().join(file_name);
+    let save_file = app_dirs.applications.join(file_name);
 
     fs::copy(desktop_file, save_file).context("Desktop file copy failed")?;
     Ok(())
@@ -81,7 +80,7 @@ fn install_app_icon(app_dirs: &AppDirs) -> Result<()> {
     let file_name = icon_file_name();
     let icon_file = assets_path().join("desktop").join(&file_name);
     let save_dir = app_dirs
-        .user_data()
+        .user_data
         .join("icons")
         .join("hicolor")
         .join("256x256")

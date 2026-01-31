@@ -2,7 +2,10 @@ use crate::application::{
     App,
     pages::{ContentPage, NavPage, Page},
 };
-use common::config::{self, OnceLockExt};
+use common::{
+    config::{self},
+    utils::OnceLockExt,
+};
 use gtk::{
     Align, Button, Orientation,
     prelude::{ButtonExt, WidgetExt},

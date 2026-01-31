@@ -1,31 +1,36 @@
-use crate::config::{self, OnceLockExt};
+use crate::{
+    config::{self},
+    utils::OnceLockExt,
+};
 use anyhow::{Context, Result};
 use gtk::glib;
-use std::{cell::OnceCell, fs, path::PathBuf, rc::Rc};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 use tracing::debug;
 
 #[derive(Default)]
 pub struct AppDirs {
-    home: OnceCell<PathBuf>,
-    data: OnceCell<PathBuf>,
-    config: OnceCell<PathBuf>,
-    system_data: OnceCell<Vec<PathBuf>>,
-    user_data: OnceCell<PathBuf>,
-    user_config: OnceCell<PathBuf>,
-    system_icons: OnceCell<Vec<PathBuf>>,
-    user_applications: OnceCell<PathBuf>,
-    profiles: OnceCell<PathBuf>,
-    icons: OnceCell<PathBuf>,
-    browser_configs: OnceCell<PathBuf>,
-    browser_desktop_files: OnceCell<PathBuf>,
-    flatpak: OnceCell<PathBuf>,
+    pub home: PathBuf,
+    pub data: PathBuf,
+    pub config: PathBuf,
+    pub system_data: Vec<PathBuf>,
+    pub user_data: PathBuf,
+    pub user_config: PathBuf,
+    pub system_icons: Vec<PathBuf>,
+    pub applications: PathBuf,
+    pub profiles: PathBuf,
+    pub icons: PathBuf,
+    pub browser_configs: PathBuf,
+    pub browser_desktop_files: PathBuf,
+    pub flatpak: PathBuf,
 }
 impl AppDirs {
-    pub fn new() -> Rc<Self> {
-        Rc::new(Self::default())
-    }
+    pub fn new() -> Result<Rc<Self>> {
+        Rc::new(Self::default());
 
-    pub fn init(&self) -> Result<()> {
         let home = glib::home_dir();
         let user_data = glib::user_data_dir();
         let app_data = user_data.join(config::APP_NAME_HYPHEN.get_value());
@@ -33,91 +38,43 @@ impl AppDirs {
         let app_config = user_config.join(config::APP_NAME_HYPHEN.get_value());
         let system_data = glib::system_data_dirs();
 
-        let _ = self.home.set(home);
-        let _ = self.data.set(app_data);
-        let _ = self.config.set(app_config);
-        let _ = self.system_data.set(system_data);
-        let _ = self.user_data.set(user_data);
-        let _ = self.user_config.set(user_config);
+        let system_icons = Self::build_system_icon_paths(&system_data);
+        let applications = Self::build_applications_path(&user_data)?;
+        let profiles = Self::build_profiles_path(&app_data)?;
+        let icons = Self::build_icons_path(&app_data)?;
+        let browser_configs = Self::build_browser_configs_path(&app_config)?;
+        let browser_desktop_files = Self::build_browser_desktop_files_path(&app_config)?;
+        let flatpak = Self::build_flatpak_path(&home);
 
-        let system_icons = self.build_system_icon_paths();
-        let applications = Self::build_applications_path()?;
-        let profiles = self.build_profiles_path()?;
-        let icons = self.build_icons_path()?;
-        let browser_configs = self.build_browser_configs_path()?;
-        let browser_desktop_files = self.build_browser_desktop_files_path()?;
-        let flatpak = self.build_flatpak_path();
+        Ok(Rc::new(Self {
+            home,
+            data: app_data,
+            config: app_config,
+            system_data,
+            user_data,
+            user_config,
 
-        let _ = self.system_icons.set(system_icons);
-        let _ = self.user_applications.set(applications);
-        let _ = self.profiles.set(profiles);
-        let _ = self.icons.set(icons);
-        let _ = self.browser_configs.set(browser_configs);
-        let _ = self.browser_desktop_files.set(browser_desktop_files);
-        let _ = self.flatpak.set(flatpak);
-
-        Ok(())
+            system_icons,
+            applications,
+            profiles,
+            icons,
+            browser_configs,
+            browser_desktop_files,
+            flatpak,
+        }))
     }
 
-    pub fn home(&self) -> PathBuf {
-        self.home.get().unwrap().clone()
-    }
-
-    pub fn data(&self) -> PathBuf {
-        self.data.get().unwrap().clone()
-    }
-
-    pub fn config(&self) -> PathBuf {
-        self.config.get().unwrap().clone()
-    }
-
-    pub fn system_data(&self) -> Vec<PathBuf> {
-        self.system_data.get().unwrap().clone()
-    }
-
-    pub fn user_data(&self) -> PathBuf {
-        self.user_data.get().unwrap().clone()
-    }
-
-    pub fn system_icons(&self) -> Vec<PathBuf> {
-        self.system_icons.get().unwrap().clone()
-    }
-
-    pub fn applications(&self) -> PathBuf {
-        self.user_applications.get().unwrap().clone()
-    }
-
-    pub fn profiles(&self) -> PathBuf {
-        self.profiles.get().unwrap().clone()
-    }
-
-    pub fn icons(&self) -> PathBuf {
-        self.icons.get().unwrap().clone()
-    }
-
-    pub fn browser_configs(&self) -> PathBuf {
-        self.browser_configs.get().unwrap().clone()
-    }
-
-    pub fn browser_desktop_files(&self) -> PathBuf {
-        self.browser_desktop_files.get().unwrap().clone()
-    }
-
-    pub fn flatpak(&self) -> PathBuf {
-        self.flatpak.get().unwrap().clone()
-    }
-
-    fn build_system_icon_paths(&self) -> Vec<PathBuf> {
+    fn build_system_icon_paths(system_data: &[PathBuf]) -> Vec<PathBuf> {
         let icons_dir_name = "icons";
-        self.system_data()
+        system_data
             .iter()
             .map(|path| path.join(icons_dir_name))
             .filter(|path| path.is_dir())
             .collect()
     }
 
-    fn build_applications_path() -> Result<PathBuf> {
-        let user_applications_path = glib::user_data_dir().join("applications");
+    fn build_applications_path(user_data: &Path) -> Result<PathBuf> {
+        let user_applications_path = user_data.join("applications");
 
         debug!(
             "Using system applications path: {}",
@@ -134,9 +91,9 @@ impl AppDirs {
         Ok(user_applications_path)
     }
 
-    fn build_profiles_path(&self) -> Result<PathBuf> {
+    fn build_profiles_path(app_data: &Path) -> Result<PathBuf> {
         let profiles_dir_name = "profiles";
-        let profiles_path = self.data().join(profiles_dir_name);
+        let profiles_path = app_data.join(profiles_dir_name);
 
         debug!("Using profile path: {}", profiles_path.display());
 
@@ -150,9 +107,9 @@ impl AppDirs {
         Ok(profiles_path)
     }
 
-    fn build_icons_path(&self) -> Result<PathBuf> {
+    fn build_icons_path(app_data: &Path) -> Result<PathBuf> {
         let icons_dir_name = "icons";
-        let icons_path = self.data().join(icons_dir_name);
+        let icons_path = app_data.join(icons_dir_name);
 
         debug!("Using icons path: {}", icons_path.display());
 
@@ -166,9 +123,9 @@ impl AppDirs {
         Ok(icons_path)
     }
 
-    fn build_browser_configs_path(&self) -> Result<PathBuf> {
+    fn build_browser_configs_path(app_config: &Path) -> Result<PathBuf> {
         let browsers_dir_name = "browsers";
-        let browser_configs_path = self.config().join(browsers_dir_name);
+        let browser_configs_path = app_config.join(browsers_dir_name);
 
         debug!("Using browsers path: {}", browser_configs_path.display());
 
@@ -182,9 +139,9 @@ impl AppDirs {
         Ok(browser_configs_path)
     }
 
-    fn build_browser_desktop_files_path(&self) -> Result<PathBuf> {
+    fn build_browser_desktop_files_path(app_config: &Path) -> Result<PathBuf> {
         let browsers_desktop_files_dir_name = "desktop-files";
-        let browser_desktop_files_path = self.config().join(browsers_desktop_files_dir_name);
+        let browser_desktop_files_path = app_config.join(browsers_desktop_files_dir_name);
 
         debug!(
             "Using browser desktop-files path: {}",
@@ -201,8 +158,8 @@ impl AppDirs {
         Ok(browser_desktop_files_path)
     }
 
-    fn build_flatpak_path(&self) -> PathBuf {
-        let flatpak_path = self.home().join(".var").join("app");
+    fn build_flatpak_path(home: &Path) -> PathBuf {
+        let flatpak_path = home.join(".var").join("app");
 
         debug!("Using flatpak path: {}", flatpak_path.display());
 
