@@ -1,5 +1,5 @@
-use crate::application::App;
-use anyhow::{Error, Result, anyhow};
+use crate::application::{App, pages::web_apps::web_app_view::WebAppView};
+use anyhow::anyhow;
 use common::desktop_file::{DesktopFile, category::Category};
 use gtk::{
     InputPurpose, Label, ListItem, SignalListItemFactory, gio,
@@ -21,7 +21,6 @@ use tracing::error;
 
 pub struct OptionalSettings {
     init: OnceCell<bool>,
-    error: RefCell<Option<Error>>,
     app: Rc<App>,
     desktop_file: Rc<RefCell<DesktopFile>>,
     pref_page: PreferencesPage,
@@ -38,7 +37,6 @@ impl OptionalSettings {
 
         Rc::new(Self {
             init: OnceCell::from(false),
-            error: RefCell::new(None),
             app: app.clone(),
             desktop_file: desktop_file.clone(),
             pref_page,
@@ -48,7 +46,7 @@ impl OptionalSettings {
         })
     }
 
-    pub fn init(self: &Rc<Self>) {
+    pub fn init(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
         if let Some(is_init) = self.init.get()
             && *is_init
         {
@@ -60,35 +58,20 @@ impl OptionalSettings {
         self.optional_pref_group.add(&self.description_row);
         self.optional_pref_group.add(&self.category_row);
 
-        self.connect_description_row();
-        self.connect_category_row();
+        self.connect_description_row(web_app_view);
+        self.connect_category_row(web_app_view);
 
         let _ = self.init.set(true);
     }
 
-    pub fn show_dialog<Callback: Fn(Result<()>) + 'static>(
-        self: &Rc<Self>,
-        on_close: Option<Callback>,
-    ) -> PreferencesDialog {
-        self.init();
+    pub fn show_dialog(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) -> PreferencesDialog {
+        self.init(web_app_view);
 
         let dialog = PreferencesDialog::builder()
             .title("Optional Settings")
             .height_request(300)
             .build();
         dialog.add(&self.pref_page);
-
-        let self_clone = self.clone();
-
-        dialog.connect_closed(move |_dialog| {
-            if let Some(callback) = &on_close {
-                if let Some(error) = self_clone.error.borrow_mut().take() {
-                    callback(Err(error));
-                } else {
-                    callback(Ok(()));
-                }
-            }
-        });
 
         dialog.present(Some(&self.app.window.adw_window));
         dialog
@@ -166,20 +149,22 @@ impl OptionalSettings {
         combo_row
     }
 
-    fn connect_description_row(self: &Rc<Self>) {
+    fn connect_description_row(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
         let self_clone = self.clone();
+        let web_app_view_clone = web_app_view.clone();
 
         self.description_row.connect_apply(move |entry_row| {
             self_clone
                 .desktop_file
                 .borrow_mut()
                 .set_description(&entry_row.text());
+            web_app_view_clone.on_desktop_file_change();
         });
     }
 
-    fn connect_category_row(self: &Rc<Self>) {
+    fn connect_category_row(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
         let desktop_file_clone = self.desktop_file.clone();
-        let self_clone = self.clone();
+        let web_app_view_clone = web_app_view.clone();
 
         self.category_row
             .connect_selected_item_notify(move |combo_row| {
@@ -188,20 +173,15 @@ impl OptionalSettings {
                     return;
                 };
                 let Ok(category_item_boxed) = selected_item.downcast::<BoxedAnyObject>() else {
-                    self_clone.set_error("Failed to downcast selected item in category_row", None);
+                    web_app_view_clone.on_error(
+                        "Failed to set category",
+                        Some(&anyhow!("Failed to downcast category from list")),
+                    );
                     return;
                 };
                 let category = category_item_boxed.borrow::<Category>();
                 desktop_file_clone.borrow_mut().set_category(&category);
+                web_app_view_clone.on_desktop_file_change();
             });
-    }
-
-    fn set_error(self: &Rc<Self>, message: &str, error: Option<Error>) {
-        if let Some(error) = error {
-            let new_error = error.context(message.to_string());
-            *self.error.borrow_mut() = Some(new_error);
-        } else {
-            *self.error.borrow_mut() = Some(anyhow!(message.to_string()));
-        }
     }
 }

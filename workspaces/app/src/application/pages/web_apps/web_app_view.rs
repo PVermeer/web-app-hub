@@ -857,18 +857,11 @@ impl WebAppView {
     fn connect_optional_row(self: &Rc<Self>) {
         let app_clone = self.app.clone();
         let desktop_file_clone = self.desktop_file.clone();
-
         let self_clone = self.clone();
 
         self.optional_row.connect_activated(move |_| {
             let optional_dialog = OptionalSettings::new(&app_clone, &desktop_file_clone);
-
-            let self_clone = self_clone.clone();
-
-            optional_dialog.show_dialog(Some(move |result| match result {
-                Ok(()) => self_clone.on_desktop_file_change(),
-                Err(error) => self_clone.on_error("Failed to save optional settings", Some(&error)),
-            }));
+            optional_dialog.show_dialog(&self_clone);
         });
     }
 
