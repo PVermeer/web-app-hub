@@ -112,7 +112,7 @@ impl WebAppView {
         let url_row = Self::build_url_row(desktop_file);
         let isolate_row = Self::build_isolate_row(desktop_file, browser_can_isolate);
         let maximize_row = Self::build_maximize_row(desktop_file, browser_can_maximize);
-        let browser_row = Self::build_browser_row(app, desktop_file);
+        let browser_row = Self::build_browser_row(app, desktop_file, is_new);
         let optional_row = Self::build_optional_row();
 
         Rc::new(Self {
@@ -392,7 +392,11 @@ impl WebAppView {
         switch_row
     }
 
-    fn build_browser_row(app: &Rc<App>, desktop_file: &Rc<RefCell<DesktopFile>>) -> ComboRow {
+    fn build_browser_row(
+        app: &Rc<App>,
+        desktop_file: &Rc<RefCell<DesktopFile>>,
+        is_new: bool,
+    ) -> ComboRow {
         let all_browsers = app.browser_configs.get_all_browsers();
 
         // Some weird factory setup where the list calls factory methods...
@@ -448,9 +452,15 @@ impl WebAppView {
             && let Ok(index) = browser_index.try_into()
         {
             combo_row.set_selected(index);
-        } else if let Some(browser) = all_browsers.first() {
-            // ComboRow has already a selected item on load, so sync this if empty.
+        } else if is_new && let Some(browser) = all_browsers.first() {
+            // ComboRow has already selected the first item on load, so sync this if new.
             desktop_file.borrow_mut().set_browser(browser);
+        } else if let Some(browser) = all_browsers.last()
+            && let Some(browser_index) = browser.get_index()
+            && let Ok(index) = browser_index.try_into()
+        {
+            // Last should be no browser
+            combo_row.set_selected(index);
         }
 
         combo_row
