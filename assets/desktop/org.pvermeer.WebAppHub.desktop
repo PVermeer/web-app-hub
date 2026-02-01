@@ -1,5 +1,6 @@
 [Desktop Entry]
 Categories=Utility;GNOME
+Comment=Create web apps with ease
 Exec=web-app-hub
 Icon=org.pvermeer.WebAppHub
 Keywords=WebApp;App;Software;Manager
