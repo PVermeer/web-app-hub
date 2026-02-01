@@ -172,9 +172,7 @@ impl DesktopFile {
     pub fn get_version(&self) -> Option<Version> {
         self.desktop_entry
             .desktop_entry(&Key::Version.to_string())
-            .map(|result| {
-                Version::parse(result).expect("Failed to parse 'Version' on 'DesktopFile'")
-            })
+            .map(|result| Version::parse(result).unwrap_or(Version::new(0, 0, 0)))
     }
 
     pub fn set_version(&mut self, version: &Version) {
