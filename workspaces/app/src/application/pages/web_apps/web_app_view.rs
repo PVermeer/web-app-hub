@@ -46,7 +46,7 @@ pub struct WebAppView {
     app: Rc<App>,
     header: HeaderBar,
     desktop_file: Rc<RefCell<DesktopFile>>,
-    desktop_file_original: DesktopFile,
+    desktop_file_original: RefCell<DesktopFile>,
     prefs_page: PreferencesPage,
     pref_groups: RefCell<Vec<PreferencesGroup>>,
     toast_overlay: ToastOverlay,
@@ -122,7 +122,7 @@ impl WebAppView {
             app: app.clone(),
             header,
             desktop_file: desktop_file.clone(),
-            desktop_file_original,
+            desktop_file_original: RefCell::new(desktop_file_original),
             prefs_page,
             pref_groups: RefCell::new(Vec::new()),
             toast_overlay,
@@ -190,7 +190,7 @@ impl WebAppView {
 
         let mut desktop_file_borrow = self.desktop_file.borrow_mut();
         let save_path = desktop_file_borrow.get_path();
-        *desktop_file_borrow = self.desktop_file_original.clone();
+        *desktop_file_borrow = self.desktop_file_original.borrow().clone();
         desktop_file_borrow.set_path(&save_path);
 
         let name = desktop_file_borrow.get_name().unwrap_or_default();
@@ -863,7 +863,8 @@ impl WebAppView {
     }
 
     fn reset_reset_button(self: &Rc<Self>) {
-        if self.desktop_file_original.to_string() == self.desktop_file.borrow().to_string() {
+        if self.desktop_file_original.borrow().to_string() == self.desktop_file.borrow().to_string()
+        {
             self.reset_button.set_sensitive(false);
         } else {
             self.reset_button.set_sensitive(true);
@@ -1008,7 +1009,10 @@ impl WebAppView {
             }
             return;
         }
+
         *self.is_new.borrow_mut() = false;
+        *self.desktop_file_original.borrow_mut() = self.desktop_file.borrow().clone();
+
         self.run_app_button.set_visible(true);
         self.save_button.set_visible(false);
         self.on_desktop_file_change();
