@@ -1,3 +1,8 @@
+## [0.4.1] - 2026-02-01
+
+### 🐛 Bug Fixes
+
+- *(desktop-file)* Web apps update again on app update
 ## [0.4.0] - 2026-02-01
 
 ### 🚀 Features
@@ -27,6 +32,7 @@
 - *(release)* Fix for last_released_version
 - Format
 - Update screenshots
+- *(release)* V0.4.0
 ## [0.3.1] - 2026-01-26
 
 ### 🐛 Bug Fixes
@@ -79,12 +85,3 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* V0.2.2
-## [0.2.1] - 2026-01-08
-
-### 🐛 Bug Fixes
-
-- *(icon-picker)* Custom icon updates the icon list again
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V0.2.1
