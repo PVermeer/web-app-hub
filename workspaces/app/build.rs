@@ -16,6 +16,7 @@ fn main() -> Result<()> {
 
     create_config_symlinks(&app_dirs);
     create_data_symlinks(&app_dirs);
+    create_cache_symlinks(&app_dirs);
     copy_dev_web_apps(&app_dirs);
 
     install_app_desktop_file(&app_dirs)?;
@@ -35,6 +36,11 @@ fn create_data_symlinks(app_dirs: &AppDirs) {
     let _ = utils::files::create_symlink(&data_path, &app_dirs.app_data);
     let _ =
         utils::files::create_symlink(&data_path.join("applications"), &app_dirs.user_applications);
+}
+
+fn create_cache_symlinks(app_dirs: &AppDirs) {
+    let cache_path = dev_cache_path();
+    let _ = utils::files::create_symlink(&cache_path, &app_dirs.app_cache);
 }
 
 fn copy_dev_web_apps(app_dirs: &AppDirs) {
@@ -110,6 +116,10 @@ fn dev_config_path() -> PathBuf {
 
 fn dev_data_path() -> PathBuf {
     project_path().join("dev-data")
+}
+
+fn dev_cache_path() -> PathBuf {
+    project_path().join("dev-cache")
 }
 
 fn dev_assets_path() -> PathBuf {

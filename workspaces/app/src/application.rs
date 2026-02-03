@@ -5,20 +5,22 @@ mod window;
 use anyhow::{Error, Result};
 use common::{
     app_dirs::AppDirs,
-    assets,
+    assets::{self},
     browsers::BrowserConfigs,
+    cache_settings::CacheSettings,
     config::{self},
     fetch::Fetch,
     utils::{self, OnceLockExt},
 };
 use error_dialog::ErrorDialog;
-use gtk::{IconTheme, Image, Settings, gdk, glib::object::ObjectExt};
+use gtk::{IconTheme, Image, Settings, gdk};
 use pages::{Page, Pages};
 use std::{cell::RefCell, path::Path, rc::Rc};
 use tracing::{debug, error};
 use window::AppWindow;
 
 pub struct App {
+    pub cache_settings: RefCell<CacheSettings>,
     pub dirs: Rc<AppDirs>,
     pub browser_configs: Rc<BrowserConfigs>,
     pub error_dialog: ErrorDialog,
@@ -32,19 +34,22 @@ pub struct App {
 impl App {
     pub fn new(adw_application: &libadwaita::Application) -> Rc<Self> {
         Rc::new({
-            let settings = Settings::default().expect("Could not load gtk settings");
-            settings.set_property("gtk-icon-theme-name", "Adwaita");
             let icon_theme = Rc::new(IconTheme::for_display(
                 &gdk::Display::default().expect("Failed to connect to display"),
             ));
             let app_dirs = AppDirs::new().expect("Failed to get all needed directories");
+            let settings = Settings::default().expect("Failed to load gtk settings");
+            let cache_settings = RefCell::new(CacheSettings::new(&app_dirs));
             let window = AppWindow::new(adw_application);
             let fetch = Fetch::new();
             let pages = Pages::new();
             let browsers = BrowserConfigs::new(&icon_theme, &app_dirs);
             let error_dialog = ErrorDialog::new();
 
+            Self::set_theme_settings(&settings);
+
             Self {
+                cache_settings,
                 dirs: app_dirs,
                 browser_configs: browsers,
                 error_dialog,
@@ -115,6 +120,7 @@ impl App {
 
     pub fn restart(mut self: Rc<Self>) {
         self.close();
+        self.cache_settings.borrow_mut().reset();
         let new_self = Self::new(&self.adw_application);
         self = new_self;
         self.init();
@@ -131,5 +137,9 @@ impl App {
                 self.add_icon_search_path(path);
             }
         }
+    }
+
+    fn set_theme_settings(settings: &Settings) {
+        settings.set_gtk_icon_theme_name(Some("Adwaita"));
     }
 }

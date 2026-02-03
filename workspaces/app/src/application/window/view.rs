@@ -65,8 +65,8 @@ impl View {
     fn build_breakpoint() -> Breakpoint {
         let breakpoint_condition = BreakpointCondition::new_length(
             libadwaita::BreakpointConditionLengthType::MaxWidth,
-            600_f64,
-            libadwaita::LengthUnit::Sp,
+            500_f64,
+            libadwaita::LengthUnit::Px,
         );
 
         Breakpoint::new(breakpoint_condition)

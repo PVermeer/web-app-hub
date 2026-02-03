@@ -1,4 +1,5 @@
 /target
 /dev-config
 /dev-data
+/dev-cache
 /.flatpak-builder
