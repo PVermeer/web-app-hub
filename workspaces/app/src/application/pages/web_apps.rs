@@ -173,6 +173,14 @@ impl WebAppsPage {
         let mut app_has_updated = false;
 
         for file in utils::files::get_entries_in_dir(applications_path).unwrap_or_default() {
+            if file
+                .path()
+                .extension()
+                .is_some_and(|extension| extension != "desktop")
+            {
+                continue;
+            }
+
             let Ok(is_owned) = DesktopFile::is_owned(&file.path()) else {
                 error!(path = %file.path().display(), "Failed to read desktop file");
                 continue;
