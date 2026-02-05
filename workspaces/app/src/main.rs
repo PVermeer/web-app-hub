@@ -76,6 +76,7 @@ fn main() {
 
     config::init();
     init_logging();
+    info!("Version: {}", config::VERSION.get_value());
     init_locale();
 
     config::log_all_values_debug();
