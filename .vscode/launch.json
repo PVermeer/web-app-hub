@@ -10,6 +10,7 @@
       "name": "Debug",
       "env": {
         // "RUST_BACKTRACE": "1",
+        // "LANG": "nl_NL",
         "WAH_LOG": "debug",
         "GSETTINGS_BACKEND": "memory"
       },

@@ -1,0 +1,132 @@
+_version: 1
+
+home:
+  title: Home
+  get_started: |
+    Om te beginnen kunt u uw eerste webapp aanmaken.
+    Het tabblad Browsers toont de ondersteunde en geïnstalleerde browsers.
+    Het tabblad Info toont enkele tips en trucs, evenals algemene informatie.
+  button:
+    go_to_web_apps: Ga naar webapps
+    more_information: Meer informatie
+
+web_apps:
+  title: Webapps
+  no_apps:
+    title: Geen webapps gevonden
+    description: Probeer er een toe te voegen.
+  no_name: Geen naam
+  button:
+    new_app: Nieuwe webapp
+  web_app_view:
+    new_app:
+      title: Nieuwe webapp
+      header:
+        name: Geen naam...
+    name:
+      title: Naam van de webapp
+      validate: Naam is leeg
+    url:
+      title: Website-URL
+      validate: Voer een geldige URL in (bijv. https://example.com)
+    isolate:
+      title: Isoleren
+      subtitle: Gebruik een geïsoleerd profiel
+      disabled: De geselecteerde browser ondersteunt geen isolatie
+    maximize:
+      title: Maximaliseren
+      subtitle: Start de app altijd gemaximaliseerd
+      disabled: De geselecteerde browser kan niet gemaximaliseerd starten
+    browser:
+      title: Browser
+      subtitle: Selecteer een browser
+      no_browser: Geen browser
+    optional:
+      title: Optioneel
+      subtitle: Optionele instellingen voor desktops met menu’s
+      dialog:
+        title: Optionele instellingen
+        menu_group:
+          title: Menu
+          subtitle: Instellingen voor desktops die een gecategoriseerd applicatiemenu gebruiken
+          description:
+            title: Korte appbeschrijving
+          category:
+            title: Categorie
+            subtitle: Selecteer een categorie
+    icon:
+      title: Iconen
+      dialog:
+        title: Selecteer een pictogram
+        save: Opslaan
+        cancel: Annuleren
+      file_dialog:
+        title: Selecteer een afbeelding
+        filter: Afbeeldingen
+      no_icons:
+        title: Geen pictogrammen gevonden
+        description: Probeer er een toe te voegen
+      button:
+        reset: Reset
+        add_icon: Pictogram toevoegen
+    button:
+      reset: Reset
+      icon: Pictogram wijzigen
+      open: Openen
+      save: Opslaan
+      delete: Verwijderen
+    toast:
+      reset: Gereset
+
+browsers:
+  title: Browsers
+  no_browsers:
+    title: Geen compatibele browsers gevonden
+    description: Probeer er een te installeren.
+  not_installed:
+    title: Ondersteund maar niet geïnstalleerd
+  capabilities:
+    title: Mogelijkheden
+    isolate: Kan webapps isoleren
+    maximize: Kan webapps gemaximaliseerd starten
+    setup: Browser instellen met %{key_bind}
+  issues:
+    title: Bekende problemen
+
+info:
+  title: Info
+  tips:
+    title: Tips en trucs
+    text_pango: |
+      <b>Taakbalkpictogrammen komen niet overeen met een nieuw aangemaakte webapp.</b>
+      De desktopomgeving kan traag zijn bij het bijwerken en koppelen van een nieuw aangemaakte webapp. Start de webapp opnieuw; het juiste pictogram zal dan worden toegepast.
+
+      <b>Browser instellen met een geïsoleerd profiel</b>
+      Voor Chromium-gebaseerde browsers: klik met de rechtermuisknop op de titelbalk en selecteer “Browservenster openen” of druk op &lt;Ctrl+T&gt;.
+
+      Voor Firefox-gebaseerde browsers: druk op &lt;Alt&gt;. Ga naar ‘Beeld’ en schakel ‘Menubalk’ in. Hiermee wordt Firefox in een meer standaardmodus met menu-elementen geplaatst. Schakel de menubalk opnieuw uit om de UI-elementen weer te verwijderen.
+
+      Voor de Zen-browser: druk op &lt;Alt+Ctrl+C&gt;.
+
+      Gebruik bovenstaande om de browser binnen het geïsoleerde profiel in te stellen en extensies te installeren.
+
+      <b>Verwijderen</b>
+      Het verwijderen van deze applicatie verwijdert <b>niet</b> de aangemaakte webapps. Het verwijderen van de toepassingsgegevens van deze applicatie verwijdert de pictogrammen en isolatieprofielen van systeembrowsers, maar webapps kunnen nog steeds op uw desktop verschijnen. Om alle gegevens te verwijderen, dient u eerst alle webapps te verwijderen voordat u deze applicatie verwijdert. Dit zorgt ervoor dat alles volledig wordt verwijderd.
+  permissions:
+    title: Machtigingen
+    text_pango: |
+      <b>filesystem=xdg-data/applications:create</b>
+      Wordt gebruikt om nieuwe webapplicaties aan te maken. Dit verwijst doorgaans naar ~/.local/share/applications.
+
+      <b>filesystem=~/.var/app:create</b>
+      Wordt gebruikt om geïsoleerde profielen aan te maken voor Flatpak-browsers. Voor sommige Flatpak-browsers is het noodzakelijk een map binnen hun sandbox aan te maken voor profielisolatie. Daarnaast vereisen Firefox-browsers een bijgewerkt profiel om een minimale gebruikersinterface te creëren. De browser kan zijn eigen bestandssysteem niet verlaten; daarom moet deze applicatie daarbinnen kunnen schrijven.
+
+      Firefox-gebaseerde browsers maken bijvoorbeeld de map voor het geïsoleerde profiel niet automatisch aan en zullen falen wanneer deze map niet bestaat.
+
+      Geïsoleerde profielen van systeemgeïnstalleerde browsers worden opgeslagen in de eigen xdg-data/profiles-map.
+
+      <b>filesystem=xdg-data/flatpak/app:ro &amp; filesystem=/var/lib/flatpak/app:ro</b>
+      Wordt gebruikt om de pictogrammen van Flatpak-browsers op te halen.
+
+      <b>talk-name=org.freedesktop.Flatpak</b>
+      Wordt gebruikt om opdrachten buiten de sandbox uit te voeren. Dit is nodig om informatie over Flatpak-browsers op te halen en om de aangemaakte webapp vanuit deze applicatie te starten.
