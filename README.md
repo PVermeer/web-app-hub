@@ -133,7 +133,7 @@ Want to help translate the app?
 
 Translation file names follow the list from `$ locale --all-locales` (e.g., `en_GB`). The first part (language code) is used as a fallback if the second part (country code) doesn't exist. `en.yml` Already exists, thus adding `en_GB.yml` will add British translation but `en_US` users will still get `en.yml` translations. This works the same for the translation key in the browser config files.
 
-Don't forget to add your name to credits in `workspaces/app/credits`.
+Don't forget to add your name to the credits in `workspaces/app/credits`.
 
 ### Style Guidelines
 
