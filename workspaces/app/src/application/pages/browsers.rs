@@ -188,7 +188,7 @@ impl BrowsersPage {
             Base::Firefox => {
                 let _ = writeln!(
                     capabilities_list,
-                    "• {} <Alt>",
+                    "• {}",
                     t!("browsers.capabilities.setup", key_bind = "<Alt>")
                 );
             }
@@ -200,13 +200,18 @@ impl BrowsersPage {
                 .label(format!("<b>{}</b>", t!("browsers.capabilities.title")))
                 .build();
             let capability_list_label = Label::builder()
-                .label(&capabilities_list)
+                .label(capabilities_list.trim())
                 .wrap(true)
                 .halign(Align::Center)
+                .build();
+            let more_info_label = Label::builder()
+                .label(t!("browsers.capabilities.more_info"))
+                .css_classes(["subtitle"])
                 .build();
 
             content_box.append(&capability_label);
             content_box.append(&capability_list_label);
+            content_box.append(&more_info_label);
         }
 
         let issues_from_locale = browser

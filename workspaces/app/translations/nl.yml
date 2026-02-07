@@ -90,6 +90,7 @@ browsers:
     isolate: Kan webapps isoleren
     maximize: Kan webapps gemaximaliseerd starten
     setup: Browser instellen met %{key_bind}
+    more_info: Zie 'Info -> Tips en trucs' voor meer informatie
   issues:
     title: Bekende problemen
 

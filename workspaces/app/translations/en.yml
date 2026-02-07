@@ -90,6 +90,7 @@ browsers:
     isolate: Can isolate your web apps
     maximize: Can start web apps maximized
     setup: Setup browser with %{key_bind}
+    more_info: See 'Info -> Tips & tricks' for more information
   issues:
     title: Known issues
 
