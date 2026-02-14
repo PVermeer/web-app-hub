@@ -1,0 +1,159 @@
+_version: 1
+
+home:
+  title: Inicio
+  get_started: |
+    Para comenzar cree su primera aplicación web.
+    La pestaña de navegadores muestra los navegadores compatibles y los instalados en su sistema.
+    La pestaña de información muestra algunos trucos e información general.
+  button:
+    go_to_web_apps: Ir a Aplicaciones Web
+    more_information: Más Información
+
+web_apps:
+  title: Aplicaciones Web
+  no_apps:
+    title: No se han encontrado aplicaciones web
+    description: ¡Intente añadir alguna!
+  no_name: Sin nombre
+  button:
+    new_app: Nueva aplicación
+  web_app_view:
+    new_app:
+      title: Nueva aplicación web
+      header:
+        name: Sin nombre...
+    name:
+      title: Nombre de la aplicación web
+      validate: El nombre está vacío
+    url:
+      title: Enlace del Sitio web
+      validate: Por favor, introduzca un enlace válido (p.ej., https://ejemplo.com)
+    isolate:
+      title: Aislar
+      subtitle: Usar un perfil aislado
+      disabled: El navegador seleccionado no es capaz de aislar
+    maximize:
+      title: Maximizar
+      subtitle: Siempre iniciar la aplicación maximizada
+      disabled: El navegador seleccionado no es capaz de iniciarse maximizado
+    browser:
+      title: Navegador
+      subtitle: Elija un navegador
+      no_browser: Sin navegador
+    optional:
+      title: Opciones adicionales
+      subtitle: Opciones adicionales para sistemas con menú de aplicaciones
+      dialog:
+        title: Ajustes adicionales
+        menu_group:
+          title: Menú
+          subtitle: Ajustes para escritorios con un menú de aplicaciones categorizado
+          description:
+            title: Descripción corta
+          category:
+            title: Categoría
+            subtitle: Escoja una categoría
+            categories:
+              audio_video: Multimedia
+              audio: Audio
+              video: Vídeo
+              development: Desarrollo
+              education: Educación
+              game: Juegos
+              graphics: Gráficos
+              network: Red / Internet
+              office: Oficina
+              science: Ciencia
+              settings: Ajustes
+              system: Sistema
+              utility: Utilidades
+    icon:
+      title: Iconos
+      dialog:
+        title: Escoja un icono
+        save: Guardar
+        cancel: Cancelar
+      file_dialog:
+        title: Escoja una imagen
+        filter: Imágenes
+      no_icons:
+        title: No se han encontrado iconos
+        description: Intente añadir uno
+      button:
+        reset: Restablecer
+        add_icon: Añadir icono
+    button:
+      reset: Restablecer
+      icon: Cambiar icono
+      open: Abrir
+      save: Guardar
+      delete: Eliminar
+    toast:
+      reset: Restablecer
+
+browsers:
+  title: Navegadores
+  no_browsers:
+    title: No se han encontrado navegadores compatibles
+    description: ¡Intente instalar uno!
+  not_installed:
+    title: Compatibles pero no instalados
+  capabilities:
+    title: Capacidades
+    isolate: Puede aislar aplicaciones web
+    maximize: Puede iniciar las aplicaciones web maximizadas
+    setup: Configure el navegador con %{key_bind}
+    more_info: Lea 'Información -> Trucos' para más información
+  issues:
+    title: Limitaciones conocidas
+
+info:
+  title: Información
+  tips:
+    title: Trucos
+    text_pango: |
+      <b>Los iconos de la barra de tareas no coinciden con una aplicación web recién creada.</b>
+      El sistema puede ser lento actualizándose con una nueva aplicación web. Reinicie la aplicación web y tendrá el icono correcto.
+
+      <b>Configurar navegador con un perfil aislado</b>
+      Para los navegadores basados en Chromium, haga clic derecho en la barra de título y seleccione "Abrir ventana de navegador" o pulse &lt;Ctrl+T&gt;.
+
+      Para los navegadores basados en Firefox pulse &lt;Alt&gt;. Vaya a `Ver` y habilite `Barra de Menú`. Esto debería establecer Firefox para que use un modo estándar con elementos de menú. Deshabilite la `Barra de Menú` para eliminar los elementos de la interfaz nuevamente.
+
+      Para el navegador Zen pulse &lt;Alt+Ctrl+C&gt;.
+
+      Esto puede ser usado para configurar el navegador dentro dde un perfil aislado e instalar extensiones.
+
+      <b>Desinstalar</b>
+      Desinstalar esta aplicación <b>no</b> eliminará las aplicaciones web creada. Eliminar los datos de esta aplicación eliminará los iconos y los perfiles aislados, pero las aplicaciones web pueden seguir siendo visibles en su sistema. Para eliminar todos los datos, elimine previamente todas las aplicaciones web antes de desinstalar la aplicación. Esto asegurará que todo es eliminado.
+  permissions:
+    title: Permisos
+    text_pango: |
+      <b>filesystem=xdg-data/applications:create</b>
+      Usado para crear nuevas aplicaciones web. Normalmente resuelve a ~/.local/share/applications.
+
+      <b>filesystem=~/.var/app:create</b>
+      Usado para crear perfiles aislados para los navegadores flatpak. Para algunos navegadores flatpak es necesario crear un directorio en ellos para el aislamiento de perfiles. Además, los navegadores basados en Firefox necesitan un perfil actualizado para crear la interfaz reducida. El navegador no puede romper su propio sistema de archivos por lo que esta aplicación lo tiene que hacer.
+
+      Por ejemplo los navegadores basados en Firefox no crean el directorio para el perfil aislado y fallarán cuando el directorio no exista.
+
+      Los perfiles aislados de los navegadores instalados en el sistema se guardan en nuestro propio directorio xdg-data/profiles.
+
+      <b>filesystem=xdg-data/flatpak/app:ro &amp; filesystem=/var/lib/flatpak/app:ro</b>
+      Usado para obtener los iconos de los navegadores flatpak.
+
+      <b>talk-name=org.freedesktop.Flatpak</b>
+      Usado para ejecutar comandos fuera del aislamiento. Esto es necesario para obtener la información dek los navegadores flatpak y para ejecutar las aplicaciones web creadas desde esta aplicación.
+
+app_menu:
+  about:
+    title: Acerca de %{app_name}
+  reset:
+    title: Restablecer aplicación
+    dialog:
+      ok: Acepto
+      cancel: Cancelar
+      text: |
+        Esto restablecerá los archivos de configuración (p.ej., la configuración del navegador).
+        Esta acción no eliminará las aplicaciones web que haya creado.
