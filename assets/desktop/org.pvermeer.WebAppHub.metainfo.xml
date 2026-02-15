@@ -29,7 +29,7 @@
   <url type="contact">https://github.com/pvermeer/web-app-hub/issues</url>
   <!-- <url type="donation"></url> -->
   <url type="vcs-browser">https://github.com/pvermeer/web-app-hub</url>
-  <url type="help">https://github.com/pvermeer/web-app-hub/blob/v0.5.0/README.md</url>
+  <url type="help">https://github.com/pvermeer/web-app-hub/blob/v0.6.0/README.md</url>
   <url type="contribute">https://github.com/pvermeer/web-app-hub</url>
 
   <recommends>
@@ -45,28 +45,42 @@
   <screenshots>
 
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.5.0/assets/screenshots/1-Web-App.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.6.0/assets/screenshots/1-Web-App.png</image>
       <caption>Web-App</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.5.0/assets/screenshots/2-Web-Apps.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.6.0/assets/screenshots/2-Web-Apps.png</image>
       <caption>Web-Apps</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.5.0/assets/screenshots/3-Browsers.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.6.0/assets/screenshots/3-Browsers.png</image>
       <caption>Browsers</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.5.0/assets/screenshots/4-Info.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.6.0/assets/screenshots/4-Info.png</image>
       <caption>Info</caption>
     </screenshot>
   </screenshots>
 
   <releases>
 
+    <release version="0.6.0" date="2026-02-15">
+      <description>
+        <p>New features:</p>
+        <ul>
+          <li>translations: Create Italian translation file it.yml (#26)</li>
+          <li>translations: add es translations (#25)</li>
+        </ul>
+        <p>Fixes:</p>
+        <ul>
+          <li>about: documenters now show in credits again</li>
+        </ul>
+      </description>
+    </release>
+    
     <release version="0.5.0" date="2026-02-08">
       <description>
         <p>New features:</p>
@@ -119,22 +133,6 @@
           <li>release: corrected last released version</li>
           <li>release: increment patch version for dry-run</li>
           <li>use Adwaita icon theme on KDE</li>
-        </ul>
-      </description>
-    </release>
-    
-    <release version="0.3.0" date="2026-01-22">
-      <description>
-        <p>New features:</p>
-        <ul>
-          <li>show update status + add release notes to about</li>
-          <li>desktop-file: allow local ip as domain</li>
-        </ul>
-        <p>Fixes:</p>
-        <ul>
-          <li>icon-picker: previous custom icon now shows when online fetch fails</li>
-          <li>icon-picker: currently used icon is now also loaded</li>
-          <li>web-app-view: url validator now also validates local ips</li>
         </ul>
       </description>
     </release>
