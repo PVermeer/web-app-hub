@@ -10,3 +10,5 @@ issues:
     - Does not remember window size and position
   nl:
     - Onthoudt de grootte en positie van het venster niet
+  it:
+    - Non ricorda le dimensioni e la posizione della finestra
