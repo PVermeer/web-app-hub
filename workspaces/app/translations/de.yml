@@ -1,0 +1,159 @@
+_version: 1
+
+home:
+  title: Startseite
+  get_started: |
+    Um zu beginnen, können Sie Ihre erste Web-App erstellen.
+    Der Browser-Tab zeigt die unterstützten und installierten Browser an.
+    Der Info-Tab zeigt einige Tipps & Tricks sowie allgemeine Informationen.
+  button:
+    go_to_web_apps: Zu den Web-Apps
+    more_information: Weitere Informationen
+
+web_apps:
+  title: Web-Apps
+  no_apps:
+    title: Keine Web-Apps gefunden
+    description: Versuchen Sie, eine hinzuzufügen!
+  no_name: Kein Name
+  button:
+    new_app: Neue Web-App
+  web_app_view:
+    new_app:
+      title: Neue Web-App
+      header:
+        name: Kein Name...
+    name:
+      title: Name der Web-App
+      validate: Name ist leer
+    url:
+      title: Website-URL
+      validate: Bitte geben Sie eine gültige URL ein (z.B. https://example.com)
+    isolate:
+      title: Isolieren
+      subtitle: Ein isoliertes Profil verwenden
+      disabled: Der ausgewählte Browser unterstützt keine Isolation
+    maximize:
+      title: Maximieren
+      subtitle: App immer maximiert starten
+      disabled: Der ausgewählte Browser kann nicht maximiert starten
+    browser:
+      title: Browser
+      subtitle: Browser auswählen
+      no_browser: Kein Browser
+    optional:
+      title: Optional
+      subtitle: Optionale Einstellungen für Desktops mit Menüs
+      dialog:
+        title: Optionale Einstellungen
+        menu_group:
+          title: Menü
+          subtitle: Einstellungen für Desktops, die ein Anwendungsmenü mit Kategorien nutzen
+          description:
+            title: Kurze App-Beschreibung
+          category:
+            title: Kategorie
+            subtitle: Kategorie auswählen
+            categories:
+              audio_video: Multimedia
+              audio: Audio
+              video: Video
+              development: Entwicklung
+              education: Bildung
+              game: Spiel
+              graphics: Grafik
+              network: Netzwerk / Internet
+              office: Büro
+              science: Wissenschaft
+              settings: Einstellungen
+              system: System
+              utility: Dienstprogramm
+    icon:
+      title: Symbole
+      dialog:
+        title: Symbol auswählen
+        save: Speichern
+        cancel: Abbrechen
+      file_dialog:
+        title: Bild auswählen
+        filter: Bilder
+      no_icons:
+        title: Keine Symbole gefunden
+        description: Versuchen Sie, eines hinzuzufügen
+      button:
+        reset: Zurücksetzen
+        add_icon: Symbol hinzufügen
+    button:
+      reset: Zurücksetzen
+      icon: Symbol ändern
+      open: Öffnen
+      save: Speichern
+      delete: Löschen
+    toast:
+      reset: Zurückgesetzt
+
+browsers:
+  title: Browser
+  no_browsers:
+    title: Keine kompatiblen Browser gefunden
+    description: Versuchen Sie, einen zu installieren!
+  not_installed:
+    title: Unterstützt, aber nicht installiert
+  capabilities:
+    title: Funktionen
+    isolate: Kann Ihre Web-Apps isolieren
+    maximize: Kann Web-Apps maximiert starten
+    setup: Browser mit %{key_bind} einrichten
+    more_info: Siehe „Info -> Tipps & Tricks“ für weitere Informationen
+  issues:
+    title: Bekannte Probleme
+
+info:
+  title: Info
+  tips:
+    title: Tipps & Tricks
+    text_pango: |
+      <b>Taskleisten-Symbole stimmen nicht mit einer neu erstellten Web-App überein.</b>
+      Der Desktop kann bei der Aktualisierung und Zuordnung einer neu erstellten Web-App verzögert reagieren. Starten Sie die Web-App neu, dann wird das richtige Symbol angezeigt.
+
+      <b>Browser mit isoliertem Profil einrichten</b>
+      Bei Chromium-basierten Browsern klicken Sie mit der rechten Maustaste auf die Titelleiste und wählen „Browserfenster öffnen“ oder drücken Sie &lt;Ctrl+T&gt;.
+
+      Bei Firefox-basierten Browsern drücken Sie &lt;Alt&gt;. Gehen Sie zu `Ansicht` und aktivieren Sie `Menüleiste`. Dadurch wird Firefox in einen normalen Modus mit Menüelementen versetzt. Deaktivieren Sie die `Menüleiste`, um die Bedienelemente wieder zu entfernen.
+
+      Für den Zen-Browser drücken Sie &lt;Alt+Ctrl+C&gt;.
+
+      Dies kann verwendet werden, um den Browser im isolierten Profil einzurichten und Erweiterungen zu installieren.
+
+      <b>Deinstallieren</b>
+      Die Deinstallation dieser App entfernt <b>nicht</b> erstellte Web-Apps. Das Entfernen der App-Daten löscht die Symbole und Isolationsprofile der Systembrowser, aber Web-Apps können weiterhin auf dem Desktop erscheinen. Um alle Daten zu entfernen, löschen Sie alle Web-Apps, bevor Sie diese Anwendung entfernen. So wird sichergestellt, dass alles entfernt wird.
+  permissions:
+    title: Berechtigungen
+    text_pango: |
+      <b>filesystem=xdg-data/applications:create</b>
+      Wird verwendet, um neue Web-Anwendungen zu erstellen. Entspricht normalerweise ~/.local/share/applications.
+
+      <b>filesystem=~/.var/app:create</b>
+      Wird verwendet, um isolierte Profile für Flatpak-Browser zu erstellen. Bei einigen Flatpak-Browsern ist es notwendig, ein Verzeichnis in ihrer Sandbox für die Profilisolation zu erstellen. Zudem benötigen Firefox-Browser ein aktualisiertes Profil, um minimale Bedienelemente zu erstellen. Der Browser kann nicht aus seinem eigenen Dateisystem ausbrechen, daher muss diese Anwendung hineinschreiben.
+
+      Firefox-basierte Browser etwa erstellen das Verzeichnis für das isolierte Profil nicht und schlagen fehl, wenn es nicht existiert.
+
+      Isolierte Profile von systemweit installierten Browsern werden in unserem eigenen xdg-data/profiles-Verzeichnis gespeichert.
+
+      <b>filesystem=xdg-data/flatpak/app:ro &amp; filesystem=/var/lib/flatpak/app:ro</b>
+      Wird verwendet, um die Symbole der Flatpak-Browser abzurufen.
+
+      <b>talk-name=org.freedesktop.Flatpak</b>
+      Wird verwendet, um Befehle außerhalb der Sandbox auszuführen. Dies ist notwendig, um Informationen zu Flatpak-Browsern abzurufen und die erstellte Web-App aus dieser Anwendung zu starten.
+
+app_menu:
+  about:
+    title: Über %{app_name}
+  reset:
+    title: App zurücksetzen
+    dialog:
+      ok: Ich verstehe
+      cancel: Abbrechen
+      text: |
+        Dadurch werden die Konfigurationsdateien zurückgesetzt (z. B. Browser-Konfigurationen).
+        Ihre erstellten Web-Apps werden nicht entfernt.
