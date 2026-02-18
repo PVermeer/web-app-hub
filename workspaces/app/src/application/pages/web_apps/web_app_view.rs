@@ -164,6 +164,9 @@ impl WebAppView {
 
         self.connect_change_icon_button();
         self.connect_run_app_button();
+
+        // Make sure any changes are checked
+        self.on_desktop_file_change();
     }
 
     pub fn get_is_new(self: &Rc<Self>) -> bool {
