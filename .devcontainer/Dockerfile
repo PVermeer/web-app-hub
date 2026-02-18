@@ -14,6 +14,13 @@ RUN sudo dnf install -y dbus-launch
 # Dev
 RUN sudo dnf install -y flatpak-builder gh rustup make git clang python3-devel pipx python3-pip gtk4-devel libdrm-devel vulkan-tools OpenCL-ICD-Loader-devel boost-devel cmake gcc gcc-c++ intel-mediasdk-devel libappindicator-gtk3-devel libcap-devel libcurl-devel libdrm-devel libevdev-devel libnotify-devel libva-devel libvdpau-devel libX11-devel libxcb-devel libXcursor-devel libXfixes-devel libXi-devel libXinerama-devel libXrandr-devel libXtst-devel mesa-libGL-devel miniupnpc-devel npm numactl-devel openssl-devel opus-devel pulseaudio-libs-devel rpm-build pipewire-devel pipewire-utils doxygen libadwaita-devel shfmt shellcheck
 
+# Language
+RUN sudo dnf install -y glibc-all-langpacks
+# Libadwaita refuses to install libadwaita*.mo files in container
+RUN dnf download --arch=x86_64 libadwaita
+RUN rpm2cpio libadwaita-*.rpm | sudo cpio -idm -D /
+RUN rm libadwaita-*.rpm
+
 # Don't use this, only --user, but for GTK4 and loading images in memory (PixBuf with glycin)
 # it needs a valid repo setup for it to work with flatpaks.
 # Why glycin is using a setup like this ¯\_(ツ)_/¯, who knows...
