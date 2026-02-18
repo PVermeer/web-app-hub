@@ -13,3 +13,5 @@ issues:
     - No se puede eliminar la interfaz de usuario cuando no está aislado
   it:
     - Impossibile rimuovere l'interfaccia utente se non isolata
+  de:
+    - Ohne Isolation lassen sich Browser-Bedienelemente nicht entfernen
