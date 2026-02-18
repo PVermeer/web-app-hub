@@ -1030,10 +1030,12 @@ impl WebAppView {
     fn on_isolation_change(self: &Rc<Self>) {
         let mut desktop_file_borrow = self.desktop_file.borrow_mut();
         let is_isolated = self.isolate_row.is_active();
-
         let old_profile_path = desktop_file_borrow.get_profile_path().unwrap_or_default();
+        let browser_can_isolate = desktop_file_borrow
+            .get_browser()
+            .is_some_and(|browser| browser.can_isolate);
 
-        let new_profile_path = if is_isolated {
+        let new_profile_path = if is_isolated && browser_can_isolate {
             match desktop_file_borrow.build_profile_path() {
                 Err(error) => {
                     drop(desktop_file_borrow);
