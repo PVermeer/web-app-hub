@@ -1,0 +1,19 @@
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run org.chromium.Chromium --no-first-run --app="https://tweakers.net/" --class=chrome-tweakers.net__-Default --name=chrome-tweakers.net__-Default --user-data-dir "/home/vscode/.var/app/org.chromium.Chromium.chromium/data/web-app-hub/profiles/shared-profile" 
+Icon=/home/vscode/.local/share/web-app-hub/icons/sjDPvuAd.png
+Name=Dev Chromium shared profile 2
+StartupWMClass=chrome-tweakers.net__-Default
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID=org.chromium.Chromium_chromium_(shared_profile)
+X-WAH-ID=sjDPvuAd
+X-WAH-ISOLATE=false
+X-WAH-MAXIMIZE=false
+X-WAH-PROFILE=
+X-WAH-URL=https://tweakers.net/
+X-WAH-VERSION=0.0.1
+

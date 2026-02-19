@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Name=%{name}
+Exec=%{command} --no-first-run --app="%{url}" --class=chrome-%{domain_path}-Default --name=chrome-%{domain_path}-Default --user-data-dir=/home/vscode/.var/app/org.chromium.Chromium/data/web-app-hub/profiles/shared-profile %{is_maximized ? --start-maximized}
+X-MultipleArgs=false
+Icon=%{icon}
+StartupWMClass=chrome-%{domain_path}-Default

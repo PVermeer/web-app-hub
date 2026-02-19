@@ -1,0 +1,5 @@
+name: Firefox (shared profile)
+flatpak: org.mozilla.firefox
+can_isolate: false
+desktop_file_name_prefix: org.mozilla.firefox.firefox
+base: firefox

@@ -1,0 +1,19 @@
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run org.mozilla.firefox --class=wah-Rr9nVycb --name=wah-Rr9nVycb --profile=/home/vscode/.var/app/org.mozilla.firefox/data/web-app-hub/profiles/shared-profile --no-remote https://tweakers.net/
+Icon=/home/vscode/.local/share/web-app-hub/icons/Rr9nVycb.png
+Name=Dev Firefox shared profile 2
+StartupWMClass=wah-Rr9nVycb
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID=org.mozilla.firefox_firefox_(shared_profile)
+X-WAH-ID=Rr9nVycb
+X-WAH-ISOLATE=false
+X-WAH-MAXIMIZE=false
+X-WAH-PROFILE=
+X-WAH-URL=https://tweakers.net/
+X-WAH-VERSION=0.0.1
+

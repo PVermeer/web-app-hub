@@ -95,6 +95,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
+name = "app"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "common",
+ "freedesktop-desktop-entry",
+ "fs_extra",
+ "gtk4",
+ "include_dir",
+ "libadwaita",
+ "rand 0.8.5",
+ "regex",
+ "rust-i18n",
+ "sanitize-filename",
+ "scraper",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "toml 0.9.10+spec-1.1.0",
+ "tracing",
+ "tracing-subscriber",
+ "ureq",
+ "url",
+]
+
+[[package]]
 name = "arc-swap"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -452,7 +479,7 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
 name = "common"
-version = "0.0.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "freedesktop-desktop-entry",
@@ -3872,7 +3899,7 @@ checksum = "ab16f14aed21ee8bfd8ec22513f7287cd4a91aa92e44edfe2c17ddd004e92607"
 
 [[package]]
 name = "tools"
-version = "0.0.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4283,32 +4310,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f01b580c9ac74c8d8f0c0e4afb04eeef2acf145458e52c03845ee9cd23e3d12"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "web-app-hub"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "common",
- "freedesktop-desktop-entry",
- "gtk4",
- "include_dir",
- "libadwaita",
- "rand 0.8.5",
- "regex",
- "rust-i18n",
- "sanitize-filename",
- "scraper",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "toml 0.9.10+spec-1.1.0",
- "tracing",
- "tracing-subscriber",
- "ureq",
- "url",
 ]
 
 [[package]]

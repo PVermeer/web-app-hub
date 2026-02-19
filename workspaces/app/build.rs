@@ -18,6 +18,7 @@ fn main() -> Result<()> {
     create_data_symlinks(&app_dirs);
     create_cache_symlinks(&app_dirs);
     copy_dev_web_apps(&app_dirs);
+    copy_dev_custom_browsers(&app_dirs);
 
     install_app_desktop_file(&app_dirs)?;
     install_app_icon(&app_dirs)?;
@@ -72,6 +73,28 @@ fn copy_dev_web_apps(app_dirs: &AppDirs) {
         )
         .unwrap();
     }
+}
+
+fn copy_dev_custom_browsers(app_dirs: &AppDirs) {
+    let dev_desktop_files = dev_assets_path().join("custom-browsers");
+    let app_config_dir = &app_dirs.app_config;
+
+    let copy_options = fs_extra::dir::CopyOptions {
+        overwrite: true,
+        content_only: true,
+        ..fs_extra::dir::CopyOptions::default()
+    };
+    fs_extra::dir::copy(dev_desktop_files, app_config_dir, &copy_options).unwrap();
+
+    let firefox_shared_profile_path = &app_dirs
+        .user_flatpak
+        .join("org.mozilla.firefox")
+        .join("data")
+        .join(config::APP_NAME_HYPHEN.get_value())
+        .join("profiles")
+        .join("shared-profile");
+
+    fs::create_dir_all(firefox_shared_profile_path).unwrap();
 }
 
 fn install_app_desktop_file(app_dirs: &AppDirs) -> Result<()> {

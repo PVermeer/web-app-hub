@@ -32,3 +32,4 @@ url = { workspace = true }
 [build-dependencies]
 anyhow = { workspace = true }
 common = { workspace = true }
+fs_extra = { workspace = true}

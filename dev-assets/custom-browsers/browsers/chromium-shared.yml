@@ -1,0 +1,6 @@
+name: Chromium (shared profile)
+flatpak: org.chromium.Chromium
+can_isolate: false
+can_start_maximized: true
+desktop_file_name_prefix: org.chromium.Chromium.chromium
+base: chromium
