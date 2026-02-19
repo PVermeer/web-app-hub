@@ -24,7 +24,7 @@
 		"DISPLAY": "${localEnv:DISPLAY}"
 	},
 	"mounts": [],
-	"postCreateCommand": "./.devcontainer/install-browsers.sh --user && flatpak --user install -y org.flatpak.Builder com.github.tchx84.Flatseal",
+	"postCreateCommand": "./.devcontainer/install-browsers.sh --user && flatpak --user install -y org.flatpak.Builder com.github.tchx84.Flatseal org.gnome.seahorse.Application",
 	"postStartCommand": "sudo dnf update -y && (rustup update || (rustup toolchain uninstall stable && rustup toolchain install stable)) && flatpak --user update -y && sudo flatpak --installation=\"some_custom_installation\" update -y && git submodule update --init --recursive",
 	"initializeCommand": "xhost +local:docker", // Allow x11 from docker
 	"remoteUser": "vscode",
