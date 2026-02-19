@@ -20,7 +20,7 @@ use tracing::{Level, error, info};
 use tracing_subscriber::{FmtSubscriber, util::SubscriberInitExt};
 
 static FLATPAK_MANIFEST_IN: &str = include_str!("../../../flatpak/manifest.in");
-static CARGO_TOML: &str = include_str!("../../../workspaces/app/Cargo.toml");
+static CARGO_TOML: &str = include_str!("../../../Cargo.toml");
 static DRY_RUN: OnceLock<bool> = OnceLock::new();
 
 #[derive(Parser)]
@@ -973,10 +973,7 @@ fn flatpak_path() -> PathBuf {
 }
 
 fn cargo_toml_file() -> PathBuf {
-    project_path()
-        .join("workspaces")
-        .join("app")
-        .join("Cargo.toml")
+    project_path().join("Cargo.toml")
 }
 
 fn flatpak_release_manifest() -> PathBuf {

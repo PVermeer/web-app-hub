@@ -15,6 +15,8 @@ echo -e "\n==== Building Flatpak Devel ====\n"
 echo -e "\n==== Updating cargo vendors ====\n"
 cargo vendor target/flatpak-devel/vendor/ --locked
 
+echo -e "\n==== Building flatpak ====\n"
+
 flatpak-builder \
     --install-deps-from=flathub \
     --repo="${target_dir}/repo" \
@@ -26,6 +28,8 @@ flatpak-builder \
     --mirror-screenshots-url=https://dl.flathub.org/media/ \
     "${target_dir}/build" \
     "$manifest_path"
+
+echo -e "\n==== Building bundle ====\n"
 
 flatpak build-bundle \
     "${target_dir}/repo" \

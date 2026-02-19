@@ -1,5 +1,6 @@
 [package]
 name = "tools"
+version = { workspace = true }
 edition = { workspace = true }
 
 [[bin]]

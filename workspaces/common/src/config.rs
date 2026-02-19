@@ -38,12 +38,21 @@ struct CargoPackageBin {
     name: String,
 }
 #[derive(Deserialize)]
-struct CargoToml {
+struct CargoWorkspace {
     package: CargoPackageToml,
+}
+#[derive(Deserialize)]
+struct CargoToml {
+    workspace: CargoWorkspace,
+}
+
+#[derive(Deserialize)]
+struct CargoAppToml {
     bin: Vec<CargoPackageBin>,
 }
 
-static CARGO_TOML: &str = include_str!("../../app/Cargo.toml");
+static CARGO_TOML: &str = include_str!("../../../Cargo.toml");
+static CARGO_TOML_APP: &str = include_str!("../../app/Cargo.toml");
 
 pub fn init() {
     set_from_cargo_toml();
@@ -53,19 +62,23 @@ pub fn init() {
 #[allow(unused_variables)]
 fn set_from_cargo_toml() {
     let CargoToml {
-        package:
-            CargoPackageToml {
-                name,
-                description,
-                version,
-                license,
-                authors,
-                repository,
-                homepage,
-                documentation,
+        workspace:
+            CargoWorkspace {
+                package:
+                    CargoPackageToml {
+                        name,
+                        description,
+                        version,
+                        license,
+                        authors,
+                        repository,
+                        homepage,
+                        documentation,
+                    },
             },
-        bin,
     } = toml::from_str(CARGO_TOML).expect("Could not load Cargo.toml");
+    let CargoAppToml { bin } =
+        toml::from_str(CARGO_TOML_APP).expect("Could not load the app Cargo.toml");
 
     let name_hyphen = name.clone();
     let name_underscore = name.replace('-', "_");
