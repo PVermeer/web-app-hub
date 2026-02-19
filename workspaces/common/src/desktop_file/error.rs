@@ -34,6 +34,11 @@ pub struct ValidationError {
     pub field: Key,
     pub message: String,
 }
+impl ValidationError {
+    pub fn to_string_ui(&self) -> String {
+        format!("{}: {}", self.message, self.field.to_ui_string())
+    }
+}
 impl Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}: {}", self.message, self.field)
