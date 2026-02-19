@@ -992,13 +992,10 @@ impl WebAppView {
         if !is_new && let Err(error) = self.desktop_file.borrow_mut().save() {
             match error {
                 DesktopFileError::ValidationError(error) => {
-                    self.on_error(
-                        &format!("Failed to save: '{}'", &error.to_string()),
-                        Some(&error.clone().into()),
-                    );
+                    self.on_error(&error.to_string_ui(), Some(&error.clone().into()));
                 }
                 DesktopFileError::Other(error) => {
-                    self.on_error("Error saving document", Some(&error));
+                    self.on_error("Failed to save", Some(&error));
                 }
             }
         }

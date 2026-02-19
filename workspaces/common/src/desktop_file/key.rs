@@ -21,6 +21,26 @@ pub enum Key {
     Categories,
     Comment,
 }
+impl Key {
+    pub fn to_ui_string(&self) -> &str {
+        match self {
+            Self::Gwa => "Owned by Web App Hub",
+            Self::Version => "Version",
+            Self::Id => "App ID",
+            Self::Url => "Website URL",
+            Self::BrowserId => "Browser",
+            Self::Isolate => "Isolation",
+            Self::Maximize => "Maximize",
+            Self::Profile => "Profile",
+            Self::Name => "Web app name",
+            Self::Exec => "Run command",
+            Self::Icon => "Icon",
+            Self::StartupWMClass => "WMClass",
+            Self::Categories => "Categories",
+            Self::Comment => "Comment",
+        }
+    }
+}
 impl Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let identifier = config::APP_NAME_SHORT.get_value().to_uppercase();
