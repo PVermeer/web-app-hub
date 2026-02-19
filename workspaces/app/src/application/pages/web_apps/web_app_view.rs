@@ -34,6 +34,7 @@ use std::{
     cell::RefCell,
     path::{Path, PathBuf},
     rc::Rc,
+    time::Duration,
 };
 use std::{fmt::Write as _, fs};
 use tracing::{debug, error};
@@ -165,8 +166,11 @@ impl WebAppView {
         self.connect_change_icon_button();
         self.connect_run_app_button();
 
-        // Make sure any changes are checked
-        self.on_desktop_file_change();
+        // Add a slight delay so widgets (toasts) with timeouts are not blocked
+        let self_clone = self.clone();
+        glib::timeout_add_local_once(Duration::from_millis(50), move || {
+            self_clone.on_desktop_file_change();
+        });
     }
 
     pub fn get_is_new(self: &Rc<Self>) -> bool {
