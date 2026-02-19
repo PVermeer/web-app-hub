@@ -224,10 +224,14 @@ impl DesktopFile {
         );
     }
 
-    pub fn get_browser(&self) -> Option<Rc<Browser>> {
+    pub fn get_browser_id(&self) -> Option<String> {
         self.desktop_entry
             .desktop_entry(&Key::BrowserId.to_string())
             .and_then(map_to_string_option)
+    }
+
+    pub fn get_browser(&self) -> Option<Rc<Browser>> {
+        self.get_browser_id()
             .and_then(|browser_id| self.browser_configs.get_by_id(&browser_id))
     }
 
@@ -575,6 +579,21 @@ impl DesktopFile {
             Some(version) => version,
         };
 
+        if desktop_file_version < Version::new(0, 7, 0) {
+            info!("Running updates for version 0.7.0");
+
+            if let Some(browser_id) = self.get_browser_id()
+                && let Some(browser) = self.browser_configs.get_by_install_id(&browser_id)
+            {
+                info!(
+                    "Updating browser id for {}",
+                    self.get_name().unwrap_or("No name...?".to_string())
+                );
+
+                self.set_browser(&browser);
+            }
+        }
+
         if desktop_file_version < app_version {
             info!(
                 "Older desktop file version detected, {} has been updated",
@@ -594,10 +613,6 @@ impl DesktopFile {
         } else {
             return Ok(false);
         }
-
-        // if desktop_file_version <= Version::new(0, 0, 0) {
-
-        // }
 
         self.set_version(&app_version);
         self.save()?;
@@ -632,7 +647,11 @@ impl DesktopFile {
         }
 
         if !entries.icon_path.is_file() {
-            error!(name = entries.name, "Icon file does not exists");
+            error!(
+                name = entries.name,
+                icon = %entries.icon_path.display(),
+                "Icon file does not exists"
+            );
         }
     }
 

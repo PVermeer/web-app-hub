@@ -100,12 +100,7 @@ impl Browser {
         let config_name = browser_config.config_name.clone();
         let base = Base::from_string(&browser_config.config.base);
         let issues = browser_config.config.issues.clone();
-
-        let id = match &installation {
-            Installation::Flatpak(id) => id.clone(),
-            Installation::System(executable) => executable.clone(),
-            Installation::None => "Not installed".to_string(),
-        };
+        let id = Self::create_id(&installation, &name);
 
         Self {
             id,
@@ -193,17 +188,17 @@ impl Browser {
         }
 
         // Save in own app
-        let app_profile_path = || -> Result<PathBuf> {
-            let path = self.app_dirs.app_data_profiles.join(&self.id);
+        let system_browser_profile_path = || -> Result<PathBuf> {
+            let path = self.app_dirs.app_data_profiles.join(self.get_install_id());
             Ok(path)
         };
 
         // Save in browser own location (for sandboxes)
-        let browser_profile_path = || -> Result<PathBuf> {
+        let flatpak_browser_profile_path = || -> Result<PathBuf> {
             let path = self
                 .app_dirs
                 .user_flatpak
-                .join(&self.id)
+                .join(&self.flatpak_id.clone().context("Not a flatpak browser?")?)
                 .join("data")
                 .join(config::APP_NAME_HYPHEN.get_value())
                 .join("profiles");
@@ -222,8 +217,8 @@ impl Browser {
                Chromium based just created the provided profile path
             */
             Base::Chromium | Base::Firefox => match self.installation {
-                Installation::Flatpak(_) => browser_profile_path()?,
-                Installation::System(_) => app_profile_path()?,
+                Installation::Flatpak(_) => flatpak_browser_profile_path()?,
+                Installation::System(_) => system_browser_profile_path()?,
                 Installation::None => bail!("Browser is not installed"),
             },
 
@@ -237,6 +232,26 @@ impl Browser {
 
     pub fn get_index(&self) -> Option<usize> {
         self.configs.get_index(self)
+    }
+
+    pub fn get_install_id(&self) -> String {
+        Self::get_install_id_static(&self.installation)
+    }
+
+    fn get_install_id_static(installation: &Installation) -> String {
+        match installation {
+            Installation::Flatpak(id) => id.clone(),
+            Installation::System(executable) => executable.clone(),
+            Installation::None => "Not installed".to_string(),
+        }
+    }
+
+    fn create_id(installation: &Installation, name: &str) -> String {
+        let install_id = Self::get_install_id_static(installation);
+        let name_sanitized = name.to_lowercase().replace(' ', "_");
+        let id = format!("{install_id}_{name_sanitized}");
+
+        id
     }
 
     fn get_icon_names_from_config(browser_config: &BrowserConfig) -> HashSet<String> {
@@ -311,6 +326,13 @@ impl BrowserConfigs {
         self.get_all_browsers()
             .iter()
             .find(|browser| browser.id == id)
+            .cloned()
+    }
+
+    pub fn get_by_install_id(&self, install_id: &str) -> Option<Rc<Browser>> {
+        self.get_all_browsers()
+            .iter()
+            .find(|browser| browser.get_install_id() == install_id)
             .cloned()
     }
 
@@ -548,6 +570,16 @@ impl BrowserConfigs {
                             .context("Could not get the file stem")?,
                     )
                     .with_extension("desktop");
+
+                debug!(
+                    "Loading browser desktop file: '{}'",
+                    desktop_file_path
+                        .file_name()
+                        .map_or("No file name???".to_string(), |file_name| file_name
+                            .to_string_lossy()
+                            .to_string())
+                );
+
                 let desktop_file = DesktopEntry::from_path(&desktop_file_path, None::<&[String]>)?;
                 Ok(desktop_file)
             })() {
