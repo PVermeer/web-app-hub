@@ -392,14 +392,14 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
-        "url": "https://static.crates.io/crates/bumpalo/bumpalo-3.19.1.crate",
-        "sha256": "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510",
-        "dest": "cargo/vendor/bumpalo-3.19.1"
+        "url": "https://static.crates.io/crates/bumpalo/bumpalo-3.20.1.crate",
+        "sha256": "5c6f81257d10a0f602a294ae4182251151ff97dbb504ef9afcdda4a64b24d9b4",
+        "dest": "cargo/vendor/bumpalo-3.20.1"
     },
     {
         "type": "inline",
-        "contents": "{\"package\": \"5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510\", \"files\": {}}",
-        "dest": "cargo/vendor/bumpalo-3.19.1",
+        "contents": "{\"package\": \"5c6f81257d10a0f602a294ae4182251151ff97dbb504ef9afcdda4a64b24d9b4\", \"files\": {}}",
+        "dest": "cargo/vendor/bumpalo-3.20.1",
         "dest-filename": ".cargo-checksum.json"
     },
     {
@@ -3954,27 +3954,27 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
-        "url": "https://static.crates.io/crates/security-framework/security-framework-3.5.1.crate",
-        "sha256": "b3297343eaf830f66ede390ea39da1d462b6b0c1b000f420d0a83f898bbbe6ef",
-        "dest": "cargo/vendor/security-framework-3.5.1"
+        "url": "https://static.crates.io/crates/security-framework/security-framework-3.6.0.crate",
+        "sha256": "d17b898a6d6948c3a8ee4372c17cb384f90d2e6e912ef00895b14fd7ab54ec38",
+        "dest": "cargo/vendor/security-framework-3.6.0"
     },
     {
         "type": "inline",
-        "contents": "{\"package\": \"b3297343eaf830f66ede390ea39da1d462b6b0c1b000f420d0a83f898bbbe6ef\", \"files\": {}}",
-        "dest": "cargo/vendor/security-framework-3.5.1",
+        "contents": "{\"package\": \"d17b898a6d6948c3a8ee4372c17cb384f90d2e6e912ef00895b14fd7ab54ec38\", \"files\": {}}",
+        "dest": "cargo/vendor/security-framework-3.6.0",
         "dest-filename": ".cargo-checksum.json"
     },
     {
         "type": "archive",
         "archive-type": "tar-gzip",
-        "url": "https://static.crates.io/crates/security-framework-sys/security-framework-sys-2.15.0.crate",
-        "sha256": "cc1f0cbffaac4852523ce30d8bd3c5cdc873501d96ff467ca09b6767bb8cd5c0",
-        "dest": "cargo/vendor/security-framework-sys-2.15.0"
+        "url": "https://static.crates.io/crates/security-framework-sys/security-framework-sys-2.16.0.crate",
+        "sha256": "321c8673b092a9a42605034a9879d73cb79101ed5fd117bc9a597b89b4e9e61a",
+        "dest": "cargo/vendor/security-framework-sys-2.16.0"
     },
     {
         "type": "inline",
-        "contents": "{\"package\": \"cc1f0cbffaac4852523ce30d8bd3c5cdc873501d96ff467ca09b6767bb8cd5c0\", \"files\": {}}",
-        "dest": "cargo/vendor/security-framework-sys-2.15.0",
+        "contents": "{\"package\": \"321c8673b092a9a42605034a9879d73cb79101ed5fd117bc9a597b89b4e9e61a\", \"files\": {}}",
+        "dest": "cargo/vendor/security-framework-sys-2.16.0",
         "dest-filename": ".cargo-checksum.json"
     },
     {

@@ -1,3 +1,34 @@
+## [0.7.0] - 2026-02-19
+
+### 🚀 Features
+
+- *(translations)* Add de translations (#29)
+
+### 🐛 Bug Fixes
+
+- *(web-app-view)* Isolation toggle now disables on non-supported browser
+- *(browsers)* Custom browsers based on existing browsers now separate as intended
+
+### 💼 Other
+
+- Use main cargo file for app info
+
+### 🚜 Refactor
+
+- *(web-app-view)* Change to ui string for error toast
+- *(web-app-view)* Make sure toasts display correct on init
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Remove initial release
+- *(dev)* Add language support to dev-container
+- *(web-app-view)* Add change check after init
+- *(error)* Commit error.rs thats is used for to_string_ui
+- *(dev)* Add seahorse flatpak
+- *(web-apps)* Add more debug logs
+- *(dev)* Add test files for custom browsers with shared profile
+- *(browsers)* Sort browsers by name
+- *(dev)* Add task for build new release flatpak
 ## [0.6.0] - 2026-02-15
 
 ### 🚀 Features
@@ -12,6 +43,10 @@
 ### 🚜 Refactor
 
 - *(build)* Add path check to flatpak build script
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.6.0
 ## [0.5.0] - 2026-02-08
 
 ### 🚀 Features
@@ -97,19 +132,3 @@
 - Format
 - Update screenshots
 - *(release)* V0.4.0
-## [0.3.1] - 2026-01-26
-
-### 🐛 Bug Fixes
-
-- *(release)* Corrected last released version
-- *(release)* Increment patch version for dry-run
-- Use Adwaita icon theme on KDE
-
-### 📚 Documentation
-
-- *(readme)* Update README.md (#14)
-- *(description)* Updated description text from #14
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V0.3.1
