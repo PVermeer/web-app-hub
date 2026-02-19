@@ -2,6 +2,7 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "Build release",
 			"type": "cargo",
 			"command": "build",
 			"args": [
@@ -13,10 +14,10 @@
 			"group": {
 				"kind": "build",
 				"isDefault": false
-			},
-			"label": "Build release"
+			}
 		},
 		{
+			"label": "Build and run release app",
 			"type": "shell",
 			"command": "WAH_LOG=debug ./target/release/web-app-hub",
 			"problemMatcher": [
@@ -26,12 +27,12 @@
 				"kind": "build",
 				"isDefault": false
 			},
-			"label": "Build and run release app",
 			"dependsOn": [
 				"Build release"
 			]
 		},
 		{
+			"label": "Build flatpak",
 			"type": "shell",
 			"command": "./flatpak/build.sh",
 			"problemMatcher": [
@@ -41,9 +42,41 @@
 				"kind": "build",
 				"isDefault": true
 			},
-			"label": "Build flatpak"
 		},
 		{
+			"label": "Build flatpak as new release",
+			"type": "shell",
+			"command": "./flatpak/build.sh",
+			"problemMatcher": [
+				"$rustc",
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"dependsOn": [
+				"Generate release files"
+			]
+		},
+		{
+			"label": "Generate release files",
+			"type": "cargo",
+			"command": "run",
+			"args": [
+				"--bin=release",
+				"--",
+				"--dry-run"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			}
+		},
+		{
+			"label": "Lint flatpak release",
 			"type": "shell",
 			"command": "flatpak run --command=flatpak-builder-lint org.flatpak.Builder --exceptions manifest ./flatpak/org.pvermeer.WebAppHub.yml",
 			"problemMatcher": [
@@ -53,9 +86,9 @@
 				"kind": "test",
 				"isDefault": false
 			},
-			"label": "Lint flatpak release"
 		},
 		{
+			"label": "Validate metainfo.xml",
 			"type": "shell",
 			"command": "appstreamcli validate --no-net ./assets/desktop/org.pvermeer.WebAppHub.metainfo.xml",
 			"problemMatcher": [
@@ -65,7 +98,6 @@
 				"kind": "test",
 				"isDefault": false
 			},
-			"label": "Validate metainfo.xml"
 		},
 	]
 }
