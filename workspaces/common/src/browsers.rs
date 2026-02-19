@@ -599,6 +599,8 @@ impl BrowserConfigs {
             browser_configs.push(Rc::new(browser_config));
         }
 
+        browser_configs.sort_by(|a, b| a.config.name.cmp(&b.config.name));
+
         browser_configs
     }
 }
