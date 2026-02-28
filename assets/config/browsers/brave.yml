@@ -1,6 +1,8 @@
 name: Brave
 flatpak: com.brave.Browser
-system_bin: brave-browser
+system_bin:
+  - brave-browser
+  - brave
 can_isolate: true
 can_start_maximized: true
 desktop_file_name_prefix: com.brave.Browser.brave
@@ -16,4 +18,3 @@ issues:
     - Non ricorda le dimensioni e la posizione della finestra
   de:
     - Merkt sich Fenstergröße und -position nicht
-
