@@ -7,13 +7,7 @@ use anyhow::{Context, Result, bail};
 use freedesktop_desktop_entry::DesktopEntry;
 use gtk::{IconTheme, Image};
 use serde::Deserialize;
-use std::{
-    cell::OnceCell,
-    collections::{HashMap, HashSet},
-    fs,
-    path::Path,
-    rc::Rc,
-};
+use std::{cell::OnceCell, collections::HashMap, fs, path::Path, rc::Rc};
 use std::{fmt::Write as _, path::PathBuf};
 use tracing::{debug, error, info};
 
@@ -84,7 +78,7 @@ pub struct Browser {
     pub config_name: String,
     configs: Rc<BrowserConfigs>,
     icon_theme: Rc<IconTheme>,
-    icon_names: HashSet<String>,
+    icon_names: Vec<String>,
     app_dirs: Rc<AppDirs>,
 }
 impl Browser {
@@ -266,27 +260,28 @@ impl Browser {
         id
     }
 
-    fn get_icon_names_from_config(browser_config: &BrowserConfig) -> HashSet<String> {
-        let mut icon_names = HashSet::new();
+    fn get_icon_names_from_config(browser_config: &BrowserConfig) -> Vec<String> {
+        let mut icon_names = Vec::new();
 
         if let Some(flatpak) = &browser_config.config.flatpak {
-            icon_names.insert(flatpak.trim().to_string());
+            icon_names.push(flatpak.trim().to_string());
         }
 
         if let Some(bins) = &browser_config.config.system_bin {
             match bins {
                 StringOrVec::One(bin) => {
-                    icon_names.insert(bin.trim().to_string());
+                    icon_names.push(bin.trim().to_string());
                 }
                 StringOrVec::Many(bins) => {
                     for bin in bins {
-                        icon_names.insert(bin.trim().to_string());
+                        icon_names.push(bin.trim().to_string());
                     }
                 }
             }
         }
 
-        icon_names.insert(browser_config.config.name.trim().to_string());
+        icon_names.push(browser_config.config.name.trim().to_string());
+        utils::vec::dedup(&mut icon_names);
 
         icon_names
     }
@@ -386,7 +381,7 @@ impl BrowserConfigs {
             desktop_file_name_prefix: String::default(),
             config_name: String::default(),
             configs: self.clone(),
-            icon_names: HashSet::from(["dialog-warning-symbolic".to_string()]),
+            icon_names: Vec::from(["dialog-warning-symbolic".to_string()]),
             base: Base::None,
             issues: HashMap::new(),
             icon_theme: self.icon_theme.clone(),

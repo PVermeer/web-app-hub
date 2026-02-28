@@ -215,6 +215,16 @@ pub mod command {
     }
 }
 
+pub mod vec {
+    use std::collections::HashSet;
+    use std::hash::Hash;
+
+    pub fn dedup<T: Eq + Hash + Clone>(v: &mut Vec<T>) {
+        let mut set = HashSet::new();
+        v.retain(|e| set.insert(e.clone()));
+    }
+}
+
 pub trait OnceLockExt<T> {
     fn get_value(&self) -> &T;
 }
