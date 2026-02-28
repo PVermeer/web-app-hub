@@ -6,6 +6,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 use freedesktop_desktop_entry::DesktopEntry;
 use gtk::{IconTheme, Image};
+use serde::Deserialize;
 use std::{
     cell::OnceCell,
     collections::{HashMap, HashSet},
@@ -39,11 +40,18 @@ impl Base {
     }
 }
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Deserialize, PartialEq, Debug)]
+#[serde(untagged)]
+pub enum StringOrVec {
+    One(String),
+    Many(Vec<String>),
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct BrowserYaml {
     name: String,
     flatpak: Option<String>,
-    system_bin: Option<String>,
+    system_bin: Option<StringOrVec>,
     #[serde(default)]
     can_isolate: bool,
     #[serde(default)]
@@ -94,7 +102,11 @@ impl Browser {
         let can_isolate = browser_config.config.can_isolate;
         let can_start_maximized = browser_config.config.can_start_maximized;
         let flatpak_id = browser_config.config.flatpak.clone();
-        let executable = browser_config.config.system_bin.clone();
+        let executable = if let Installation::System(system_bin) = &installation {
+            Some(system_bin.clone())
+        } else {
+            None
+        };
         let desktop_file = browser_config.desktop_file.clone();
         let desktop_file_name_prefix = browser_config.config.desktop_file_name_prefix.clone();
         let config_name = browser_config.config_name.clone();
@@ -261,8 +273,17 @@ impl Browser {
             icon_names.insert(flatpak.trim().to_string());
         }
 
-        if let Some(bin) = &browser_config.config.system_bin {
-            icon_names.insert(bin.trim().to_string());
+        if let Some(bins) = &browser_config.config.system_bin {
+            match bins {
+                StringOrVec::One(bin) => {
+                    icon_names.insert(bin.trim().to_string());
+                }
+                StringOrVec::Many(bins) => {
+                    for bin in bins {
+                        icon_names.insert(bin.trim().to_string());
+                    }
+                }
+            }
         }
 
         icon_names.insert(browser_config.config.name.trim().to_string());
@@ -412,28 +433,58 @@ impl BrowserConfigs {
                 }
             }
 
-            if let Some(system_bin) = &browser_config.config.system_bin {
-                if Self::is_installed_system(system_bin) {
-                    info!(
-                        "Found system browser '{system_bin}' for config '{}'",
-                        browser_config.file_name
-                    );
+            if let Some(system_bins) = &browser_config.config.system_bin {
+                let new_system_browser = |system_bin: &str| -> Option<Browser> {
+                    if Self::is_installed_system(system_bin) {
+                        info!(
+                            "Found system browser '{system_bin}' for config '{}'",
+                            browser_config.file_name
+                        );
 
-                    let browser = Rc::new(Browser::new(
-                        &browser_config,
-                        Installation::System(system_bin.clone()),
-                        self,
-                        &self.icon_theme,
-                        &self.app_dirs,
-                    ));
+                        let browser = Browser::new(
+                            &browser_config,
+                            Installation::System(system_bin.to_string()),
+                            self,
+                            &self.icon_theme,
+                            &self.app_dirs,
+                        );
 
-                    installed_browsers.push(browser);
-                    is_installed = true;
-                } else {
-                    debug!(
-                        "System browser '{system_bin}' for '{}' is not installed",
-                        browser_config.file_name
-                    );
+                        Some(browser)
+                    } else {
+                        debug!(
+                            "System browser '{system_bin}' for '{}' is not installed",
+                            browser_config.file_name
+                        );
+                        None
+                    }
+                };
+
+                match system_bins {
+                    StringOrVec::One(system_bin) => {
+                        if let Some(browser) = new_system_browser(system_bin) {
+                            installed_browsers.push(Rc::new(browser));
+                            is_installed = true;
+                        }
+                    }
+                    StringOrVec::Many(system_bins) => {
+                        let browsers: Vec<Browser> = system_bins
+                            .iter()
+                            .filter_map(|system_bin| new_system_browser(system_bin))
+                            .collect();
+                        let is_many = browsers.len() > 1;
+
+                        for mut browser in browsers {
+                            if is_many {
+                                browser.name = format!(
+                                    "{} ({})",
+                                    browser.name,
+                                    browser.executable.clone().unwrap_or_default()
+                                );
+                            }
+                            installed_browsers.push(Rc::new(browser));
+                            is_installed = true;
+                        }
+                    }
                 }
             }
 

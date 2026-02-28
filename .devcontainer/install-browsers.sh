@@ -51,6 +51,7 @@ system_browsers=(
     "opera-stable"
 )
 sudo dnf install -y "${system_browsers[@]}"
+ln -sf "$(which brave-browser)" ~/.local/bin/brave # Install both brave-browser and brave
 
 # Flatpaks
 sudo mkdir -p /etc/flatpak/installations.d
