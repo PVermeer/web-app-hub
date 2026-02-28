@@ -33,7 +33,10 @@ Create a `.yml` file in the `browsers` directory:
 ```yaml
 name: Chromium
 flatpak: org.chromium.Chromium # Optional: Flatpak app ID
-system_bin: chromium-browser # Optional: System binary path
+system_bin: chromium-browser # Optional: System binary path. Can also be an array (e.g. for Brave):
+# system_bin:
+#   - brave-browser
+#   - brave
 can_isolate: true # Supports profile isolation
 can_start_maximized: true # Supports maximized launch
 desktop_file_name_prefix: org.chromium.Chromium.chromium
