@@ -1,3 +1,20 @@
+## [0.8.0] - 2026-02-28
+
+### 🚀 Features
+
+- *(browsers)* Allow array of system bin in browser yaml schema
+
+### 🐛 Bug Fixes
+
+- *(browsers)* Support brave on nixos
+
+### 🚜 Refactor
+
+- *(browsers)* Order icon names
+
+### 📚 Documentation
+
+- *(readme)* Add array info to browser config
 ## [0.7.0] - 2026-02-19
 
 ### 🚀 Features
@@ -29,6 +46,7 @@
 - *(dev)* Add test files for custom browsers with shared profile
 - *(browsers)* Sort browsers by name
 - *(dev)* Add task for build new release flatpak
+- *(release)* V0.7.0
 ## [0.6.0] - 2026-02-15
 
 ### 🚀 Features
@@ -102,33 +120,3 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* V0.4.1
-## [0.4.0] - 2026-02-01
-
-### 🚀 Features
-
-- *(icon-picker)* Allow more image types
-- *(desktop-file)* Set a default category
-- *(desktop-file)* Add description
-- *(web-app-view)* Optional settings for desktops with an app menu
-
-### 🐛 Bug Fixes
-
-- *(web-app-view)* Reset button is now disabled after saving a new web app
-- *(web-apps)* App list is now sorted by name
-- *(web-app-view)* Make sure "No browser" is selected when browser is missing
-- *(firefox)* More reliable popups on firefox profile
-
-### 🚜 Refactor
-
-- *(desktop-file)* Keys enum to Key
-- *(desktop-file)* Move deps to own files
-- Removed all unwraps + more optimizations
-- *(app-dirs)* Update dir names
-- *(web-app-view)* Optional settings now save on apply
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* Fix for last_released_version
-- Format
-- Update screenshots
-- *(release)* V0.4.0
