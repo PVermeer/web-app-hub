@@ -77,6 +77,7 @@ pub struct Browser {
     pub issues: HashMap<String, Vec<String>>,
     pub config_name: String,
     configs: Rc<BrowserConfigs>,
+    config: Option<Rc<BrowserConfig>>,
     icon_theme: Rc<IconTheme>,
     icon_names: Vec<String>,
     app_dirs: Rc<AppDirs>,
@@ -85,7 +86,7 @@ impl Browser {
     const FALLBACK_IMAGE: &str = "web-browser-symbolic";
 
     fn new(
-        browser_config: &BrowserConfig,
+        browser_config: &Rc<BrowserConfig>,
         installation: Installation,
         browser_configs: &Rc<BrowserConfigs>,
         icon_theme: &Rc<IconTheme>,
@@ -120,6 +121,7 @@ impl Browser {
             desktop_file_name_prefix,
             config_name,
             configs: browser_configs.clone(),
+            config: Some(browser_config.clone()),
             icon_names,
             base,
             issues,
@@ -244,6 +246,46 @@ impl Browser {
         Self::get_install_id_static(&self.installation)
     }
 
+    pub fn get_all_ids(&self) -> Option<Vec<String>> {
+        let mut ids = Vec::new();
+
+        let system_bin_ids = self.get_all_executables().map(|bins| {
+            bins.into_iter()
+                .map(|bin| Self::create_id(&Installation::System(bin), &self.name))
+                .collect::<Vec<_>>()
+        });
+
+        if let Some(mut system_bin_ids) = system_bin_ids {
+            ids.append(&mut system_bin_ids);
+        }
+
+        if let Some(flatpak_id) = &self.flatpak_id {
+            ids.push(Self::create_id(
+                &Installation::Flatpak(flatpak_id.clone()),
+                &self.name,
+            ));
+        }
+
+        if ids.is_empty() {
+            return None;
+        }
+
+        Some(ids)
+    }
+
+    fn get_all_executables(&self) -> Option<Vec<String>> {
+        self.config.as_ref().and_then(|config| {
+            config
+                .config
+                .system_bin
+                .as_ref()
+                .map(|system_bin| match system_bin {
+                    StringOrVec::One(bin) => Vec::from([bin.clone()]),
+                    StringOrVec::Many(bins) => bins.clone(),
+                })
+        })
+    }
+
     fn get_install_id_static(installation: &Installation) -> String {
         match installation {
             Installation::Flatpak(id) => id.clone(),
@@ -339,10 +381,35 @@ impl BrowserConfigs {
     }
 
     pub fn get_by_id(&self, id: &str) -> Option<Rc<Browser>> {
-        self.get_all_browsers()
+        let browser = self
+            .get_all_browsers()
             .iter()
             .find(|browser| browser.id == id)
-            .cloned()
+            .cloned();
+
+        if browser.is_none() {
+            debug!("Browser is missing, trying to find it");
+
+            let find_browser = self
+                .get_system_browsers()
+                .iter()
+                .find(|browser| {
+                    browser.get_all_ids().is_some_and(|browser_ids| {
+                        browser_ids.iter().any(|browser_id| browser_id == id)
+                    })
+                })
+                .cloned();
+
+            if let Some(find_browser) = &find_browser {
+                debug!(find_browser.name, "Found browser");
+            } else {
+                debug!("Browser not found");
+            }
+
+            return find_browser;
+        }
+
+        browser
     }
 
     pub fn get_by_install_id(&self, install_id: &str) -> Option<Rc<Browser>> {
@@ -381,6 +448,7 @@ impl BrowserConfigs {
             desktop_file_name_prefix: String::default(),
             config_name: String::default(),
             configs: self.clone(),
+            config: None,
             icon_names: Vec::from(["dialog-warning-symbolic".to_string()]),
             base: Base::None,
             issues: HashMap::new(),
@@ -462,22 +530,12 @@ impl BrowserConfigs {
                         }
                     }
                     StringOrVec::Many(system_bins) => {
-                        let browsers: Vec<Browser> = system_bins
-                            .iter()
-                            .filter_map(|system_bin| new_system_browser(system_bin))
-                            .collect();
-                        let is_many = browsers.len() > 1;
-
-                        for mut browser in browsers {
-                            if is_many {
-                                browser.name = format!(
-                                    "{} ({})",
-                                    browser.name,
-                                    browser.executable.clone().unwrap_or_default()
-                                );
+                        for system_bin in system_bins {
+                            if let Some(browser) = new_system_browser(system_bin) {
+                                installed_browsers.push(Rc::new(browser));
+                                is_installed = true;
+                                break;
                             }
-                            installed_browsers.push(Rc::new(browser));
-                            is_installed = true;
                         }
                     }
                 }
