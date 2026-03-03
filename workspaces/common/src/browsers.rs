@@ -57,7 +57,7 @@ pub struct BrowserYaml {
 }
 
 struct BrowserConfig {
-    config: BrowserYaml,
+    config_yaml: BrowserYaml,
     config_name: String,
     file_name: String,
     desktop_file: DesktopEntry,
@@ -93,20 +93,20 @@ impl Browser {
         app_dirs: &Rc<AppDirs>,
     ) -> Self {
         let icon_names = Self::get_icon_names_from_config(browser_config);
-        let name = browser_config.config.name.clone();
-        let can_isolate = browser_config.config.can_isolate;
-        let can_start_maximized = browser_config.config.can_start_maximized;
-        let flatpak_id = browser_config.config.flatpak.clone();
+        let name = browser_config.config_yaml.name.clone();
+        let can_isolate = browser_config.config_yaml.can_isolate;
+        let can_start_maximized = browser_config.config_yaml.can_start_maximized;
+        let flatpak_id = browser_config.config_yaml.flatpak.clone();
         let executable = if let Installation::System(system_bin) = &installation {
             Some(system_bin.clone())
         } else {
             None
         };
         let desktop_file = browser_config.desktop_file.clone();
-        let desktop_file_name_prefix = browser_config.config.desktop_file_name_prefix.clone();
+        let desktop_file_name_prefix = browser_config.config_yaml.desktop_file_name_prefix.clone();
         let config_name = browser_config.config_name.clone();
-        let base = Base::from_string(&browser_config.config.base);
-        let issues = browser_config.config.issues.clone();
+        let base = Base::from_string(&browser_config.config_yaml.base);
+        let issues = browser_config.config_yaml.issues.clone();
         let id = Self::create_id(&installation, &name);
 
         Self {
@@ -276,7 +276,7 @@ impl Browser {
     fn get_all_executables(&self) -> Option<Vec<String>> {
         self.config.as_ref().and_then(|config| {
             config
-                .config
+                .config_yaml
                 .system_bin
                 .as_ref()
                 .map(|system_bin| match system_bin {
@@ -305,11 +305,11 @@ impl Browser {
     fn get_icon_names_from_config(browser_config: &BrowserConfig) -> Vec<String> {
         let mut icon_names = Vec::new();
 
-        if let Some(flatpak) = &browser_config.config.flatpak {
+        if let Some(flatpak) = &browser_config.config_yaml.flatpak {
             icon_names.push(flatpak.trim().to_string());
         }
 
-        if let Some(bins) = &browser_config.config.system_bin {
+        if let Some(bins) = &browser_config.config_yaml.system_bin {
             match bins {
                 StringOrVec::One(bin) => {
                     icon_names.push(bin.trim().to_string());
@@ -322,7 +322,7 @@ impl Browser {
             }
         }
 
-        icon_names.push(browser_config.config.name.trim().to_string());
+        icon_names.push(browser_config.config_yaml.name.trim().to_string());
         utils::vec::dedup(&mut icon_names);
 
         icon_names
@@ -465,7 +465,7 @@ impl BrowserConfigs {
         for browser_config in browser_configs {
             let mut is_installed = false;
 
-            if let Some(flatpak) = &browser_config.config.flatpak {
+            if let Some(flatpak) = &browser_config.config_yaml.flatpak {
                 if Self::is_installed_flatpak(flatpak) {
                     info!(
                         "Found flatpak browser '{flatpak}' for config '{}'",
@@ -496,7 +496,7 @@ impl BrowserConfigs {
                 }
             }
 
-            if let Some(system_bins) = &browser_config.config.system_bin {
+            if let Some(system_bins) = &browser_config.config_yaml.system_bin {
                 let new_system_browser = |system_bin: &str| -> Option<Browser> {
                     if Self::is_installed_system(system_bin) {
                         info!(
@@ -695,7 +695,7 @@ impl BrowserConfigs {
             };
 
             let browser_config = BrowserConfig {
-                config: browser,
+                config_yaml: browser,
                 config_name,
                 file_name,
                 desktop_file,
@@ -703,7 +703,7 @@ impl BrowserConfigs {
             browser_configs.push(Rc::new(browser_config));
         }
 
-        browser_configs.sort_by(|a, b| a.config.name.cmp(&b.config.name));
+        browser_configs.sort_by(|a, b| a.config_yaml.name.cmp(&b.config_yaml.name));
 
         browser_configs
     }
