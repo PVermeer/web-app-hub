@@ -1,6 +1,8 @@
 name: Vivaldi
 flatpak: com.vivaldi.Vivaldi
-system_bin: vivaldi
+system_bin: 
+  - vivaldi
+  - vivaldi-stable
 can_isolate: true
 can_start_maximized: true
 desktop_file_name_prefix: com.vivaldi.Vivaldi.vivaldi

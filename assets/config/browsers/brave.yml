@@ -3,6 +3,7 @@ flatpak: com.brave.Browser
 system_bin:
   - brave-browser
   - brave
+  - brave-bin
 can_isolate: true
 can_start_maximized: true
 desktop_file_name_prefix: com.brave.Browser.brave
