@@ -388,7 +388,7 @@ impl BrowserConfigs {
             .cloned();
 
         if browser.is_none() {
-            debug!("Browser is missing, trying to find it");
+            info!("Browser is missing, trying to find it");
 
             let find_browser = self
                 .get_system_browsers()
@@ -401,9 +401,9 @@ impl BrowserConfigs {
                 .cloned();
 
             if let Some(find_browser) = &find_browser {
-                debug!(find_browser.name, "Found browser");
+                info!(find_browser.name, "Found browser");
             } else {
-                debug!("Browser not found");
+                info!("Browser not found");
             }
 
             return find_browser;

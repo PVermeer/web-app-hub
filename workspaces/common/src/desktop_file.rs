@@ -398,7 +398,12 @@ impl DesktopFile {
     }
 
     pub fn copy_profile_config_to_profile_path(&self, profile_path: &Path) -> Result<()> {
-        let browser = self.get_browser().context("No browser on 'DesktopFile'")?;
+        debug!(
+            profile_path = %profile_path.display(),
+            "Copying profile config"
+        );
+
+        let browser = self.get_browser().context("No browser on DesktopFile")?;
 
         if !profile_path.is_dir() {
             debug!(
@@ -452,7 +457,9 @@ impl DesktopFile {
     }
 
     pub fn build_profile_path(&self) -> Result<PathBuf> {
-        let browser = self.get_browser().context("No browser on 'DesktopFile'")?;
+        debug!("Building profile path");
+
+        let browser = self.get_browser().context("No browser on DesktopFile")?;
         let is_isolated = self.get_isolated().unwrap_or(false);
 
         if !is_isolated {
@@ -462,7 +469,7 @@ impl DesktopFile {
             bail!("Browser cannot isolate")
         }
 
-        let id = self.get_id().context("No id on 'DesktopFile'")?;
+        let id = self.get_id().context("No id on DesktopFile")?;
         let profile_path = browser.get_profile_path()?.join(&id);
 
         if !profile_path.is_dir() {
@@ -485,10 +492,7 @@ impl DesktopFile {
     pub fn validate(&self) -> Result<(), DesktopFileError> {
         match self.to_new_from_browser() {
             Err(error) => {
-                error!(
-                    validation_error = error.to_string(),
-                    "Invalid 'DesktopFile'"
-                );
+                error!(validation_error = error.to_string(), "Invalid DesktopFile");
                 Err(error)
             }
             Ok(_) => Ok(()),
@@ -620,39 +624,28 @@ impl DesktopFile {
     }
 
     /// Check paths, try to fix and print errors
-    pub fn check_paths(&self) {
-        let entries = match self.get_entries() {
-            Ok(entries) => entries,
-            Err(error) => {
-                error!(
-                    name = self.get_name().unwrap_or_default(),
-                    error = match &error {
-                        DesktopFileError::ValidationError(error) => {
-                            format!("Field: {}, Error: {}", error.field, error.message)
-                        }
-                        DesktopFileError::Other(error) => error.to_string(),
-                    },
-                    "Failed to get entries on 'DesktopFile'"
-                );
-                return;
-            }
-        };
+    pub fn check_paths(&self) -> Result<()> {
+        debug!("Checking paths");
+        let entries = self.get_entries()?;
 
         if entries.isolate && !entries.profile_path.is_dir() {
             error!(
                 name = entries.name,
                 "Profile does not exists. Trying to create new profile."
             );
-            let _ = self.build_profile_path();
+            self.build_profile_path()?;
         }
 
         if !entries.icon_path.is_file() {
-            error!(
-                name = entries.name,
-                icon = %entries.icon_path.display(),
-                "Icon file does not exists"
+            error!(name = entries.name, icon = %entries.icon_path.display(), "Icon file does not exists.");
+            bail!(
+                "Icon file does not exists for {} on {}",
+                entries.name,
+                entries.icon_path.display(),
             );
         }
+
+        Ok(())
     }
 
     fn get_entries(&self) -> Result<DesktopFileEntries, DesktopFileError> {

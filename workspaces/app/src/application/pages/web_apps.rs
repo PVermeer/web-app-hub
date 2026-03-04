@@ -16,7 +16,7 @@ use libadwaita::{
     prelude::{ActionRowExt, PreferencesGroupExt, PreferencesPageExt},
 };
 use std::{cell::RefCell, rc::Rc};
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use web_app_view::WebAppView;
 
 pub struct WebAppsPage {
@@ -117,8 +117,8 @@ impl WebAppsPage {
 
             pref_group.add(&status_page);
         } else {
-            for desktop_file in web_app_desktop_files {
-                let web_app_row = self.clone().build_app_row(app, desktop_file);
+            for (desktop_file, has_issue) in web_app_desktop_files {
+                let web_app_row = self.clone().build_app_row(app, desktop_file, has_issue);
                 pref_group.add(&web_app_row);
             }
         }
@@ -133,11 +133,10 @@ impl WebAppsPage {
     fn build_app_row(
         self: Rc<Self>,
         app: &Rc<App>,
-        desktop_file: Rc<RefCell<DesktopFile>>,
+        desktop_file: DesktopFile,
+        has_issue: bool,
     ) -> ActionRow {
-        let desktop_file_borrow = desktop_file.borrow();
-
-        let app_name = desktop_file_borrow
+        let app_name = desktop_file
             .get_name()
             .unwrap_or(t!("web_apps.no_name").to_string());
         let app_row = ActionRow::builder()
@@ -145,19 +144,25 @@ impl WebAppsPage {
             .activatable(true)
             .build();
 
-        let app_icon = desktop_file_borrow.get_icon();
+        if has_issue {
+            let issue_icon = Image::from_icon_name("dialog-warning-symbolic");
+            issue_icon.set_css_classes(&["warning"]);
+            issue_icon.set_margin_end(10);
+            app_row.add_suffix(&issue_icon);
+        }
+
+        let app_icon = desktop_file.get_icon();
         let suffix = Image::from_icon_name("go-next-symbolic");
 
         app_row.add_prefix(&app_icon);
         app_row.add_suffix(&suffix);
 
-        drop(desktop_file_borrow);
         let app_clone = app.clone();
         let nav_view_clone = self.nav_view.clone();
+        let desktop_file_rc = Rc::new(RefCell::new(desktop_file));
 
         app_row.connect_activated(move |_| {
-            let app_page =
-                WebAppView::new(&app_clone, &nav_view_clone, &desktop_file.clone(), false);
+            let app_page = WebAppView::new(&app_clone, &nav_view_clone, &desktop_file_rc, false);
             app_page.init();
             self.nav_view.push(app_page.get_navpage());
         });
@@ -165,7 +170,7 @@ impl WebAppsPage {
         app_row
     }
 
-    fn get_owned_desktop_files(app: &Rc<App>) -> (Vec<Rc<RefCell<DesktopFile>>>, bool) {
+    fn get_owned_desktop_files(app: &Rc<App>) -> (Vec<(DesktopFile, bool)>, bool) {
         debug!("Reading user desktop files");
 
         let mut owned_desktop_files = Vec::new();
@@ -207,41 +212,49 @@ impl WebAppsPage {
                 .to_string_lossy()
                 .to_string();
 
-            debug!(file_name = &file_name, "Found desktop file");
+            info!(file_name = &file_name, "Found desktop file");
 
-            let is_updated = match desktop_file.update() {
-                Ok(is_updated) => is_updated,
+            let mut is_updated = false;
+            let mut has_error = false;
+            match desktop_file.update() {
+                Ok(has_updated) => is_updated = has_updated,
                 Err(error) => {
                     match error {
                         DesktopFileError::ValidationError(error) => error!(
                             error = error.to_string(),
                             desktop_file = &file_name,
-                            "Failed to validate after updating 'DesktopFile'"
+                            app = desktop_file.get_name(),
+                            "Failed to validate after updating DesktopFile"
                         ),
                         DesktopFileError::Other(error) => error!(
                             error = error.to_string(),
                             desktop_file = &file_name,
-                            "Failed to update 'DesktopFile'"
+                            app = desktop_file.get_name(),
+                            "Failed to update DesktopFile"
                         ),
                     }
-                    continue;
+                    has_error = true;
                 }
-            };
+            }
             if is_updated {
-                debug!(file_name = &file_name, "Updated desktop file");
+                info!(file_name = &file_name, "Updated DesktopFile");
                 app_has_updated = true;
+            } else {
+                info!(file_name = &file_name, "Validating DesktopFile");
+                if desktop_file.validate().is_err() {
+                    has_error = true;
+                }
             }
 
             debug!(file_name = &file_name, "Checking paths");
-            desktop_file.check_paths();
+            if desktop_file.check_paths().is_err() {
+                has_error = true;
+            }
 
-            owned_desktop_files.push(Rc::new(RefCell::new(desktop_file)));
+            owned_desktop_files.push((desktop_file, has_error));
         }
-        owned_desktop_files.sort_by_key(|desktop_file| {
-            desktop_file
-                .borrow()
-                .get_name()
-                .unwrap_or(char::MAX.to_string())
+        owned_desktop_files.sort_by_key(|(desktop_file, _)| {
+            desktop_file.get_name().unwrap_or(char::MAX.to_string())
         });
 
         *app.has_created_apps.borrow_mut() = !owned_desktop_files.is_empty();
