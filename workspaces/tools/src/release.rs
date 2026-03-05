@@ -687,6 +687,7 @@ fn create_release_in_git(new_version: &Version) -> Result<()> {
         set -e
         git --no-pager diff --compact-summary --color=always
         echo ""
+        git add --all
         git commit -a -m "chore(release): {version}" || true
         git tag -a {version} -m "Release version {new_version}"
         git push --follow-tags
