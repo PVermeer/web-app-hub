@@ -454,7 +454,13 @@ impl BrowserConfigs {
     }
 
     pub fn get_index(&self, browser: &Browser) -> Option<usize> {
-        self.get_installed_browsers()
+        let browsers = if browser.is_installed() {
+            self.get_installed_browsers()
+        } else {
+            self.get_uninstalled_browsers()
+        };
+
+        browsers
             .iter()
             .position(|browser_iter| browser_iter.id == browser.id)
     }
