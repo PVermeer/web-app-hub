@@ -356,7 +356,7 @@ impl Browser {
 }
 
 pub struct BrowserConfigs {
-    all_browsers: OnceCell<Vec<Rc<Browser>>>,
+    installed_browsers: OnceCell<Vec<Rc<Browser>>>,
     uninstalled_browsers: OnceCell<Vec<Rc<Browser>>>,
     icon_theme: Rc<IconTheme>,
     app_dirs: Rc<AppDirs>,
@@ -366,7 +366,7 @@ impl BrowserConfigs {
 
     pub fn new(icon_theme: &Rc<IconTheme>, app_dirs: &Rc<AppDirs>) -> Rc<Self> {
         Rc::new(Self {
-            all_browsers: OnceCell::new(),
+            installed_browsers: OnceCell::new(),
             uninstalled_browsers: OnceCell::new(),
             icon_theme: icon_theme.clone(),
             app_dirs: app_dirs.clone(),
@@ -377,13 +377,15 @@ impl BrowserConfigs {
         self.set_browsers_from_files();
     }
 
-    pub fn get_all_browsers(&self) -> &Vec<Rc<Browser>> {
-        self.all_browsers.get().expect("Browsers are uninitialized")
+    pub fn get_installed_browsers(&self) -> &Vec<Rc<Browser>> {
+        self.installed_browsers
+            .get()
+            .expect("Browsers are uninitialized")
     }
 
     pub fn get_flatpak_browsers(&self) -> Vec<Rc<Browser>> {
-        let all_browsers_borrow = self.get_all_browsers();
-        all_browsers_borrow
+        let browsers = self.get_installed_browsers();
+        browsers
             .iter()
             .filter(|browser| browser.is_flatpak())
             .cloned()
@@ -391,24 +393,23 @@ impl BrowserConfigs {
     }
 
     pub fn get_system_browsers(&self) -> Vec<Rc<Browser>> {
-        let all_browsers_borrow = self.get_all_browsers();
-        all_browsers_borrow
+        let browsers = self.get_installed_browsers();
+        browsers
             .iter()
             .filter(|browser| browser.is_system())
             .cloned()
             .collect()
     }
 
-    pub fn get_uninstalled_browsers(&self) -> Vec<Rc<Browser>> {
+    pub fn get_uninstalled_browsers(&self) -> &Vec<Rc<Browser>> {
         self.uninstalled_browsers
             .get()
             .expect("Uninstalled browsers are uninitialized")
-            .clone()
     }
 
     pub fn get_by_id(&self, id: &str) -> Option<Rc<Browser>> {
         let browser = self
-            .get_all_browsers()
+            .get_installed_browsers()
             .iter()
             .find(|browser| browser.id == id)
             .cloned();
@@ -439,7 +440,7 @@ impl BrowserConfigs {
     }
 
     pub fn get_by_install_id(&self, install_id: &str) -> Option<Rc<Browser>> {
-        self.get_all_browsers()
+        self.get_installed_browsers()
             .iter()
             .find(|browser| browser.get_install_id() == install_id)
             .cloned()
@@ -453,7 +454,7 @@ impl BrowserConfigs {
     }
 
     pub fn get_index(&self, browser: &Browser) -> Option<usize> {
-        self.get_all_browsers()
+        self.get_installed_browsers()
             .iter()
             .position(|browser_iter| browser_iter.id == browser.id)
     }
@@ -590,7 +591,7 @@ impl BrowserConfigs {
         let no_browser = self.get_no_browser();
         installed_browsers.push(Rc::new(no_browser));
 
-        let _ = self.all_browsers.set(installed_browsers);
+        let _ = self.installed_browsers.set(installed_browsers);
         let _ = self.uninstalled_browsers.set(uninstalled_browsers);
     }
 

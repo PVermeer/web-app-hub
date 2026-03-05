@@ -402,13 +402,13 @@ impl WebAppView {
         desktop_file: &Rc<RefCell<DesktopFile>>,
         is_new: bool,
     ) -> ComboRow {
-        let all_browsers = app.browser_configs.get_all_browsers();
+        let installed_browsers = app.browser_configs.get_installed_browsers();
 
         // Some weird factory setup where the list calls factory methods...
         // First create all data structures, then set data from ListStore.
         // Why is this so unnecessary complicated? ¯\_(ツ)_/¯
         let list = gio::ListStore::new::<BoxedAnyObject>();
-        for browser in all_browsers {
+        for browser in installed_browsers {
             let boxed = BoxedAnyObject::new(browser.clone());
             list.append(&boxed);
         }
@@ -462,10 +462,10 @@ impl WebAppView {
             && let Ok(index) = browser_index.try_into()
         {
             combo_row.set_selected(index);
-        } else if is_new && let Some(browser) = all_browsers.first() {
+        } else if is_new && let Some(browser) = installed_browsers.first() {
             // ComboRow has already selected the first item on load, so sync this if new.
             desktop_file.borrow_mut().set_browser(browser);
-        } else if let Some(browser) = all_browsers.last()
+        } else if let Some(browser) = installed_browsers.last()
             && let Some(browser_index) = browser.get_index()
             && let Ok(index) = browser_index.try_into()
         {

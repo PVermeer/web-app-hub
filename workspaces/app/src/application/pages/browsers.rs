@@ -85,7 +85,7 @@ impl BrowsersPage {
             let browser_row = Self::build_browser_row(app, browser);
             system_pref_group.add(&browser_row);
         }
-        for browser in &uninstalled_browsers {
+        for browser in uninstalled_browsers {
             let browser_row = Self::build_browser_row(app, browser);
             uninstalled_pref_group.add(&browser_row);
         }
