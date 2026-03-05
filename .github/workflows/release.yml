@@ -21,14 +21,7 @@ jobs:
           token: ${{ secrets.FLATHUB_TOKEN }}
 
       - name: Dependencies
-        run: |
-          source ./.github/workflows/release-deps.sh --only-export-packages
-          echo "PACKAGES=$packages" >> $GITHUB_ENV
-
-      - uses: rishabhc32/apt-package-cache@v1.0.1
-        with:
-          packages: ${{env.PACKAGES}}
-          run-update: true
+        run: ./.github/workflows/release-deps.sh
 
       - name: Git
         run: |
