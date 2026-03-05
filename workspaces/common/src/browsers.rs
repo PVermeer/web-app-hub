@@ -481,7 +481,7 @@ impl BrowserConfigs {
         self.icon_theme.add_search_path(path);
     }
 
-    fn build_no_browser(self: &Rc<Self>) -> Browser {
+    pub fn build_no_browser(self: &Rc<Self>) -> Browser {
         Browser {
             id: String::default(),
             name: Self::NO_BROWSER_NAME.to_string(),
@@ -600,9 +600,6 @@ impl BrowserConfigs {
                 uninstalled_browsers.push(browser);
             }
         }
-
-        let no_browser = self.build_no_browser();
-        installed_browsers.push(Rc::new(no_browser));
 
         let _ = self.installed_browsers.set(installed_browsers.clone());
         let _ = self.uninstalled_browsers.set(uninstalled_browsers.clone());

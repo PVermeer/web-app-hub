@@ -12,7 +12,8 @@ use common::{
     utils,
 };
 use gtk::{
-    Align, EventControllerMotion, ListItem, SignalListItemFactory, gio,
+    Align, EventControllerMotion, ListItem, SignalListItemFactory,
+    gio::{self},
     glib::{self, BoxedAnyObject, object::Cast},
     prelude::ListItemExt,
 };
@@ -403,6 +404,7 @@ impl WebAppView {
         is_new: bool,
     ) -> ComboRow {
         let installed_browsers = app.browser_configs.get_installed_browsers();
+        let no_browser = Rc::new(app.browser_configs.build_no_browser());
 
         // Some weird factory setup where the list calls factory methods...
         // First create all data structures, then set data from ListStore.
@@ -412,6 +414,9 @@ impl WebAppView {
             let boxed = BoxedAnyObject::new(browser.clone());
             list.append(&boxed);
         }
+        let no_browser_boxed = BoxedAnyObject::new(no_browser.clone());
+        list.append(&no_browser_boxed);
+
         let factory = SignalListItemFactory::new();
         factory.connect_bind(|_, list_item| {
             let Some(list_item) = list_item.downcast_ref::<ListItem>() else {
@@ -465,12 +470,9 @@ impl WebAppView {
         } else if is_new && let Some(browser) = installed_browsers.first() {
             // ComboRow has already selected the first item on load, so sync this if new.
             desktop_file.borrow_mut().set_browser(browser);
-        } else if let Some(browser) = installed_browsers.last()
-            && let Some(browser_index) = browser.get_index()
-            && let Ok(index) = browser_index.try_into()
-        {
+        } else {
             // Last should be no browser
-            combo_row.set_selected(index);
+            combo_row.set_selected(list.find(&no_browser_boxed).unwrap_or_default());
         }
 
         combo_row
