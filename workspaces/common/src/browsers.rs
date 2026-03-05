@@ -458,6 +458,13 @@ impl BrowserConfigs {
             .cloned()
     }
 
+    pub fn get_browser_by_config_name(&self, name: &str) -> Option<Rc<Browser>> {
+        self.get_all_browsers()
+            .iter()
+            .find(|browser| browser.config_name == name)
+            .cloned()
+    }
+
     pub fn get_index(&self, browser: &Browser) -> Option<usize> {
         let browsers = if browser.is_installed() {
             self.get_installed_browsers()

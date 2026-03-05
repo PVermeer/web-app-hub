@@ -78,7 +78,7 @@ impl InfoPage {
 
         let zen_browser_keybind = app
             .browser_configs
-            .get_browser_by_flatpak_id("app.zen_browser.zen")
+            .get_browser_by_config_name("zen")
             .map(|browser| browser.profile_setup_keybind.clone().unwrap_or_default())
             .unwrap_or_default();
 
