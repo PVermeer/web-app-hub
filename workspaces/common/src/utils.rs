@@ -144,7 +144,7 @@ pub mod command {
     use crate::utils::env;
     use anyhow::{Result, bail};
     use gtk::glib;
-    use std::{fmt::Write, process::Command};
+    use std::{collections::HashMap, fmt::Write, process::Command};
     use tracing::debug;
 
     pub struct Response {
@@ -182,7 +182,8 @@ pub mod command {
         glib::spawn_command_line_async(run_command).map_err(Into::into)
     }
 
-    pub fn run_command_sync(command: &str) -> Result<Response> {
+    #[allow(clippy::implicit_hasher)]
+    pub fn run_command_sync_env(command: &str, env: &HashMap<String, String>) -> Result<Response> {
         let mut run_command = String::new();
 
         if env::is_flatpak_container() {
@@ -198,7 +199,8 @@ pub mod command {
         let command = args.remove(0);
 
         debug!(command = run_command, "Running sync command");
-        let output = Command::new(command).args(args).output()?;
+
+        let output = Command::new(command).args(args).envs(env).output()?;
 
         let response = Response {
             success: output.status.success(),
@@ -208,6 +210,10 @@ pub mod command {
         };
 
         Ok(response)
+    }
+
+    pub fn run_command_sync(command: &str) -> Result<Response> {
+        run_command_sync_env(command, &HashMap::new())
     }
 
     pub fn parse_output(std_descriptor: &[u8]) -> String {
