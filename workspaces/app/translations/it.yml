@@ -103,7 +103,7 @@ browsers:
     title: Capacità
     isolate: Può isolare le tue web app
     maximize: Può avviare le web app massimizzate
-    setup: Configura il browser con %{key_bind}
+    setup: Configura il browser con <%{key_bind}>
     more_info: Vedi 'Info -> Suggerimenti e trucchi' per maggiori informazioni
   issues:
     title: Problemi noti
@@ -117,11 +117,11 @@ info:
       Il desktop può essere lento nell'aggiornamento e nell'abbinamento di una Web App appena creata. Riavvia la Web App e corrisponderà con l'icona corretta.
 
       <b>Configura il browser con un profilo isolato</b>
-      Per i browser basati su Chromium, fai clic con il pulsante destro del mouse sulla barra del titolo e seleziona "Apri finestra del browser" o premi &lt;Ctrl+T&gt;.
+      Per i browser basati su Chromium, fai clic con il pulsante destro del mouse sulla barra del titolo e seleziona "Apri finestra del browser" o premi &lt;%{base_chromium_keybind}&gt;.
 
-      Per i browser basati su Firefox, premi &lt;Alt&gt;. Vai a `Visualizza` e abilita `Barra dei menu`. Questo dovrebbe impostare Firefox in una modalità in qualche modo normale con elementi di menu. Disabilita la `Barra dei menu` per rimuovere nuovamente gli elementi dell'interfaccia utente.
+      Per i browser basati su Firefox, premi &lt;%{base_firefox_keybind}&gt;. Vai a `Visualizza` e abilita `Barra dei menu`. Questo dovrebbe impostare Firefox in una modalità in qualche modo normale con elementi di menu. Disabilita la `Barra dei menu` per rimuovere nuovamente gli elementi dell'interfaccia utente.
 
-      Per il browser Zen, premi &lt;Alt+Ctrl+C&gt;.
+      Per il browser Zen, premi &lt;%{zen_keybind}&gt;.
 
       Questo può essere utilizzato per configurare il browser all'interno del profilo isolato e installare le estensioni.
 

@@ -32,6 +32,14 @@ impl Base {
             _ => Self::None,
         }
     }
+
+    pub fn get_profile_setup_keybind(&self) -> Option<String> {
+        match self {
+            Self::None => None,
+            Self::Chromium => Some("Ctrl+T".to_string()),
+            Self::Firefox => Some("Alt".to_string()),
+        }
+    }
 }
 
 #[derive(Deserialize, PartialEq, Debug)]
@@ -52,6 +60,7 @@ pub struct BrowserYaml {
     can_start_maximized: bool,
     desktop_file_name_prefix: String,
     base: String,
+    profile_setup_keybind: Option<String>,
     #[serde(default)]
     issues: HashMap<String, Vec<String>>,
 }
@@ -76,6 +85,7 @@ pub struct Browser {
     pub base: Base,
     pub issues: HashMap<String, Vec<String>>,
     pub config_name: String,
+    pub profile_setup_keybind: Option<String>,
     configs: Rc<BrowserConfigs>,
     config: Option<Rc<BrowserConfig>>,
     icon_theme: Rc<IconTheme>,
@@ -108,6 +118,7 @@ impl Browser {
         let base = Base::from_string(&browser_config.config_yaml.base);
         let issues = browser_config.config_yaml.issues.clone();
         let id = Self::create_id(&installation, &name);
+        let profile_setup_keybind = Self::get_profile_setup_keybind(browser_config, &base);
 
         Self {
             id,
@@ -120,6 +131,7 @@ impl Browser {
             desktop_file,
             desktop_file_name_prefix,
             config_name,
+            profile_setup_keybind,
             configs: browser_configs.clone(),
             config: Some(browser_config.clone()),
             icon_names,
@@ -327,6 +339,20 @@ impl Browser {
 
         icon_names
     }
+
+    fn get_profile_setup_keybind(
+        browser_config: &BrowserConfig,
+        browser_base: &Base,
+    ) -> Option<String> {
+        if let Some(keybind) = &browser_config.config_yaml.profile_setup_keybind {
+            if keybind.is_empty() {
+                return None;
+            }
+            return Some(keybind.clone());
+        }
+
+        browser_base.get_profile_setup_keybind()
+    }
 }
 
 pub struct BrowserConfigs {
@@ -419,6 +445,13 @@ impl BrowserConfigs {
             .cloned()
     }
 
+    pub fn get_by_flatpak_id(&self, flatpak_id: &str) -> Option<Rc<Browser>> {
+        self.get_flatpak_browsers()
+            .iter()
+            .find(|browser| browser.get_install_id() == flatpak_id)
+            .cloned()
+    }
+
     pub fn get_index(&self, browser: &Browser) -> Option<usize> {
         self.get_all_browsers()
             .iter()
@@ -447,6 +480,7 @@ impl BrowserConfigs {
             desktop_file: DesktopEntry::from_appid("No browser".to_string()),
             desktop_file_name_prefix: String::default(),
             config_name: String::default(),
+            profile_setup_keybind: None,
             configs: self.clone(),
             config: None,
             icon_names: Vec::from(["dialog-warning-symbolic".to_string()]),

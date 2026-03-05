@@ -103,7 +103,7 @@ browsers:
     title: Capacidades
     isolate: Puede aislar aplicaciones web
     maximize: Puede iniciar las aplicaciones web maximizadas
-    setup: Configure el navegador con %{key_bind}
+    setup: Configure el navegador con <%{key_bind}>
     more_info: Lea 'Información -> Trucos' para más información
   issues:
     title: Limitaciones conocidas
@@ -117,11 +117,11 @@ info:
       El sistema puede ser lento actualizándose con una nueva aplicación web. Reinicie la aplicación web y tendrá el icono correcto.
 
       <b>Configurar navegador con un perfil aislado</b>
-      Para los navegadores basados en Chromium, haga clic derecho en la barra de título y seleccione "Abrir ventana de navegador" o pulse &lt;Ctrl+T&gt;.
+      Para los navegadores basados en Chromium, haga clic derecho en la barra de título y seleccione "Abrir ventana de navegador" o pulse &lt;%{base_chromium_keybind}&gt;.
 
-      Para los navegadores basados en Firefox pulse &lt;Alt&gt;. Vaya a `Ver` y habilite `Barra de Menú`. Esto debería establecer Firefox para que use un modo estándar con elementos de menú. Deshabilite la `Barra de Menú` para eliminar los elementos de la interfaz nuevamente.
+      Para los navegadores basados en Firefox pulse &lt;%{base_firefox_keybind}&gt;. Vaya a `Ver` y habilite `Barra de Menú`. Esto debería establecer Firefox para que use un modo estándar con elementos de menú. Deshabilite la `Barra de Menú` para eliminar los elementos de la interfaz nuevamente.
 
-      Para el navegador Zen pulse &lt;Alt+Ctrl+C&gt;.
+      Para el navegador Zen pulse &lt;%{zen_keybind}&gt;.
 
       Esto puede ser usado para configurar el navegador dentro dde un perfil aislado e instalar extensiones.
 

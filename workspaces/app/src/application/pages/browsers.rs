@@ -1,6 +1,6 @@
 use super::NavPage;
 use crate::application::{App, pages::PrefPage};
-use common::browsers::{Base, Browser};
+use common::browsers::Browser;
 use gtk::{
     Align, Label, Orientation,
     prelude::{BoxExt, WidgetExt},
@@ -176,22 +176,15 @@ impl BrowsersPage {
                 t!("browsers.capabilities.maximize")
             );
         }
-        match browser.base {
-            Base::None => {}
-            Base::Chromium => {
-                let _ = writeln!(
-                    capabilities_list,
-                    "• {}",
-                    t!("browsers.capabilities.setup", key_bind = "<Ctrl+T>")
-                );
-            }
-            Base::Firefox => {
-                let _ = writeln!(
-                    capabilities_list,
-                    "• {}",
-                    t!("browsers.capabilities.setup", key_bind = "<Alt>")
-                );
-            }
+        if let Some(setup_keybind) = &browser.profile_setup_keybind {
+            let _ = writeln!(
+                capabilities_list,
+                "• {}",
+                t!(
+                    "browsers.capabilities.setup",
+                    key_bind = format!("{setup_keybind}")
+                )
+            );
         }
 
         if !capabilities_list.is_empty() {

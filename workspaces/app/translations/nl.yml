@@ -104,7 +104,7 @@ browsers:
     title: Mogelijkheden
     isolate: Kan webapps isoleren
     maximize: Kan webapps gemaximaliseerd starten
-    setup: Browser instellen met %{key_bind}
+    setup: Browser instellen met <%{key_bind}>
     more_info: Zie 'Info -> Tips en trucs' voor meer informatie
   issues:
     title: Bekende problemen
@@ -118,11 +118,11 @@ info:
       De desktopomgeving kan traag zijn bij het bijwerken en koppelen van een nieuw aangemaakte webapp. Start de webapp opnieuw; het juiste pictogram zal dan worden toegepast.
 
       <b>Browser instellen met een geïsoleerd profiel</b>
-      Voor Chromium-gebaseerde browsers: klik met de rechtermuisknop op de titelbalk en selecteer “Browservenster openen” of druk op &lt;Ctrl+T&gt;.
+      Voor Chromium-gebaseerde browsers: klik met de rechtermuisknop op de titelbalk en selecteer “Browservenster openen” of druk op &lt;%{base_chromium_keybind}&gt;.
 
-      Voor Firefox-gebaseerde browsers: druk op &lt;Alt&gt;. Ga naar ‘Beeld’ en schakel ‘Menubalk’ in. Hiermee wordt Firefox in een meer standaardmodus met menu-elementen geplaatst. Schakel de menubalk opnieuw uit om de UI-elementen weer te verwijderen.
+      Voor Firefox-gebaseerde browsers: druk op &lt;%{base_firefox_keybind}&gt;. Ga naar ‘Beeld’ en schakel ‘Menubalk’ in. Hiermee wordt Firefox in een meer standaardmodus met menu-elementen geplaatst. Schakel de menubalk opnieuw uit om de UI-elementen weer te verwijderen.
 
-      Voor de Zen-browser: druk op &lt;Alt+Ctrl+C&gt;.
+      Voor de Zen-browser: druk op &lt;%{zen_keybind}&gt;.
 
       Gebruik bovenstaande om de browser binnen het geïsoleerde profiel in te stellen en extensies te installeren.
 

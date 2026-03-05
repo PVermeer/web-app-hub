@@ -103,7 +103,7 @@ browsers:
     title: Capabilities
     isolate: Can isolate your web apps
     maximize: Can start web apps maximized
-    setup: Setup browser with %{key_bind}
+    setup: Setup browser with <%{key_bind}>
     more_info: See 'Info -> Tips & tricks' for more information
   issues:
     title: Known issues
@@ -117,11 +117,11 @@ info:
       The desktop can be slow with updating and matching a newly created Web App. Restart the Web App and it will match with the correct icon.
 
       <b>Setup browser with isolated profile</b>
-      For Chromium based browsers, right click the title bar and select "Open browser window" or press &lt;Ctrl+T&gt;.
+      For Chromium based browsers, right click the title bar and select "Open browser window" or press &lt;%{base_chromium_keybind}&gt;.
 
-      For Firefox based browsers press &lt;Alt&gt;. Go to `View` and enable `Menu Bar`. This should set Firefox to a somewhat normal mode with menu elements. Disable the `Menu bar` to remove the ui elements again.
+      For Firefox based browsers press &lt;%{base_firefox_keybind}&gt;. Go to `View` and enable `Menu Bar`. This should set Firefox to a somewhat normal mode with menu elements. Disable the `Menu bar` to remove the ui elements again.
 
-      For the Zen browser press &lt;Alt+Ctrl+C&gt;.
+      For the Zen browser press &lt;%{zen_keybind}&gt;.
 
       This can be used to setup the browser inside the isolated profile and install extensions.
 

@@ -103,7 +103,7 @@ browsers:
     title: Funktionen
     isolate: Kann Ihre Web-Apps isolieren
     maximize: Kann Web-Apps maximiert starten
-    setup: Browser mit %{key_bind} einrichten
+    setup: Browser mit <%{key_bind}> einrichten
     more_info: Siehe „Info -> Tipps & Tricks“ für weitere Informationen
   issues:
     title: Bekannte Probleme
@@ -117,11 +117,11 @@ info:
       Der Desktop kann bei der Aktualisierung und Zuordnung einer neu erstellten Web-App verzögert reagieren. Starten Sie die Web-App neu, dann wird das richtige Symbol angezeigt.
 
       <b>Browser mit isoliertem Profil einrichten</b>
-      Bei Chromium-basierten Browsern klicken Sie mit der rechten Maustaste auf die Titelleiste und wählen „Browserfenster öffnen“ oder drücken Sie &lt;Ctrl+T&gt;.
+      Bei Chromium-basierten Browsern klicken Sie mit der rechten Maustaste auf die Titelleiste und wählen „Browserfenster öffnen“ oder drücken Sie &lt;%{base_chromium_keybind}&gt;.
 
-      Bei Firefox-basierten Browsern drücken Sie &lt;Alt&gt;. Gehen Sie zu `Ansicht` und aktivieren Sie `Menüleiste`. Dadurch wird Firefox in einen normalen Modus mit Menüelementen versetzt. Deaktivieren Sie die `Menüleiste`, um die Bedienelemente wieder zu entfernen.
+      Bei Firefox-basierten Browsern drücken Sie &lt;%{base_firefox_keybind}&gt;. Gehen Sie zu `Ansicht` und aktivieren Sie `Menüleiste`. Dadurch wird Firefox in einen normalen Modus mit Menüelementen versetzt. Deaktivieren Sie die `Menüleiste`, um die Bedienelemente wieder zu entfernen.
 
-      Für den Zen-Browser drücken Sie &lt;Alt+Ctrl+C&gt;.
+      Für den Zen-Browser drücken Sie &lt;%{zen_keybind}&gt;.
 
       Dies kann verwendet werden, um den Browser im isolierten Profil einzurichten und Erweiterungen zu installieren.
 

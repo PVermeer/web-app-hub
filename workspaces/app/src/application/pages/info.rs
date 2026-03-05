@@ -2,6 +2,7 @@ use crate::application::{
     App,
     pages::{NavPage, PrefPage},
 };
+use common::browsers;
 use gtk::{Image, Orientation};
 use libadwaita::{
     ActionRow, ExpanderRow, NavigationPage, PreferencesGroup, PreferencesPage,
@@ -45,11 +46,11 @@ impl InfoPage {
         })
     }
 
-    pub fn init(&self, _app: &Rc<App>) {
+    pub fn init(&self, app: &Rc<App>) {
         let info_pref_group = PreferencesGroup::new();
         let expandable_pref_group = PreferencesGroup::new();
 
-        let general_info = Self::build_tips_row();
+        let general_info = Self::build_tips_row(app);
         let permisssions = Self::build_permissions_row();
 
         info_pref_group.add(&general_info);
@@ -59,7 +60,7 @@ impl InfoPage {
         self.prefs_page.add(&expandable_pref_group);
     }
 
-    fn build_tips_row() -> ExpanderRow {
+    fn build_tips_row(app: &Rc<App>) -> ExpanderRow {
         let row = ExpanderRow::builder()
             .title(t!("info.tips.title"))
             .use_markup(false)
@@ -75,10 +76,25 @@ impl InfoPage {
             .margin_bottom(Self::CONTENT_MARGING)
             .build();
 
+        let zen_browser_keybind = app
+            .browser_configs
+            .get_by_flatpak_id("app.zen_browser.zen")
+            .map(|browser| browser.profile_setup_keybind.clone().unwrap_or_default())
+            .unwrap_or_default();
+
         let text_label = Label::builder()
             .use_markup(true)
             .wrap(true)
-            .label(t!("info.tips.text_pango"))
+            .label(t!(
+                "info.tips.text_pango",
+                base_chromium_keybind = browsers::Base::Chromium
+                    .get_profile_setup_keybind()
+                    .unwrap_or_default(),
+                base_firefox_keybind = browsers::Base::Firefox
+                    .get_profile_setup_keybind()
+                    .unwrap_or_default(),
+                zen_keybind = zen_browser_keybind
+            ))
             .build();
 
         content_box.append(&text_label);
