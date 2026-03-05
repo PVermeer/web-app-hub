@@ -29,7 +29,7 @@
   <url type="contact">https://github.com/pvermeer/web-app-hub/issues</url>
   <!-- <url type="donation"></url> -->
   <url type="vcs-browser">https://github.com/pvermeer/web-app-hub</url>
-  <url type="help">https://github.com/pvermeer/web-app-hub/blob/v0.9.1/README.md</url>
+  <url type="help">https://github.com/pvermeer/web-app-hub/blob/v0.9.2/README.md</url>
   <url type="contribute">https://github.com/pvermeer/web-app-hub</url>
 
   <recommends>
@@ -45,28 +45,38 @@
   <screenshots>
 
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.9.1/assets/screenshots/1-Web-App.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.9.2/assets/screenshots/1-Web-App.png</image>
       <caption>Web-App</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.9.1/assets/screenshots/2-Web-Apps.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.9.2/assets/screenshots/2-Web-Apps.png</image>
       <caption>Web-Apps</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.9.1/assets/screenshots/3-Browsers.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.9.2/assets/screenshots/3-Browsers.png</image>
       <caption>Browsers</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.9.1/assets/screenshots/4-Info.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v0.9.2/assets/screenshots/4-Info.png</image>
       <caption>Info</caption>
     </screenshot>
   </screenshots>
 
   <releases>
 
+    <release version="0.9.2" date="2026-03-05">
+      <description>
+        <p>Fixes:</p>
+        <ul>
+          <li>info: zen browser setup keybind shows again</li>
+          <li>browsers: correct Zen browser config keybind</li>
+        </ul>
+      </description>
+    </release>
+    
     <release version="0.9.1" date="2026-03-05">
       <description>
         <p>Fixes:</p>
@@ -108,20 +118,6 @@
         <ul>
           <li>web-app-view: isolation toggle now disables on non-supported browser</li>
           <li>browsers: Custom browsers based on existing browsers now separate as intended</li>
-        </ul>
-      </description>
-    </release>
-    
-    <release version="0.6.0" date="2026-02-15">
-      <description>
-        <p>New features:</p>
-        <ul>
-          <li>translations: Create Italian translation file it.yml (#26)</li>
-          <li>translations: add es translations (#25)</li>
-        </ul>
-        <p>Fixes:</p>
-        <ul>
-          <li>about: documenters now show in credits again</li>
         </ul>
       </description>
     </release>
