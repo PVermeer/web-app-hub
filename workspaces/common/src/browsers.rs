@@ -407,7 +407,7 @@ impl BrowserConfigs {
             .expect("Uninstalled browsers are uninitialized")
     }
 
-    pub fn get_by_id(&self, id: &str) -> Option<Rc<Browser>> {
+    pub fn get_browser_by_id(&self, id: &str) -> Option<Rc<Browser>> {
         let browser = self
             .get_installed_browsers()
             .iter()
@@ -439,14 +439,14 @@ impl BrowserConfigs {
         browser
     }
 
-    pub fn get_by_install_id(&self, install_id: &str) -> Option<Rc<Browser>> {
+    pub fn get_browser_by_install_id(&self, install_id: &str) -> Option<Rc<Browser>> {
         self.get_installed_browsers()
             .iter()
             .find(|browser| browser.get_install_id() == install_id)
             .cloned()
     }
 
-    pub fn get_by_flatpak_id(&self, flatpak_id: &str) -> Option<Rc<Browser>> {
+    pub fn get_browser_by_flatpak_id(&self, flatpak_id: &str) -> Option<Rc<Browser>> {
         self.get_flatpak_browsers()
             .iter()
             .find(|browser| browser.get_install_id() == flatpak_id)
@@ -469,7 +469,7 @@ impl BrowserConfigs {
         self.icon_theme.add_search_path(path);
     }
 
-    fn get_no_browser(self: &Rc<Self>) -> Browser {
+    fn build_no_browser(self: &Rc<Self>) -> Browser {
         Browser {
             id: String::default(),
             name: Self::NO_BROWSER_NAME.to_string(),
@@ -588,7 +588,7 @@ impl BrowserConfigs {
             }
         }
 
-        let no_browser = self.get_no_browser();
+        let no_browser = self.build_no_browser();
         installed_browsers.push(Rc::new(no_browser));
 
         let _ = self.installed_browsers.set(installed_browsers);

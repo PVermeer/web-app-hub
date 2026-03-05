@@ -232,7 +232,7 @@ impl DesktopFile {
 
     pub fn get_browser(&self) -> Option<Rc<Browser>> {
         self.get_browser_id()
-            .and_then(|browser_id| self.browser_configs.get_by_id(&browser_id))
+            .and_then(|browser_id| self.browser_configs.get_browser_by_id(&browser_id))
     }
 
     pub fn set_browser(&mut self, browser: &Rc<Browser>) {
@@ -587,7 +587,7 @@ impl DesktopFile {
             info!("Running updates for version 0.7.0");
 
             if let Some(browser_id) = self.get_browser_id()
-                && let Some(browser) = self.browser_configs.get_by_install_id(&browser_id)
+                && let Some(browser) = self.browser_configs.get_browser_by_install_id(&browser_id)
             {
                 info!(
                     "Updating browser id for {}",
