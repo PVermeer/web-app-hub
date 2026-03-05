@@ -6,11 +6,12 @@ use common::{
     config::{self},
     utils::{self, OnceLockExt, command},
 };
+use dotenv::dotenv;
 use freedesktop_desktop_entry::DesktopEntry;
 use git_cliff::args::Opt;
 use regex::Regex;
 use semver::Version;
-use std::{fmt::Write as _, io::Write, process::Stdio, sync::OnceLock};
+use std::{collections::HashMap, env, fmt::Write as _, io::Write, process::Stdio, sync::OnceLock};
 use std::{
     fs::{self, File},
     path::{Path, PathBuf},
@@ -52,6 +53,7 @@ fn main() -> Result<()> {
         info!("Running in dry-run mode");
     }
 
+    dotenv().ok();
     dependency_check()?;
     config::init();
     config::log_all_values_debug();
@@ -93,13 +95,17 @@ fn dependency_check() -> Result<()> {
         }
     }
 
-    let output = command::run_command_sync("gh auth status")?;
-    println!("{}", output.stderr);
-    println!("{}", output.stdout);
+    let flathub_token = env::var("FLATHUB_TOKEN");
+    let github_token_env = if let Ok(flathub_token) = flathub_token {
+        HashMap::from([("GH_TOKEN".to_string(), flathub_token)])
+    } else {
+        HashMap::new()
+    };
+    let github_status = command::run_command_sync_env("gh auth status", &github_token_env)?;
+    println!("{}", github_status.stderr);
+    println!("{}", github_status.stdout);
 
-    if std::env::var("FLATHUB_TOKEN").is_err()
-        && command::run_command_sync("gh auth status").is_err()
-    {
+    if !github_status.success {
         missing_dependencies.push(
             "Not logged in to github (gh command) or FLATHUB_TOKEN environment variable not defined",
         );
