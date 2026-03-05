@@ -990,6 +990,19 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/dotenv/dotenv-0.15.0.crate",
+        "sha256": "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f",
+        "dest": "cargo/vendor/dotenv-0.15.0"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f\", \"files\": {}}",
+        "dest": "cargo/vendor/dotenv-0.15.0",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
         "url": "https://static.crates.io/crates/dtoa/dtoa-1.0.11.crate",
         "sha256": "4c3cf4824e2d5f025c7b531afcb2325364084a16806f6d47fbc1f5fbd9960590",
         "dest": "cargo/vendor/dtoa-1.0.11"
