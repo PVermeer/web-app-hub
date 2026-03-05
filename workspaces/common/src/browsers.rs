@@ -356,6 +356,7 @@ impl Browser {
 }
 
 pub struct BrowserConfigs {
+    all_browsers: OnceCell<Vec<Rc<Browser>>>,
     installed_browsers: OnceCell<Vec<Rc<Browser>>>,
     uninstalled_browsers: OnceCell<Vec<Rc<Browser>>>,
     icon_theme: Rc<IconTheme>,
@@ -366,6 +367,7 @@ impl BrowserConfigs {
 
     pub fn new(icon_theme: &Rc<IconTheme>, app_dirs: &Rc<AppDirs>) -> Rc<Self> {
         Rc::new(Self {
+            all_browsers: OnceCell::new(),
             installed_browsers: OnceCell::new(),
             uninstalled_browsers: OnceCell::new(),
             icon_theme: icon_theme.clone(),
@@ -375,6 +377,10 @@ impl BrowserConfigs {
 
     pub fn init(self: &Rc<Self>) {
         self.set_browsers_from_files();
+    }
+
+    pub fn get_all_browsers(&self) -> &Vec<Rc<Browser>> {
+        self.all_browsers.get().expect("Browsers are uninitialized")
     }
 
     pub fn get_installed_browsers(&self) -> &Vec<Rc<Browser>> {
@@ -500,6 +506,7 @@ impl BrowserConfigs {
 
     fn set_browsers_from_files(self: &Rc<Self>) {
         let browser_configs = self.get_browsers_from_files();
+        let mut all_browsers = Vec::new();
         let mut installed_browsers = Vec::new();
         let mut uninstalled_browsers = Vec::new();
 
@@ -597,8 +604,12 @@ impl BrowserConfigs {
         let no_browser = self.build_no_browser();
         installed_browsers.push(Rc::new(no_browser));
 
-        let _ = self.installed_browsers.set(installed_browsers);
-        let _ = self.uninstalled_browsers.set(uninstalled_browsers);
+        let _ = self.installed_browsers.set(installed_browsers.clone());
+        let _ = self.uninstalled_browsers.set(uninstalled_browsers.clone());
+
+        all_browsers.append(&mut installed_browsers);
+        all_browsers.append(&mut uninstalled_browsers);
+        let _ = self.all_browsers.set(all_browsers);
     }
 
     fn is_installed_flatpak(flatpak: &str) -> bool {
