@@ -106,11 +106,10 @@ impl Browser {
         let name = browser_config.config_yaml.name.clone();
         let can_isolate = browser_config.config_yaml.can_isolate;
         let can_start_maximized = browser_config.config_yaml.can_start_maximized;
-        let flatpak_id = browser_config.config_yaml.flatpak.clone();
-        let executable = if let Installation::System(system_bin) = &installation {
-            Some(system_bin.clone())
-        } else {
-            None
+        let (flatpak_id, executable) = match &installation {
+            Installation::System(system_bin) => (None, Some(system_bin.clone())),
+            Installation::Flatpak(flatpak_id) => (Some(flatpak_id.clone()), None),
+            Installation::None => (None, None),
         };
         let desktop_file = browser_config.desktop_file.clone();
         let desktop_file_name_prefix = browser_config.config_yaml.desktop_file_name_prefix.clone();
