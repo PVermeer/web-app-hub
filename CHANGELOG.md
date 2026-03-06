@@ -1,3 +1,12 @@
+## [0.9.3] - 2026-03-06
+
+### 🐛 Bug Fixes
+
+- *(web-app-view)* Reset button now resets after save
+
+### 📚 Documentation
+
+- *(readme)* Update readme for profile_setup_keybind key in browser config
 ## [0.9.2] - 2026-03-05
 
 ### 🐛 Bug Fixes
@@ -16,6 +25,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(browsers)* Add all_browsers
+- *(release)* V0.9.2
 ## [0.9.1] - 2026-03-05
 
 ### 🐛 Bug Fixes
@@ -76,35 +86,3 @@ This reverts commit 185ea8422bb97e2f626720fe5b610c43cd21adf5.
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* V0.8.0
-## [0.7.0] - 2026-02-19
-
-### 🚀 Features
-
-- *(translations)* Add de translations (#29)
-
-### 🐛 Bug Fixes
-
-- *(web-app-view)* Isolation toggle now disables on non-supported browser
-- *(browsers)* Custom browsers based on existing browsers now separate as intended
-
-### 💼 Other
-
-- Use main cargo file for app info
-
-### 🚜 Refactor
-
-- *(web-app-view)* Change to ui string for error toast
-- *(web-app-view)* Make sure toasts display correct on init
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* Remove initial release
-- *(dev)* Add language support to dev-container
-- *(web-app-view)* Add change check after init
-- *(error)* Commit error.rs thats is used for to_string_ui
-- *(dev)* Add seahorse flatpak
-- *(web-apps)* Add more debug logs
-- *(dev)* Add test files for custom browsers with shared profile
-- *(browsers)* Sort browsers by name
-- *(dev)* Add task for build new release flatpak
-- *(release)* V0.7.0
