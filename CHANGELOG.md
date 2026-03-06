@@ -1,3 +1,8 @@
+## [0.9.4] - 2026-03-06
+
+### 🐛 Bug Fixes
+
+- *(web-app-view)* Reset button disabled on new web app
 ## [0.9.3] - 2026-03-06
 
 ### 🐛 Bug Fixes
@@ -7,6 +12,10 @@
 ### 📚 Documentation
 
 - *(readme)* Update readme for profile_setup_keybind key in browser config
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.9.3
 ## [0.9.2] - 2026-03-05
 
 ### 🐛 Bug Fixes
@@ -65,24 +74,3 @@ This reverts commit 185ea8422bb97e2f626720fe5b610c43cd21adf5.
 
 - *(browsers)* Update yaml config name
 - *(release)* V0.9.0
-## [0.8.0] - 2026-02-28
-
-### 🚀 Features
-
-- *(browsers)* Allow array of system bin in browser yaml schema
-
-### 🐛 Bug Fixes
-
-- *(browsers)* Support brave on nixos
-
-### 🚜 Refactor
-
-- *(browsers)* Order icon names
-
-### 📚 Documentation
-
-- *(readme)* Add array info to browser config
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V0.8.0
