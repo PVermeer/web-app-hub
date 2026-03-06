@@ -990,11 +990,9 @@ impl WebAppView {
         self.reset_browser_maximize();
 
         let is_new = *self.is_new.borrow();
-
         if is_new {
             self.on_validate();
         }
-
         if !is_new && let Err(error) = self.desktop_file.borrow_mut().save() {
             match error {
                 DesktopFileError::ValidationError(error) => {
@@ -1023,11 +1021,11 @@ impl WebAppView {
         }
 
         *self.is_new.borrow_mut() = false;
-        *self.desktop_file_original.borrow_mut() = self.desktop_file.borrow().clone();
-
         self.run_app_button.set_visible(true);
         self.save_button.set_visible(false);
         self.on_desktop_file_change();
+        *self.desktop_file_original.borrow_mut() = self.desktop_file.borrow().clone();
+        self.reset_reset_button();
     }
 
     fn on_isolation_change(self: &Rc<Self>) {
