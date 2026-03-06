@@ -167,7 +167,13 @@ impl WebAppView {
         // Add a slight delay so widgets (toasts) with timeouts are not blocked
         let self_clone = self.clone();
         glib::timeout_add_local_once(Duration::from_millis(50), move || {
+            // Check desktop file
             self_clone.on_desktop_file_change();
+
+            // Init reset
+            *self_clone.desktop_file_original.borrow_mut() =
+                self_clone.desktop_file.borrow().clone();
+            self_clone.reset_reset_button();
         });
     }
 
