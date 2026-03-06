@@ -41,6 +41,7 @@ can_isolate: true # Supports profile isolation
 can_start_maximized: true # Supports maximized launch
 desktop_file_name_prefix: org.chromium.Chromium.chromium
 base: chromium # Base browser type: chromium or firefox
+profile_setup_keybind: Ctrl+S # Optional: Keybind to enable ui for browser profile setup displayed on the browser. Defaults to the base browser keybind.
 issues: # Optional: Known limitations
   en: # Language code, see translations below
     - Does not remember window size and position
