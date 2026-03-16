@@ -246,11 +246,6 @@ impl WebAppsPage {
                 }
             }
 
-            debug!(file_name = &file_name, "Checking paths");
-            if desktop_file.check_paths().is_err() {
-                has_error = true;
-            }
-
             owned_desktop_files.push((desktop_file, has_error));
         }
         owned_desktop_files.sort_by_key(|(desktop_file, _)| {

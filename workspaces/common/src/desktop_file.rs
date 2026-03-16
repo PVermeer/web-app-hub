@@ -307,6 +307,7 @@ impl DesktopFile {
         self.desktop_entry
             .desktop_entry(&Key::Icon.to_string())
             .and_then(map_to_path_option)
+            .and_then(|icon_path| icon_path.is_file().then_some(icon_path))
     }
 
     pub fn set_icon_path(&mut self, path: &Path) {
@@ -327,6 +328,12 @@ impl DesktopFile {
         self.desktop_entry
             .desktop_entry(&Key::Profile.to_string())
             .and_then(map_to_path_option)
+            .and_then(|profile_path| {
+                if profile_path.is_dir() || self.build_profile_path().is_ok() {
+                    return Some(profile_path);
+                }
+                None
+            })
     }
 
     pub fn set_profile_path(&mut self, path: &Path) {
@@ -400,7 +407,7 @@ impl DesktopFile {
     pub fn copy_profile_config_to_profile_path(&self, profile_path: &Path) -> Result<()> {
         debug!(
             profile_path = %profile_path.display(),
-            "Copying profile config"
+            "Setup profile"
         );
 
         let browser = self.get_browser().context("No browser on DesktopFile")?;
@@ -621,31 +628,6 @@ impl DesktopFile {
         self.set_version(&app_version);
         self.save()?;
         Ok(true)
-    }
-
-    /// Check paths, try to fix and print errors
-    pub fn check_paths(&self) -> Result<()> {
-        debug!("Checking paths");
-        let entries = self.get_entries()?;
-
-        if entries.isolate && !entries.profile_path.is_dir() {
-            error!(
-                name = entries.name,
-                "Profile does not exists. Trying to create new profile."
-            );
-            self.build_profile_path()?;
-        }
-
-        if !entries.icon_path.is_file() {
-            error!(name = entries.name, icon = %entries.icon_path.display(), "Icon file does not exists.");
-            bail!(
-                "Icon file does not exists for {} on {}",
-                entries.name,
-                entries.icon_path.display(),
-            );
-        }
-
-        Ok(())
     }
 
     fn get_entries(&self) -> Result<DesktopFileEntries, DesktopFileError> {
