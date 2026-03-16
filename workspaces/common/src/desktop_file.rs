@@ -290,15 +290,12 @@ impl DesktopFile {
 
     pub fn get_icon(&self) -> Image {
         let fallback_icon = "image-missing-symbolic";
-        let icon_name = self.desktop_entry.icon().unwrap_or_default();
-        let icon_path = Path::new(icon_name);
-        if icon_path.is_file() {
+        if let Some(icon_path) = self.get_icon_path() {
             Image::from_file(icon_path)
-        } else if !icon_name.is_empty() {
-            Image::from_icon_name(icon_name)
         } else {
             let image = Image::from_icon_name(fallback_icon);
             image.add_css_class("error");
+            image.set_use_fallback(true);
             image
         }
     }
