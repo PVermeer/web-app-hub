@@ -15,7 +15,7 @@ use gtk::{
     Align, EventControllerFocus, EventControllerMotion, ListItem, SignalListItemFactory,
     gio::{self},
     glib::{self, BoxedAnyObject, object::Cast},
-    prelude::ListItemExt,
+    prelude::{GtkWindowExt, ListItemExt},
 };
 use icon_picker::IconPicker;
 use libadwaita::{
@@ -153,6 +153,7 @@ impl WebAppView {
     pub fn init(self: &Rc<Self>) {
         let self_clone = self.clone();
 
+        self.connect_nav_pop();
         self.header.pack_end(&self.reset_button);
         self.reset_button
             .connect_clicked(move |_| self_clone.reset_desktop_file());
@@ -200,6 +201,68 @@ impl WebAppView {
             *self.icon_picker.borrow_mut() = Some(icon_picker.clone());
             icon_picker
         }
+    }
+
+    fn connect_nav_pop(self: &Rc<Self>) {
+        self.nav_page.set_can_pop(false);
+        let back_button = Button::from_icon_name("go-previous-symbolic");
+        self.header.pack_start(&back_button);
+
+        let self_clone = self.clone();
+        back_button.connect_clicked(move |_button| {
+            if self_clone.get_is_new() {
+                self_clone.nav_view.pop();
+                return;
+            }
+
+            self_clone
+                .app
+                .window
+                .adw_window
+                .set_focus(None::<&gtk::Widget>);
+
+            if self_clone.is_dirty() {
+                let apply_toast = Toast::builder()
+                    .title(t!("forms.apply_changes"))
+                    .button_label(t!("forms.force_close"))
+                    .priority(ToastPriority::High)
+                    .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+                    .build();
+
+                let nav_view_clone = self_clone.nav_view.clone();
+                apply_toast.connect_button_clicked(move |_toast| {
+                    nav_view_clone.pop();
+                });
+                self_clone.toast_overlay.dismiss_all();
+                self_clone.toast_overlay.add_toast(apply_toast);
+                return;
+            }
+
+            if let Err(error) = self_clone.desktop_file.borrow().validate() {
+                let message = match error {
+                    DesktopFileError::ValidationError(error) => &error.to_string_ui(),
+                    DesktopFileError::Other(error) => {
+                        error!("{error}");
+                        "Error: Failed to run validate"
+                    }
+                };
+                let validate_toast = Toast::builder()
+                    .title(message)
+                    .button_label(t!("forms.force_close"))
+                    .priority(ToastPriority::High)
+                    .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+                    .build();
+                let nav_view_clone = self_clone.nav_view.clone();
+                validate_toast.connect_button_clicked(move |_toast| {
+                    nav_view_clone.pop();
+                });
+                self_clone.toast_overlay.dismiss_all();
+                self_clone.toast_overlay.add_toast(validate_toast);
+                return;
+            }
+
+            self_clone.nav_view.pop();
+        });
     }
 
     fn reset_icon_picker(self: &Rc<Self>) {
