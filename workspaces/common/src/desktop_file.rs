@@ -640,6 +640,19 @@ impl DesktopFile {
             field: Key::Version,
             message: "Missing".to_string(),
         })?;
+        let url = self
+            .get_url()
+            .ok_or(ValidationError {
+                field: Key::Url,
+                message: "Missing".to_string(),
+            })
+            .and_then(|url| {
+                let _ = Url::parse(&url).map_err(|_| ValidationError {
+                    field: Key::Url,
+                    message: "Invalid".to_string(),
+                })?;
+                Ok(url)
+            })?;
 
         let url_object = self
             .get_url()
@@ -653,7 +666,6 @@ impl DesktopFile {
                     message: "Invalid".to_string(),
                 })
             })?;
-        let url = url_object.to_string();
         let domain = url_object
             .domain()
             .or_else(|| url_object.host_str())
