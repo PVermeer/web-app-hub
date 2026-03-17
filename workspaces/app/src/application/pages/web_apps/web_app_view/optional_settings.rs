@@ -76,7 +76,7 @@ impl OptionalSettings {
 
         let self_clone = self.clone();
         dialog.connect_close_attempt(move |dialog| {
-            if self_clone.is_applied_all() {
+            if !self_clone.is_dirty() {
                 dialog.force_close();
                 return;
             }
@@ -293,7 +293,7 @@ impl OptionalSettings {
             });
     }
 
-    fn is_applied_all(self: &Rc<Self>) -> bool {
+    fn is_dirty(self: &Rc<Self>) -> bool {
         let description_borrow = self
             .desktop_file
             .borrow()
@@ -301,6 +301,6 @@ impl OptionalSettings {
             .unwrap_or_default();
         let current_description = self.description_row.text();
 
-        description_borrow == current_description
+        description_borrow != current_description
     }
 }
