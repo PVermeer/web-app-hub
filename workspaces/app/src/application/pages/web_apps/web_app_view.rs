@@ -664,10 +664,10 @@ impl WebAppView {
     }
 
     fn connect_entry_row_focus_controller_for_apply(
-        self: &Rc<Self>,
         entry_row: &EntryRow,
         applied_text: &Rc<RefCell<String>>,
         apply_icon: &Image,
+        is_new: Option<bool>,
     ) {
         let focus_controller = EventControllerFocus::new();
         let entry_row_clone = entry_row.clone();
@@ -681,7 +681,7 @@ impl WebAppView {
         });
         entry_row.add_controller(focus_controller);
 
-        if !self.get_is_new() {
+        if is_new.is_some_and(|is_new| is_new) {
             Self::entry_row_apply_check(entry_row, applied_text, apply_icon);
         }
     }
@@ -804,10 +804,11 @@ impl WebAppView {
         let applied_text = Rc::new(RefCell::new(
             self.desktop_file.borrow().get_name().unwrap_or_default(),
         ));
-        self.connect_entry_row_focus_controller_for_apply(
+        Self::connect_entry_row_focus_controller_for_apply(
             &self.name_row,
             &applied_text,
             &apply_icon,
+            Some(self.get_is_new()),
         );
 
         let self_clone = self.clone();
@@ -858,10 +859,11 @@ impl WebAppView {
         let applied_text = Rc::new(RefCell::new(
             self.desktop_file.borrow().get_url().unwrap_or_default(),
         ));
-        self.connect_entry_row_focus_controller_for_apply(
+        Self::connect_entry_row_focus_controller_for_apply(
             &self.url_row,
             &applied_text,
             &apply_icon,
+            Some(self.get_is_new()),
         );
         Self::missing_icon_check(
             &self.url_row,

@@ -159,6 +159,7 @@ app_menu:
         It will not remove your create web apps.
 
 forms:
-  apply_changes: Apply changes
+  apply_changes: Changes not applied
   select_option: Select an option
-  select_icon: Select icon
+  select_icon: Select an icon
+  force_close: Close without saving

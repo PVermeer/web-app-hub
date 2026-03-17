@@ -160,6 +160,7 @@ app_menu:
         Het zal je gemaakte webapps niet verwijderen.
 
 forms:
-  apply_changes: Wijzigingen toepassen
+  apply_changes: Wijzigingen niet toegepast
   select_option: Kies een optie
   select_icon: Kies een pictogram
+  force_close: Sluiten zonder opslaan

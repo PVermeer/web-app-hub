@@ -4,10 +4,10 @@ use common::desktop_file::{DesktopFile, category::Category};
 use gtk::{
     InputPurpose, Label, ListItem, SignalListItemFactory, gio,
     glib::{BoxedAnyObject, object::Cast},
-    prelude::{BoxExt, EditableExt, ListItemExt},
+    prelude::{BoxExt, EditableExt, GtkWindowExt, ListItemExt},
 };
 use libadwaita::{
-    ComboRow, EntryRow, PreferencesDialog, PreferencesGroup, PreferencesPage,
+    ComboRow, EntryRow, PreferencesDialog, PreferencesGroup, PreferencesPage, Toast,
     prelude::{
         AdwDialogExt, ComboRowExt, EntryRowExt, PreferencesDialogExt, PreferencesGroupExt,
         PreferencesPageExt,
@@ -69,9 +69,32 @@ impl OptionalSettings {
 
         let dialog = PreferencesDialog::builder()
             .title(t!("web_apps.web_app_view.optional.dialog.title"))
-            .height_request(300)
+            .height_request(350)
+            .can_close(false)
             .build();
         dialog.add(&self.pref_page);
+
+        let self_clone = self.clone();
+        dialog.connect_close_attempt(move |dialog| {
+            if self_clone.is_applied_all() {
+                dialog.force_close();
+                return;
+            }
+            self_clone
+                .app
+                .window
+                .adw_window
+                .set_focus(None::<&gtk::Widget>);
+
+            let apply_toast = Toast::builder()
+                .title(t!("forms.apply_changes"))
+                .button_label(t!("forms.force_close"))
+                .build();
+
+            let dialog_clone = dialog.clone();
+            apply_toast.connect_button_clicked(move |_toast| dialog_clone.force_close());
+            dialog.add_toast(apply_toast);
+        });
 
         dialog.present(Some(&self.app.window.adw_window));
         dialog
@@ -163,7 +186,7 @@ impl OptionalSettings {
         combo_row
     }
 
-    pub fn category_to_string_ui(category: Category) -> String {
+    fn category_to_string_ui(category: Category) -> String {
         match category {
             Category::AudioVideo => t!(
                 "web_apps.web_app_view.optional.dialog.menu_group.category.categories.audio_video"
@@ -223,6 +246,20 @@ impl OptionalSettings {
     fn connect_description_row(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
         let self_clone = self.clone();
         let web_app_view_clone = web_app_view.clone();
+        let apply_icon = WebAppView::build_validate_icon();
+        let applied_text = Rc::new(RefCell::new(
+            self.desktop_file
+                .borrow()
+                .get_description()
+                .unwrap_or_default(),
+        ));
+
+        WebAppView::connect_entry_row_focus_controller_for_apply(
+            &self.description_row,
+            &applied_text,
+            &apply_icon,
+            None,
+        );
 
         self.description_row.connect_apply(move |entry_row| {
             self_clone
@@ -254,5 +291,16 @@ impl OptionalSettings {
                 desktop_file_clone.borrow_mut().set_category(&category);
                 web_app_view_clone.on_desktop_file_change();
             });
+    }
+
+    fn is_applied_all(self: &Rc<Self>) -> bool {
+        let description_borrow = self
+            .desktop_file
+            .borrow()
+            .get_description()
+            .unwrap_or_default();
+        let current_description = self.description_row.text();
+
+        description_borrow == current_description
     }
 }
