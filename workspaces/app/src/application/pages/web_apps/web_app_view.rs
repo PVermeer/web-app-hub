@@ -1220,7 +1220,7 @@ impl WebAppView {
         if let Some(error) = error {
             error!("{error:?}");
         }
-        let toast = Toast::new(message);
+        let toast = Toast::new(&format!("ERROR: {message}"));
         toast.set_timeout(Self::TOAST_MESSAGE_TIMEOUT);
         toast.set_priority(ToastPriority::High);
         self.toast_overlay.dismiss_all();
