@@ -157,3 +157,8 @@ app_menu:
       text: |
         This will reset the config files (e.g.: browser configs).
         It will not remove your create web apps.
+
+forms:
+  apply_changes: Apply changes
+  select_option: Select an option
+  select_icon: Select icon

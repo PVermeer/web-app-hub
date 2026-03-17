@@ -12,7 +12,7 @@ use common::{
     utils,
 };
 use gtk::{
-    Align, EventControllerMotion, ListItem, SignalListItemFactory,
+    Align, EventControllerFocus, EventControllerMotion, ListItem, SignalListItemFactory,
     gio::{self},
     glib::{self, BoxedAnyObject, object::Cast},
     prelude::ListItemExt,
@@ -41,6 +41,11 @@ use std::{fmt::Write as _, fs};
 use tracing::{debug, error};
 use url::Url;
 
+struct ComboRowStateObject {
+    is_selectable: bool,
+    item: BoxedAnyObject,
+}
+
 pub struct WebAppView {
     is_new: RefCell<bool>,
     nav_page: NavigationPage,
@@ -53,6 +58,8 @@ pub struct WebAppView {
     pref_groups: RefCell<Vec<PreferencesGroup>>,
     toast_overlay: ToastOverlay,
     reset_button: Button,
+    general_pref_group_header: gtk::Box,
+    missing_icon_icon: Image,
     change_icon_button: Button,
     run_app_button: Button,
     save_button: Button,
@@ -102,6 +109,8 @@ impl WebAppView {
         drop(desktop_file_borrow);
 
         let reset_button = Self::build_header_reset_button();
+        let general_pref_group_header = gtk::Box::new(Orientation::Horizontal, 12);
+        let missing_icon_icon = Self::build_validate_icon();
         let change_icon_button = Self::build_change_icon_button();
         let run_app_button = Self::build_run_app_button(is_new);
         let save_button = Self::build_save_button(is_new);
@@ -125,6 +134,8 @@ impl WebAppView {
             pref_groups: RefCell::new(Vec::new()),
             toast_overlay,
             reset_button,
+            general_pref_group_header,
+            missing_icon_icon,
             change_icon_button,
             run_app_button,
             save_button,
@@ -291,8 +302,12 @@ impl WebAppView {
     }
 
     fn build_general_pref_group(self: &Rc<Self>) -> PreferencesGroup {
+        self.general_pref_group_header
+            .append(&self.missing_icon_icon);
+        self.general_pref_group_header
+            .append(&self.change_icon_button);
         let pref_group = PreferencesGroup::builder()
-            .header_suffix(&self.change_icon_button)
+            .header_suffix(&self.general_pref_group_header)
             .build();
 
         pref_group.add(&self.name_row);
@@ -417,10 +432,17 @@ impl WebAppView {
         // Why is this so unnecessary complicated? ¯\_(ツ)_/¯
         let list = gio::ListStore::new::<BoxedAnyObject>();
         for browser in installed_browsers {
-            let boxed = BoxedAnyObject::new(browser.clone());
+            let boxed_state_object = ComboRowStateObject {
+                is_selectable: true,
+                item: BoxedAnyObject::new(browser.clone()),
+            };
+            let boxed = BoxedAnyObject::new(boxed_state_object);
             list.append(&boxed);
         }
-        let no_browser_boxed = BoxedAnyObject::new(no_browser.clone());
+        let no_browser_boxed = BoxedAnyObject::new(ComboRowStateObject {
+            is_selectable: false,
+            item: BoxedAnyObject::new(no_browser.clone()),
+        });
         list.append(&no_browser_boxed);
 
         let factory = SignalListItemFactory::new();
@@ -429,7 +451,7 @@ impl WebAppView {
                 error!(?list_item, "Failed to downcast list item");
                 return;
             };
-            let Some(browser_item_boxed) = list_item
+            let Some(item_state_boxed) = list_item
                 .item()
                 .and_then(|item| item.downcast::<BoxedAnyObject>().ok())
             else {
@@ -437,7 +459,8 @@ impl WebAppView {
                 return;
             };
 
-            let browser = browser_item_boxed.borrow::<Rc<Browser>>();
+            let state_object = item_state_boxed.borrow::<ComboRowStateObject>();
+            let browser = state_object.item.borrow::<Rc<Browser>>();
             let box_container = gtk::Box::new(gtk::Orientation::Horizontal, 6);
             let label = Label::new(Some(&browser.get_name_with_installation()));
             let icon = browser.get_icon();
@@ -588,6 +611,81 @@ impl WebAppView {
         validate_icon
     }
 
+    fn entry_row_apply_check(
+        entry_row: &EntryRow,
+        applied_text: &Rc<RefCell<String>>,
+        apply_icon: &Image,
+    ) {
+        let applied_text_borrow = applied_text.borrow();
+        let is_applied = entry_row.text().is_empty() || *applied_text_borrow == entry_row.text();
+
+        if is_applied || !entry_row.shows_apply_button() {
+            apply_icon.set_tooltip_text(None);
+            apply_icon.set_visible(false);
+        } else {
+            apply_icon.set_tooltip_text(Some(&t!("forms.apply_changes")));
+            apply_icon.set_visible(true);
+        }
+    }
+
+    fn combo_row_selection_check(combo_row: &ComboRow, apply_icon: &Image) {
+        let Some(selected_item) = combo_row.selected_item() else {
+            return;
+        };
+        let Ok(item_boxed) = selected_item.downcast::<BoxedAnyObject>() else {
+            error!("Failed to downcast selected item in browser_row for apply check");
+            return;
+        };
+        let item_state = item_boxed.borrow::<ComboRowStateObject>();
+
+        if item_state.is_selectable {
+            apply_icon.set_tooltip_text(None);
+            apply_icon.set_visible(false);
+        } else {
+            apply_icon.set_tooltip_text(Some(&t!("forms.select_option")));
+            apply_icon.set_visible(true);
+        }
+    }
+
+    fn missing_icon_check(
+        entry_row: &EntryRow,
+        desktop_file: &DesktopFile,
+        missing_icon_icon: &Image,
+    ) {
+        let has_valid_icon = desktop_file.get_icon_path().is_some();
+
+        if has_valid_icon || entry_row.text().is_empty() {
+            missing_icon_icon.set_tooltip_text(None);
+            missing_icon_icon.set_visible(false);
+        } else {
+            missing_icon_icon.set_tooltip_text(Some(&t!("forms.select_icon")));
+            missing_icon_icon.set_visible(true);
+        }
+    }
+
+    fn connect_entry_row_focus_controller_for_apply(
+        self: &Rc<Self>,
+        entry_row: &EntryRow,
+        applied_text: &Rc<RefCell<String>>,
+        apply_icon: &Image,
+    ) {
+        let focus_controller = EventControllerFocus::new();
+        let entry_row_clone = entry_row.clone();
+        let applied_text_clone = applied_text.clone();
+        let apply_icon_clone = apply_icon.clone();
+
+        entry_row.add_suffix(apply_icon);
+
+        focus_controller.connect_leave(move |_| {
+            Self::entry_row_apply_check(&entry_row_clone, &applied_text_clone, &apply_icon_clone);
+        });
+        entry_row.add_controller(focus_controller);
+
+        if !self.get_is_new() {
+            Self::entry_row_apply_check(entry_row, applied_text, apply_icon);
+        }
+    }
+
     fn connect_change_icon_button(self: &Rc<Self>) {
         if *self.is_new.borrow() {
             self.change_icon_button.set_sensitive(false);
@@ -614,6 +712,11 @@ impl WebAppView {
                 Some(move || {
                     // Success
                     self_clone_success.on_desktop_file_change();
+                    Self::missing_icon_check(
+                        &self_clone_success.url_row,
+                        &self_clone_success.desktop_file.borrow(),
+                        &self_clone_success.missing_icon_icon,
+                    );
                 }),
                 Some(move || {
                     // Fail
@@ -625,6 +728,11 @@ impl WebAppView {
 
                     self_clone_fail.on_desktop_file_change();
                     self_clone_fail.on_error("Failed to save icon", None);
+                    Self::missing_icon_check(
+                        &self_clone_fail.url_row,
+                        &self_clone_fail.desktop_file.borrow(),
+                        &self_clone_fail.missing_icon_icon,
+                    );
                 }),
             );
         });
@@ -691,10 +799,18 @@ impl WebAppView {
 
     fn connect_name_row(self: &Rc<Self>) {
         let validate_icon = Self::build_validate_icon();
+        let apply_icon = Self::build_validate_icon();
         self.name_row.add_suffix(&validate_icon);
+        let applied_text = Rc::new(RefCell::new(
+            self.desktop_file.borrow().get_name().unwrap_or_default(),
+        ));
+        self.connect_entry_row_focus_controller_for_apply(
+            &self.name_row,
+            &applied_text,
+            &apply_icon,
+        );
 
         let self_clone = self.clone();
-
         self.name_row.connect_changed(move |entry_row| {
             let is_valid = !entry_row.text().is_empty();
 
@@ -713,7 +829,8 @@ impl WebAppView {
         });
 
         let self_clone = self.clone();
-
+        let applied_text_clone = applied_text.clone();
+        let apply_icon_clone = apply_icon.clone();
         self.name_row.connect_apply(move |entry_row| {
             let title = entry_row.text();
             if title.is_empty() {
@@ -727,19 +844,35 @@ impl WebAppView {
 
             self_clone.on_desktop_file_change();
             self_clone.nav_page.set_title(&title);
+
+            *applied_text_clone.borrow_mut() = title.to_string();
+            Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
         });
     }
 
     fn connect_url_row(self: &Rc<Self>) {
         let validate_icon_url = Self::build_validate_icon();
+        let apply_icon = Self::build_validate_icon();
         let spinner = Spinner::new();
         spinner.set_visible(false);
+        let applied_text = Rc::new(RefCell::new(
+            self.desktop_file.borrow().get_url().unwrap_or_default(),
+        ));
+        self.connect_entry_row_focus_controller_for_apply(
+            &self.url_row,
+            &applied_text,
+            &apply_icon,
+        );
+        Self::missing_icon_check(
+            &self.url_row,
+            &self.desktop_file.borrow(),
+            &self.missing_icon_icon,
+        );
 
         self.url_row.add_suffix(&validate_icon_url);
         self.url_row.add_suffix(&spinner);
 
         let self_clone = self.clone();
-
         self.url_row.connect_changed(move |entry_row| {
             let input = entry_row.text().to_string();
             let is_valid = Url::parse(&input)
@@ -763,7 +896,9 @@ impl WebAppView {
 
         let self_clone = self.clone();
         let running_icon_search_id = Rc::new(RefCell::new(0));
-
+        let applied_text_clone = applied_text.clone();
+        let apply_icon_clone = apply_icon.clone();
+        let missing_icon_icon_clone = self.missing_icon_icon.clone();
         self.url_row.connect_apply(move |entry_row| {
             self_clone.change_icon_button.set_sensitive(true);
 
@@ -783,7 +918,10 @@ impl WebAppView {
             let self_clone = self_clone.clone();
             let spinner_clone = spinner.clone();
             let running_icon_search_id_clone = running_icon_search_id.clone();
+            *applied_text_clone.borrow_mut() = entry_row.text().to_string();
+            Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
 
+            let missing_icon_icon_clone = missing_icon_icon_clone.clone();
             // Bug with clippy, make sure its dropped before await future
             #[allow(clippy::await_holding_refcell_ref)]
             glib::spawn_future_local(async move {
@@ -814,6 +952,11 @@ impl WebAppView {
                 self_clone.on_desktop_file_change();
                 spinner_clone.set_visible(false);
                 self_clone.change_icon_button.set_sensitive(true);
+                Self::missing_icon_check(
+                    &self_clone.url_row,
+                    &self_clone.desktop_file.borrow(),
+                    &missing_icon_icon_clone,
+                );
             });
         });
     }
@@ -848,6 +991,9 @@ impl WebAppView {
     fn connect_browser_row(self: &Rc<Self>) {
         let desktop_file_clone = self.desktop_file.clone();
         let self_clone = self.clone();
+        let apply_icon = Self::build_validate_icon();
+        self.browser_row.add_suffix(&apply_icon);
+        Self::combo_row_selection_check(&self.browser_row, &apply_icon);
 
         self.browser_row
             .connect_selected_item_notify(move |combo_row| {
@@ -862,7 +1008,8 @@ impl WebAppView {
                     );
                     return;
                 };
-                let browser = browser_item_boxed.borrow::<Rc<Browser>>();
+                let item_state = browser_item_boxed.borrow::<ComboRowStateObject>();
+                let browser = item_state.item.borrow::<Rc<Browser>>();
 
                 desktop_file_clone.borrow_mut().set_browser(&browser);
 

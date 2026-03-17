@@ -158,3 +158,8 @@ app_menu:
       text: |
         Dit zal de configuratiebestanden resetten (bijv.: browserconfiguraties).
         Het zal je gemaakte webapps niet verwijderen.
+
+forms:
+  apply_changes: Wijzigingen toepassen
+  select_option: Kies een optie
+  select_icon: Kies een pictogram
