@@ -1,3 +1,13 @@
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(
+    clippy::dbg_macro,
+    clippy::unwrap_used,
+    // clippy::expect_used,
+    clippy::todo,
+    clippy::panic
+)]
+
 mod application;
 
 use application::App;

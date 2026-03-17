@@ -1,3 +1,12 @@
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(
+    clippy::dbg_macro,
+    clippy::unwrap_used,
+    // clippy::expect_used,
+    clippy::todo,
+    clippy::panic
+)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]

@@ -4,6 +4,7 @@ use libadwaita::AboutDialog;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::fmt::Write as _;
+use tracing::error;
 
 static CREDITS_DOCUMENTATION: &str = include_str!("../../../../credits/documentation.yml");
 static CREDITS_TRANSLATIONS: &str = include_str!("../../../../credits/translations.yml");
@@ -19,7 +20,10 @@ pub fn get_dialog() -> AboutDialog {
     let license = match config::LICENSE.get_value().as_str() {
         "GPL-3.0" => License::Gpl30,
         "GPL-3.0-only" => License::Gpl30Only,
-        _ => panic!("Could not convert license"),
+        _ => {
+            error!("Could not convert license");
+            License::Unknown
+        }
     };
 
     AboutDialog::builder()
