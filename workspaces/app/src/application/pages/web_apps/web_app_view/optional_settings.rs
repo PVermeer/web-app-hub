@@ -261,12 +261,17 @@ impl OptionalSettings {
             None,
         );
 
+        let applied_text_clone = applied_text.clone();
+        let apply_icon_clone = apply_icon.clone();
         self.description_row.connect_apply(move |entry_row| {
             self_clone
                 .desktop_file
                 .borrow_mut()
                 .set_description(&entry_row.text());
             web_app_view_clone.on_desktop_file_change();
+
+            *applied_text_clone.borrow_mut() = entry_row.text().to_string();
+            WebAppView::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
         });
     }
 
