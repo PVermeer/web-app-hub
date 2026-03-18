@@ -179,6 +179,10 @@ impl WebAppView {
         self.connect_change_icon_button();
         self.connect_run_app_button();
 
+        if !self.get_is_new() {
+            self.set_changed_on_form();
+        }
+
         // Add a slight delay so widgets (toasts) with timeouts are not blocked
         let self_clone = self.clone();
         glib::timeout_add_local_once(Duration::from_millis(50), move || {
@@ -1249,8 +1253,14 @@ impl WebAppView {
         }
         if !is_new && let Err(error) = self.desktop_file.borrow_mut().save() {
             match error {
-                DesktopFileError::ValidationError(error) => {
-                    self.on_error(&error.to_string_ui(), Some(&error.clone().into()));
+                DesktopFileError::ValidationError(_error) => {
+                    let validate_toast = Toast::builder()
+                        .title(t!("forms.validation_error"))
+                        .priority(ToastPriority::High)
+                        .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+                        .build();
+                    self.toast_overlay.dismiss_all();
+                    self.toast_overlay.add_toast(validate_toast);
                 }
                 DesktopFileError::Other(error) => {
                     self.on_error("Failed to save", Some(&error));
