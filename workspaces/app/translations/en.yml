@@ -163,4 +163,4 @@ forms:
   select_option: Select an option
   select_icon: Select an icon
   force_close: Discard and close
-  validation_error: Please fix the errors
+  validation_error: Please review the fields
