@@ -87,7 +87,7 @@ impl OptionalSettings {
                 .set_focus(None::<&gtk::Widget>);
 
             let apply_toast = Toast::builder()
-                .title(t!("forms.apply_changes"))
+                .title(t!("forms.validation_error"))
                 .button_label(t!("forms.force_close"))
                 .build();
 

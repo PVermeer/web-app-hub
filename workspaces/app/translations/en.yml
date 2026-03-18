@@ -159,7 +159,8 @@ app_menu:
         It will not remove your create web apps.
 
 forms:
-  apply_changes: Changes not applied
+  apply_changes: Apply changes
   select_option: Select an option
   select_icon: Select an icon
-  force_close: Close without saving
+  force_close: Discard and close
+  validation_error: Please fix the errors

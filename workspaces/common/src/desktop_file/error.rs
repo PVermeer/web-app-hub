@@ -36,7 +36,7 @@ pub struct ValidationError {
 }
 impl ValidationError {
     pub fn to_string_ui(&self) -> String {
-        format!("{}: {}", self.message, self.field.to_ui_string())
+        format!("{} {}", self.message, self.field.to_ui_string())
     }
 }
 impl Display for ValidationError {

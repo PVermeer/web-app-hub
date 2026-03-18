@@ -14,7 +14,10 @@ use common::{
 use gtk::{
     Align, EventControllerFocus, EventControllerMotion, ListItem, SignalListItemFactory,
     gio::{self},
-    glib::{self, BoxedAnyObject, object::Cast},
+    glib::{
+        self, BoxedAnyObject,
+        object::{Cast, ObjectExt},
+    },
     prelude::{GtkWindowExt, ListItemExt},
 };
 use icon_picker::IconPicker;
@@ -221,43 +224,7 @@ impl WebAppView {
                 .adw_window
                 .set_focus(None::<&gtk::Widget>);
 
-            if self_clone.is_dirty() {
-                let apply_toast = Toast::builder()
-                    .title(t!("forms.apply_changes"))
-                    .button_label(t!("forms.force_close"))
-                    .priority(ToastPriority::High)
-                    .timeout(Self::TOAST_MESSAGE_TIMEOUT)
-                    .build();
-
-                let nav_view_clone = self_clone.nav_view.clone();
-                apply_toast.connect_button_clicked(move |_toast| {
-                    nav_view_clone.pop();
-                });
-                self_clone.toast_overlay.dismiss_all();
-                self_clone.toast_overlay.add_toast(apply_toast);
-                return;
-            }
-
-            if let Err(error) = self_clone.desktop_file.borrow().validate() {
-                let message = match error {
-                    DesktopFileError::ValidationError(error) => &error.to_string_ui(),
-                    DesktopFileError::Other(error) => {
-                        error!("{error}");
-                        "Error: Failed to run validate"
-                    }
-                };
-                let validate_toast = Toast::builder()
-                    .title(message)
-                    .button_label(t!("forms.force_close"))
-                    .priority(ToastPriority::High)
-                    .timeout(Self::TOAST_MESSAGE_TIMEOUT)
-                    .build();
-                let nav_view_clone = self_clone.nav_view.clone();
-                validate_toast.connect_button_clicked(move |_toast| {
-                    nav_view_clone.pop();
-                });
-                self_clone.toast_overlay.dismiss_all();
-                self_clone.toast_overlay.add_toast(validate_toast);
+            if !self_clone.exit_validation() {
                 return;
             }
 
@@ -637,12 +604,25 @@ impl WebAppView {
     }
 
     fn build_save_button(is_new: bool) -> Button {
-        Button::builder()
+        let button = Button::builder()
             .label(t!("web_apps.web_app_view.button.save"))
-            .css_classes(["suggested-action", "pill"])
+            .css_classes(["suggested-action", "pill", "dimmed"])
             .visible(is_new)
-            .sensitive(false)
-            .build()
+            .build();
+
+        let controller = EventControllerMotion::new();
+        let button_clone = button.clone();
+        controller.connect_enter(move |_, _, _| {
+            button_clone.remove_css_class("dimmed");
+        });
+        let button_clone = button.clone();
+        controller.connect_leave(move |_| {
+            button_clone.add_css_class("dimmed");
+        });
+
+        button.add_controller(controller);
+
+        button
     }
 
     fn build_delete_button() -> Button {
@@ -672,6 +652,62 @@ impl WebAppView {
         validate_icon.set_css_classes(&["error"]);
 
         validate_icon
+    }
+
+    fn set_changed_on_form_field(form_field: &impl ObjectExt) {
+        form_field.emit_by_name::<()>("changed", &[]);
+    }
+
+    fn set_changed_on_form(self: &Rc<Self>) {
+        Self::set_changed_on_form_field(&self.name_row);
+        Self::set_changed_on_form_field(&self.url_row);
+    }
+
+    fn exit_validation(self: &Rc<Self>) -> bool {
+        self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
+        self.set_changed_on_form();
+
+        if self.is_dirty() {
+            let apply_toast = Toast::builder()
+                .title(t!("forms.validation_error"))
+                .button_label(t!("forms.force_close"))
+                .priority(ToastPriority::High)
+                .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+                .build();
+
+            let nav_view_clone = self.nav_view.clone();
+            apply_toast.connect_button_clicked(move |_toast| {
+                nav_view_clone.pop();
+            });
+            self.toast_overlay.dismiss_all();
+            self.toast_overlay.add_toast(apply_toast);
+            return false;
+        }
+
+        if let Err(error) = self.desktop_file.borrow().validate() {
+            let message = match error {
+                DesktopFileError::ValidationError(_error) => &t!("forms.validation_error"),
+                DesktopFileError::Other(error) => {
+                    error!("{error}");
+                    "Error: Failed to run validate"
+                }
+            };
+            let validate_toast = Toast::builder()
+                .title(message)
+                .button_label(t!("forms.force_close"))
+                .priority(ToastPriority::High)
+                .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+                .build();
+            let nav_view_clone = self.nav_view.clone();
+            validate_toast.connect_button_clicked(move |_toast| {
+                nav_view_clone.pop();
+            });
+            self.toast_overlay.dismiss_all();
+            self.toast_overlay.add_toast(validate_toast);
+            return false;
+        }
+
+        true
     }
 
     fn entry_row_apply_check(
@@ -1192,10 +1228,10 @@ impl WebAppView {
     }
 
     fn on_validate(self: &Rc<Self>) {
-        if *self.is_new.borrow() && self.is_valid() {
-            self.save_button.set_sensitive(true);
+        if *self.is_new.borrow() && self.is_valid() && !self.is_dirty() {
+            self.save_button.remove_css_class("dimmed");
         } else {
-            self.save_button.set_sensitive(false);
+            self.save_button.add_css_class("dimmed");
         }
     }
 
@@ -1226,15 +1262,7 @@ impl WebAppView {
     }
 
     fn on_new_desktop_file_save(self: &Rc<Self>) {
-        if let Err(error) = self.desktop_file.borrow().validate() {
-            match error {
-                DesktopFileError::ValidationError(error) => {
-                    self.on_error("Invalid input", Some(&error.into()));
-                }
-                DesktopFileError::Other(error) => {
-                    self.on_error("Error saving document", Some(&error));
-                }
-            }
+        if !self.exit_validation() {
             return;
         }
 

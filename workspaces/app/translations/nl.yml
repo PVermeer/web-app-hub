@@ -164,3 +164,4 @@ forms:
   select_option: Kies een optie
   select_icon: Kies een pictogram
   force_close: Sluiten zonder opslaan
+  validation_error: Corrigeer de fouten
