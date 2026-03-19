@@ -94,6 +94,9 @@ web_apps:
 
 browsers:
   title: Browsers
+  install_type:
+    system: Systeem
+    flatpak: Flatpak
   no_browsers:
     title: Geen compatibele browsers gevonden
     description: Probeer er een te installeren.

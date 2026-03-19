@@ -94,6 +94,9 @@ web_apps:
 
 browsers:
   title: Browsers
+  install_type:
+    system: System
+    flatpak: Flatpak
   no_browsers:
     title: No compatible browsers found
     description: Try installing one!

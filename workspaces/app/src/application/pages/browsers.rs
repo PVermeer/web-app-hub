@@ -71,8 +71,12 @@ impl BrowsersPage {
             return Vec::from([pref_group]);
         }
 
-        let flatpak_pref_group = PreferencesGroup::builder().title("Flatpak").build();
-        let system_pref_group = PreferencesGroup::builder().title("System").build();
+        let flatpak_pref_group = PreferencesGroup::builder()
+            .title(t!("browsers.install_type.flatpak"))
+            .build();
+        let system_pref_group = PreferencesGroup::builder()
+            .title(t!("browsers.install_type.system"))
+            .build();
         let uninstalled_pref_group = PreferencesGroup::builder()
             .title(t!("browsers.not_installed.title"))
             .build();
