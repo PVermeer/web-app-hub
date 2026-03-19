@@ -68,7 +68,6 @@ web_apps:
               settings: Instellingen
               system: Systeem
               utility: Hulpmiddelen
-
     icon:
       title: Iconen
       dialog:
