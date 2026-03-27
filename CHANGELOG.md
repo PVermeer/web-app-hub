@@ -1,3 +1,8 @@
+## [0.10.1] - 2026-03-27
+
+### 🐛 Bug Fixes
+
+- *(web-app-view)* Hide discard button on validation toast for new app
 ## [0.10.0] - 2026-03-27
 
 ### 🚀 Features
@@ -36,6 +41,7 @@
 - *(web-app-view)* Changed validation error message
 - *(assets)* Update screenshots
 - *(translations)* Add browser install type translations
+- *(release)* V0.10.0
 ## [0.9.4] - 2026-03-06
 
 ### 🐛 Bug Fixes
@@ -77,27 +83,3 @@
 
 - *(browsers)* Add all_browsers
 - *(release)* V0.9.2
-## [0.9.1] - 2026-03-05
-
-### 🐛 Bug Fixes
-
-- *(web-apps)* Load web apps that failed validation with warnings
-
-### 💼 Other
-
-- Revert "chore(release): commit including untracked"
-
-This reverts commit 185ea8422bb97e2f626720fe5b610c43cd21adf5.
-
-### 🚜 Refactor
-
-- *(info)* Replace hardcoded browsers keybinds
-- *(utils)* Add run command sync with env
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* Load env from file
-- *(release)* Commit including untracked
-- *(ci)* Remove apt package cache
-- *(ci)* Fix dep install
-- *(release)* V0.9.1
