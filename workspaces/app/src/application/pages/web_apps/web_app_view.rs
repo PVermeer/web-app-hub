@@ -228,7 +228,7 @@ impl WebAppView {
                 .adw_window
                 .set_focus(None::<&gtk::Widget>);
 
-            if !self_clone.exit_validation() {
+            if !self_clone.exit_validation(true) {
                 return;
             }
 
@@ -667,17 +667,19 @@ impl WebAppView {
         Self::set_changed_on_form_field(&self.url_row);
     }
 
-    fn exit_validation(self: &Rc<Self>) -> bool {
+    fn exit_validation(self: &Rc<Self>, show_discard: bool) -> bool {
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
         self.set_changed_on_form();
 
         if self.is_dirty() {
             let apply_toast = Toast::builder()
                 .title(t!("forms.validation_error"))
-                .button_label(t!("forms.force_close"))
                 .priority(ToastPriority::High)
                 .timeout(Self::TOAST_MESSAGE_TIMEOUT)
                 .build();
+            if show_discard {
+                apply_toast.set_button_label(Some(&t!("forms.force_close")));
+            }
 
             let nav_view_clone = self.nav_view.clone();
             apply_toast.connect_button_clicked(move |_toast| {
@@ -698,10 +700,12 @@ impl WebAppView {
             };
             let validate_toast = Toast::builder()
                 .title(message)
-                .button_label(t!("forms.force_close"))
                 .priority(ToastPriority::High)
                 .timeout(Self::TOAST_MESSAGE_TIMEOUT)
                 .build();
+            if show_discard {
+                validate_toast.set_button_label(Some(&t!("forms.force_close")));
+            }
             let nav_view_clone = self.nav_view.clone();
             validate_toast.connect_button_clicked(move |_toast| {
                 nav_view_clone.pop();
@@ -1272,7 +1276,7 @@ impl WebAppView {
     }
 
     fn on_new_desktop_file_save(self: &Rc<Self>) {
-        if !self.exit_validation() {
+        if !self.exit_validation(false) {
             return;
         }
 
