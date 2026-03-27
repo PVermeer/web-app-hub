@@ -5,13 +5,13 @@ home:
   get_started: |
     Para comenzar cree su primera aplicación web.
     La pestaña de navegadores muestra los navegadores compatibles y los instalados en su sistema.
-    La pestaña de información muestra algunos trucos e información general.
+    La pestaña de información muestra algunos consejos e información general.
   button:
-    go_to_web_apps: Ir a Aplicaciones Web
-    more_information: Más Información
+    go_to_web_apps: Ir a aplicaciones web
+    more_information: Más información
 
 web_apps:
-  title: Aplicaciones Web
+  title: Aplicaciones web
   no_apps:
     title: No se han encontrado aplicaciones web
     description: ¡Intente añadir alguna!
@@ -27,7 +27,7 @@ web_apps:
       title: Nombre de la aplicación web
       validate: El nombre está vacío
     url:
-      title: Enlace del Sitio web
+      title: Enlace del sitio web
       validate: Por favor, introduzca un enlace válido (p.ej., https://ejemplo.com)
     isolate:
       title: Aislar
@@ -39,7 +39,7 @@ web_apps:
       disabled: El navegador seleccionado no es capaz de iniciarse maximizado
     browser:
       title: Navegador
-      subtitle: Elija un navegador
+      subtitle: Escoja un navegador
       no_browser: Sin navegador
     optional:
       title: Opciones adicionales
@@ -94,6 +94,9 @@ web_apps:
 
 browsers:
   title: Navegadores
+  install_type:
+    system: Sistema
+    flatpak: Flatpak
   no_browsers:
     title: No se han encontrado navegadores compatibles
     description: ¡Intente instalar uno!
@@ -104,14 +107,14 @@ browsers:
     isolate: Puede aislar aplicaciones web
     maximize: Puede iniciar las aplicaciones web maximizadas
     setup: Configure el navegador con <%{key_bind}>
-    more_info: Lea 'Información -> Trucos' para más información
+    more_info: Lea 'Información -> Consejos' para más información
   issues:
     title: Limitaciones conocidas
 
 info:
   title: Información
   tips:
-    title: Trucos
+    title: Consejos
     text_pango: |
       <b>Los iconos de la barra de tareas no coinciden con una aplicación web recién creada.</b>
       El sistema puede ser lento actualizándose con una nueva aplicación web. Reinicie la aplicación web y tendrá el icono correcto.
@@ -157,3 +160,10 @@ app_menu:
       text: |
         Esto restablecerá los archivos de configuración (p.ej., la configuración del navegador).
         Esta acción no eliminará las aplicaciones web que haya creado.
+
+forms:
+  apply_changes: Aplicar cambios
+  select_option: Seleccione una opción
+  select_icon: Seleccione un icono
+  force_close: Descartar y cerrar
+  validation_error: Por favor, revise los campos
