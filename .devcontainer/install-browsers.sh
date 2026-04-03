@@ -75,6 +75,7 @@ flatpak_browsers=(
     "org.mozilla.firefox"
     "one.ablaze.floorp"
     "app.zen_browser.zen"
+    "io.gitlab.librewolf-community"
 )
 flatpak "$1" install -y "${flatpak_browsers[@]}"
 sudo flatpak --installation=some_custom_installation install -y org.chromium.Chromium
