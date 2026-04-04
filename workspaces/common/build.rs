@@ -1,7 +1,7 @@
 use std::{fs::File, time::SystemTime};
 
 fn main() {
-    println!("cargo:warning=Debug: build script is running!");
+    println!("cargo:warning=Debug: Common build script is running!");
 
     // Touch the assets file so `include_dir!()`` will update.
     let assets_file = File::open("src/assets.rs").unwrap();

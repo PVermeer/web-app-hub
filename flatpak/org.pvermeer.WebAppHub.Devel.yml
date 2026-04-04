@@ -27,8 +27,8 @@ modules:
       env:
         CARGO_HOME: flatpak
     build-commands:
-      - cargo build --release --frozen
-      - install -D target/release/web-app-hub /app/bin/web-app-hub
+      - cargo build  --frozen
+      - install -D target/debug/web-app-hub /app/bin/web-app-hub
       - install -D assets/desktop/org.pvermeer.WebAppHub.metainfo.xml -t /app/share/metainfo/
       - install -D assets/desktop/org.pvermeer.WebAppHub.desktop -t /app/share/applications/
       - install -D assets/desktop/org.pvermeer.WebAppHub.png -t /app/share/icons/hicolor/256x256/apps/

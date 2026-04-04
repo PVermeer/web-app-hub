@@ -459,6 +459,8 @@ fn update_flatpak_manifest(new_version: &Version) -> Result<()> {
     manifest_dev = manifest_dev.replace("%{git_tag}", "");
     manifest_dev = manifest_dev.replace("%{cargo_sources}", "");
     manifest_dev = manifest_dev.replace("%{cargo_home}", "flatpak");
+    manifest_dev = manifest_dev.replace("%{cargo_build_flag}", "");
+    manifest_dev = manifest_dev.replace("%{target_dir_name}", "debug");
 
     let save_path_dev = &flatpak_dev_manifest();
 
@@ -475,6 +477,8 @@ fn update_flatpak_manifest(new_version: &Version) -> Result<()> {
     manifest = manifest.replace("%{git_tag}", &format!("tag: {git_tag}"));
     manifest = manifest.replace("%{cargo_sources}", "- cargo-sources.json");
     manifest = manifest.replace("%{cargo_home}", "cargo");
+    manifest = manifest.replace("%{cargo_build_flag}", "--release");
+    manifest = manifest.replace("%{target_dir_name}", "release");
 
     let save_path = &flatpak_release_manifest();
 

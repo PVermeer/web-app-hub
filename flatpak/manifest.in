@@ -27,8 +27,8 @@ modules:
       env:
         CARGO_HOME: %{cargo_home}
     build-commands:
-      - cargo build --release --frozen
-      - install -D target/release/%{bin_name} /app/bin/%{bin_name}
+      - cargo build %{cargo_build_flag} --frozen
+      - install -D target/%{target_dir_name}/%{bin_name} /app/bin/%{bin_name}
       - install -D assets/desktop/%{app_id}.metainfo.xml -t /app/share/metainfo/
       - install -D assets/desktop/%{app_id}.desktop -t /app/share/applications/
       - install -D assets/desktop/%{app_id}.png -t /app/share/icons/hicolor/256x256/apps/

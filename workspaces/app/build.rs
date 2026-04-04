@@ -10,7 +10,7 @@ use std::{
 };
 
 fn main() -> Result<()> {
-    println!("cargo:warning=Debug: build script is running!");
+    println!("cargo:warning=Debug: App build script is running!");
     config::init();
     let app_dirs = AppDirs::new()?;
 

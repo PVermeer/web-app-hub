@@ -25,11 +25,15 @@ pub fn get_dialog() -> AboutDialog {
             License::Unknown
         }
     };
+    let mut version = config::VERSION.get_value().clone();
+    if cfg!(debug_assertions) {
+        let _ = write!(version, "-DEV");
+    }
 
     AboutDialog::builder()
         .application_icon(config::APP_ID.get_value())
         .application_name(config::APP_NAME.get_value())
-        .version(config::VERSION.get_value())
+        .version(&version)
         .developer_name(config::DEVELOPER.get_value())
         .license_type(license)
         .issue_url(config::ISSUES_URL.get_value())
