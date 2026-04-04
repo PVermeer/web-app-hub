@@ -1,0 +1,16 @@
+name: Firefox ESR
+system_bin: firefox-esr
+can_isolate: true
+desktop_file_name_prefix: org.mozilla.firefox-esr.firefox-esr
+base: firefox
+issues:
+  en:
+    - Unable to remove ui when not isolated
+  nl:
+    - UI kan niet worden verwijderd zonder isolatie
+  es:
+    - No se puede eliminar la interfaz de usuario cuando no está aislado
+  it:
+    - Impossibile rimuovere l'interfaccia utente se non isolata
+  de:
+    - Ohne Isolation lassen sich Browser-Bedienelemente nicht entfernen

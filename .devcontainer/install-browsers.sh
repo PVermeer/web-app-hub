@@ -39,8 +39,15 @@ system_repos=(
     "https://repo.librewolf.net/librewolf.repo"
 )
 
+copr_repos=(
+    "erizur/firefox-esr"
+)
+
 for repo in "${system_repos[@]}"; do
     sudo dnf config-manager addrepo -y --from-repofile="$repo" || true
+done
+for repo in "${copr_repos[@]}"; do
+    sudo dnf copr enable -y "$repo" || true
 done
 
 system_browsers=(
@@ -51,6 +58,7 @@ system_browsers=(
     "vivaldi-stable"
     "opera-stable"
     "librewolf"
+    "firefox-esr"
 )
 sudo dnf install -y "${system_browsers[@]}"
 ln -sf "$(which brave-browser)" ~/.local/bin/brave # Install both brave-browser and brave
