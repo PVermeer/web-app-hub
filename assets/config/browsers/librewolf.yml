@@ -1,6 +1,8 @@
 name: LibreWolf
 flatpak: io.gitlab.librewolf-community
-system_bin:
+system_bin: 
+  - librewolf
+  - librewolf-bin
 can_isolate: true
 desktop_file_name_prefix: io.gitlab.librewolf-community.librewolf-community
 base: firefox

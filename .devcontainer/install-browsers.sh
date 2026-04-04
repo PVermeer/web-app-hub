@@ -36,6 +36,7 @@ sudo dnf config-manager setopt google-chrome.enabled=1
 
 system_repos=(
     "https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo"
+    "https://repo.librewolf.net/librewolf.repo"
 )
 
 for repo in "${system_repos[@]}"; do
@@ -49,6 +50,7 @@ system_browsers=(
     "google-chrome-stable"
     "vivaldi-stable"
     "opera-stable"
+    "librewolf"
 )
 sudo dnf install -y "${system_browsers[@]}"
 ln -sf "$(which brave-browser)" ~/.local/bin/brave # Install both brave-browser and brave
