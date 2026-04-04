@@ -12,7 +12,8 @@ use common::{
     utils,
 };
 use gtk::{
-    Align, EventControllerFocus, EventControllerMotion, ListItem, SignalListItemFactory,
+    Align, DirectionType, EventControllerFocus, EventControllerMotion, ListItem,
+    SignalListItemFactory,
     gio::{self},
     glib::{
         self, BoxedAnyObject,
@@ -955,6 +956,10 @@ impl WebAppView {
 
             *applied_text_clone.borrow_mut() = title.to_string();
             Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
+
+            if let Some(root) = entry_row.root() {
+                root.child_focus(DirectionType::TabForward);
+            }
         });
     }
 
@@ -1055,6 +1060,8 @@ impl WebAppView {
                     error!("{error:?}");
                 }
 
+                let current_focus_widget = self_clone.app.window.adw_window.focus();
+
                 if *running_icon_search_id_clone.borrow() != run_id {
                     return;
                 }
@@ -1066,7 +1073,15 @@ impl WebAppView {
                     &self_clone.desktop_file.borrow(),
                     &missing_icon_icon_clone,
                 );
+
+                if let Some(widget) = current_focus_widget {
+                    widget.grab_focus();
+                }
             });
+
+            if let Some(root) = entry_row.root() {
+                root.child_focus(DirectionType::TabForward);
+            }
         });
     }
 
@@ -1081,6 +1096,10 @@ impl WebAppView {
 
             self_clone.on_isolation_change();
             self_clone.on_desktop_file_change();
+
+            if let Some(root) = switch_row.root() {
+                root.child_focus(DirectionType::TabForward);
+            }
         });
     }
 
@@ -1094,6 +1113,10 @@ impl WebAppView {
                 .set_maximized(switch_row.is_active());
 
             self_clone.on_desktop_file_change();
+
+            if let Some(root) = switch_row.root() {
+                root.child_focus(DirectionType::TabForward);
+            }
         });
     }
 
@@ -1124,6 +1147,10 @@ impl WebAppView {
 
                 self_clone.on_isolation_change();
                 self_clone.on_desktop_file_change();
+
+                if let Some(root) = combo_row.root() {
+                    root.child_focus(DirectionType::TabForward);
+                }
             });
     }
 
