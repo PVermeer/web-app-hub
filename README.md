@@ -85,7 +85,7 @@ Conditional variables use the syntax `%{condition ? value}` and are only include
 
 | Conditional                | Description                                                          |
 | -------------------------- | -------------------------------------------------------------------- |
-| `%{is_isolated ? --flag}`  | Expands to `--flag=<profile-path>` when profile isolation is enabled |
+| `%{is_isolated ? --flag}`  | Expands to `--flag <profile-path>` when profile isolation is enabled |
 | `%{is_maximized ? --flag}` | Expands to `--flag` when start maximized is enabled                  |
 
 ### Profile Extras
