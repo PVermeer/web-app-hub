@@ -12,8 +12,7 @@ use common::{
     utils,
 };
 use gtk::{
-    Align, DirectionType, EventControllerFocus, EventControllerMotion, ListItem,
-    SignalListItemFactory,
+    Align, EventControllerFocus, EventControllerMotion, ListItem, SignalListItemFactory,
     gio::{self},
     glib::{
         self, BoxedAnyObject,
@@ -800,7 +799,7 @@ impl WebAppView {
         }
 
         let self_clone = self.clone();
-        self.change_icon_button.connect_clicked(move |_| {
+        self.change_icon_button.connect_clicked(move |button| {
             let desktop_file_borrow = self_clone.desktop_file.borrow();
             let undo_icon_path = desktop_file_borrow
                 .get_icon_path()
@@ -816,6 +815,8 @@ impl WebAppView {
 
             let icon_picker = self_clone.get_icon_picker();
 
+            let button_clone = button.clone();
+            let button_clone2 = button.clone();
             icon_picker.show_dialog(
                 Some(move || {
                     // Success
@@ -825,6 +826,7 @@ impl WebAppView {
                         &self_clone_success.desktop_file.borrow(),
                         &self_clone_success.missing_icon_icon,
                     );
+                    button_clone.grab_focus();
                 }),
                 Some(move || {
                     // Fail
@@ -841,6 +843,7 @@ impl WebAppView {
                         &self_clone_fail.desktop_file.borrow(),
                         &self_clone_fail.missing_icon_icon,
                     );
+                    button_clone2.grab_focus();
                 }),
             );
         });
@@ -957,9 +960,7 @@ impl WebAppView {
             *applied_text_clone.borrow_mut() = title.to_string();
             Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
 
-            if let Some(root) = entry_row.root() {
-                root.child_focus(DirectionType::TabForward);
-            }
+            self_clone.url_row.grab_focus();
         });
     }
 
@@ -1035,6 +1036,8 @@ impl WebAppView {
             *applied_text_clone.borrow_mut() = entry_row.text().to_string();
             Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
 
+            self_clone.isolate_row.grab_focus();
+
             let missing_icon_icon_clone = missing_icon_icon_clone.clone();
             // Bug with clippy, make sure its dropped before await future
             #[allow(clippy::await_holding_refcell_ref)]
@@ -1078,10 +1081,6 @@ impl WebAppView {
                     widget.grab_focus();
                 }
             });
-
-            if let Some(root) = entry_row.root() {
-                root.child_focus(DirectionType::TabForward);
-            }
         });
     }
 
@@ -1097,9 +1096,7 @@ impl WebAppView {
             self_clone.on_isolation_change();
             self_clone.on_desktop_file_change();
 
-            if let Some(root) = switch_row.root() {
-                root.child_focus(DirectionType::TabForward);
-            }
+            switch_row.grab_focus();
         });
     }
 
@@ -1114,9 +1111,7 @@ impl WebAppView {
 
             self_clone.on_desktop_file_change();
 
-            if let Some(root) = switch_row.root() {
-                root.child_focus(DirectionType::TabForward);
-            }
+            switch_row.grab_focus();
         });
     }
 
@@ -1148,9 +1143,7 @@ impl WebAppView {
                 self_clone.on_isolation_change();
                 self_clone.on_desktop_file_change();
 
-                if let Some(root) = combo_row.root() {
-                    root.child_focus(DirectionType::TabForward);
-                }
+                combo_row.grab_focus();
             });
     }
 

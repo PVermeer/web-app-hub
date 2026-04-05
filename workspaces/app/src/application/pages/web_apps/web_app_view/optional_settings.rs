@@ -2,7 +2,7 @@ use crate::application::{App, pages::web_apps::web_app_view::WebAppView};
 use anyhow::anyhow;
 use common::desktop_file::{DesktopFile, category::Category};
 use gtk::{
-    DirectionType, InputPurpose, Label, ListItem, SignalListItemFactory, gio,
+    InputPurpose, Label, ListItem, SignalListItemFactory, gio,
     glib::{BoxedAnyObject, object::Cast},
     prelude::{BoxExt, EditableExt, GtkWindowExt, ListItemExt, WidgetExt},
 };
@@ -273,9 +273,7 @@ impl OptionalSettings {
             *applied_text_clone.borrow_mut() = entry_row.text().to_string();
             WebAppView::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
 
-            if let Some(root) = entry_row.root() {
-                root.child_focus(DirectionType::TabForward);
-            }
+            self_clone.category_row.grab_focus();
         });
     }
 
