@@ -760,7 +760,7 @@ impl DesktopFile {
                 .inspect_err(|error| error!(?error))?;
 
             let replacement = if set_value && let Some(with_value) = with_value {
-                format!("{replace_value} {with_value}")
+                format!("{replace_value}={with_value}")
             } else if set_value {
                 replace_value
             } else {
