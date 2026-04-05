@@ -741,8 +741,11 @@ impl DesktopFile {
         conditional_key: &str,
         set_value: bool,
         with_value: Option<&str>,
+        separator: Option<char>,
         d_str: &mut String,
     ) -> Result<()> {
+        let separator = separator.unwrap_or('=');
+
         let optional_replace_value = Regex::new(&format!(r"%\{{{conditional_key}\s*\?\s*([^}}]+)"))
             .context(format!(
                 "Failed to compile regex for captures with conditional key: {conditional_key}"
@@ -760,7 +763,7 @@ impl DesktopFile {
                 .inspect_err(|error| error!(?error))?;
 
             let replacement = if set_value && let Some(with_value) = with_value {
-                format!("{replace_value}={with_value}")
+                format!("{replace_value}{separator}{with_value}")
             } else if set_value {
                 replace_value
             } else {
@@ -778,8 +781,16 @@ impl DesktopFile {
         let save_path = self.get_save_path()?;
         let app_name_short = config::APP_NAME_SHORT.get_value();
         let app_id = format!("{}-{}", app_name_short, entries.app_id);
+        let browser = self.get_browser();
+        // Edge case for firefox-esr that does not support 'param=profile-path'.
+        // Normal firefox does supports this. Remove this when it's safe.
+        let argument_separator = browser
+            .as_ref()
+            .and_then(|browser| browser.executable.as_ref())
+            .filter(|&executable| executable == "firefox-esr")
+            .map(|_| ' ');
 
-        let domain_path = match self.get_browser() {
+        let domain_path = match browser {
             None => &entries.domain,
             Some(browser) => &match browser.base {
                 Base::Chromium => {
@@ -807,6 +818,7 @@ impl DesktopFile {
             "is_isolated",
             entries.isolate,
             Some(&entries.profile_path.to_string_lossy()),
+            argument_separator,
             &mut d_str,
         )
         .is_err()
@@ -816,7 +828,15 @@ impl DesktopFile {
             )));
         }
 
-        if Self::replace_conditional("is_maximized", entries.maximize, None, &mut d_str).is_err() {
+        if Self::replace_conditional(
+            "is_maximized",
+            entries.maximize,
+            None,
+            argument_separator,
+            &mut d_str,
+        )
+        .is_err()
+        {
             return Err(DesktopFileError::Other(anyhow!(
                 "Failed to replace conditional 'is_maximized' in desktop file"
             )));
