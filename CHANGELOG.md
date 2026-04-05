@@ -1,8 +1,36 @@
+## [0.11.0] - 2026-04-05
+
+### 🚀 Features
+
+- *(browser)* Added librewolf
+- *(browser)* Added firefox-esr
+- *(web-app-view)* Improve form navigation with keyboard
+
+### 💼 Other
+
+- Revert "refactor(desktop-file): use space instead of '=' for conditional replacement"
+
+This reverts commit 03c26db58d6ef51713c43bce953868b960a9bb23.
+
+### 🚜 Refactor
+
+- *(desktop-file)* Use space instead of '=' for conditional replacement
+- *(desktop-file)* Added exception for firefox-esr to use space instead of '=' for conditional replacements
+- *(web-app-view)* More improvements for form navigation
+
+### ⚙️ Miscellaneous Tasks
+
+- *(browser)* Add binary names for librewolf
+- *(dev)* Some dev optimisations
 ## [0.10.1] - 2026-03-27
 
 ### 🐛 Bug Fixes
 
 - *(web-app-view)* Hide discard button on validation toast for new app
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.10.1
 ## [0.10.0] - 2026-03-27
 
 ### 🚀 Features
@@ -64,22 +92,3 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* V0.9.3
-## [0.9.2] - 2026-03-05
-
-### 🐛 Bug Fixes
-
-- *(info)* Zen browser setup keybind shows again
-- *(browsers)* Correct Zen browser config keybind
-
-### 🚜 Refactor
-
-- *(browsers)* Changed all_browsers to installed browsers
-- *(browsers)* Changed get method names to get_browser
-- *(browsers)* Update get_index to check for installation
-- *(browsers)* Remove no-browser from installed
-- *(browsers)* Match flatpak_id with installation
-
-### ⚙️ Miscellaneous Tasks
-
-- *(browsers)* Add all_browsers
-- *(release)* V0.9.2
