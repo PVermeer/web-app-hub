@@ -15,7 +15,7 @@ use error::{DesktopFileError, ValidationError};
 use freedesktop_desktop_entry::DesktopEntry;
 use gtk::{Image, prelude::WidgetExt};
 use key::Key;
-use rand::{Rng, distributions::Alphanumeric};
+use rand::{Rng, distr::Alphanumeric, rng};
 use regex::Regex;
 use semver::Version;
 use std::{
@@ -61,7 +61,7 @@ impl DesktopFile {
     pub fn new(browser_configs: &Rc<BrowserConfigs>, app_dirs: &Rc<AppDirs>) -> Self {
         let mut desktop_entry = DesktopEntry::from_appid(String::new());
 
-        let random_id: String = rand::thread_rng()
+        let random_id: String = rng()
             .sample_iter(&Alphanumeric)
             .take(8)
             .map(char::from)
