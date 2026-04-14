@@ -100,13 +100,9 @@ version = "0.11.0"
 dependencies = [
  "anyhow",
  "common",
- "freedesktop-desktop-entry",
  "fs_extra",
  "gtk4",
- "include_dir",
  "libadwaita",
- "rand 0.8.5",
- "regex",
  "rust-i18n",
  "sanitize-filename",
  "scraper",
@@ -114,10 +110,8 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "toml 0.9.10+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
- "ureq",
  "url",
 ]
 
