@@ -21,7 +21,10 @@ use freedesktop_desktop_entry::DesktopEntry;
 use git_cliff::args::Opt;
 use regex::Regex;
 use semver::Version;
-use std::{collections::HashMap, env, fmt::Write as _, io::Write, process::Stdio, sync::OnceLock};
+use std::{
+    collections::HashMap, env, fmt::Write as _, io::Write, process::Stdio, sync::OnceLock,
+    thread::sleep, time::Duration,
+};
 use std::{
     fs::{self, File},
     path::{Path, PathBuf},
@@ -424,7 +427,54 @@ fn update_cargo_with_new_version(new_version: &Version) -> Result<()> {
             if !output.status.success() {
                 let error = utils::command::parse_output(&output.stderr);
                 error!(error = error, "Failed to update lockfile");
-                bail!("Failed to update lockfile")
+
+                // Fallback for when crates get yanked from the repo.
+                info!("Falling back to vendored dependencies");
+
+                // For some reason it can fail with a sync error on the lockfile
+                let mut vendor_path = None;
+                for _ in 1..5 {
+                    vendor_path = vendor_cargo_sources().ok();
+                    if vendor_path.is_some() {
+                        break;
+                    }
+                    info!("Vendor cargo sources failed, retrying");
+                    sleep(Duration::from_secs(1));
+                }
+
+                let Some(vendor_path) = vendor_path else {
+                    bail!("Failed to update lockfile with vendored dependencies")
+                };
+                let vendor_config_replace =
+                    r#"--config=source.crates-io.replace-with = "vendored-sources""#;
+                let vendor_config_directory = format!(
+                    r#"--config=source.vendored-sources.directory = "{}""#,
+                    vendor_path.display()
+                );
+
+                let update_lockfile_result = Command::new(command)
+                    .args(args)
+                    .arg(vendor_config_replace)
+                    .arg(vendor_config_directory)
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .output();
+                let _ = fs::remove_dir_all(&vendor_path);
+
+                match update_lockfile_result {
+                    Err(error) => {
+                        error!(error = error.to_string(), "Failed to run cargo");
+                        bail!(error)
+                    }
+
+                    Ok(output) => {
+                        if !output.status.success() {
+                            let error = utils::command::parse_output(&output.stderr);
+                            error!(error = error, "Failed to update lockfile");
+                            bail!("Failed to update lockfile")
+                        }
+                    }
+                }
             }
         }
     }
@@ -954,6 +1004,38 @@ fn create_flathub_release_pr(new_version: &Version) -> Result<()> {
     info!("Created new release PR in flathub repo");
 
     Ok(())
+}
+
+fn vendor_cargo_sources() -> Result<PathBuf> {
+    info!("Vendoring dependencies");
+
+    let vendor_target = Path::new("/").join("tmp").join("cargo-vendor");
+    if !vendor_target.is_dir() {
+        fs::create_dir_all(&vendor_target).unwrap();
+    }
+
+    match Command::new("cargo")
+        .arg("vendor")
+        .arg(&vendor_target)
+        .arg("--locked")
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+    {
+        Err(error) => {
+            error!(error = error.to_string(), "Failed to run cargo");
+            bail!(error)
+        }
+        Ok(output) => {
+            if !output.status.success() {
+                let error = utils::command::parse_output(&output.stderr);
+                error!(error = error, "Failed to vendor dependencies");
+                bail!("Failed to vendor dependencies")
+            }
+        }
+    }
+
+    Ok(vendor_target)
 }
 
 fn project_path() -> PathBuf {
