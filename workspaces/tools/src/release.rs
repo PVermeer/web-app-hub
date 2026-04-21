@@ -1039,9 +1039,7 @@ fn icon_file_name() -> String {
 }
 
 fn is_github_ssh_connected() -> bool {
-    command::run_command_sync("ssh -T git@github.com")
-        .map(|response| response.status == 1)
-        .unwrap_or(false)
+    command::run_command_sync("ssh -T git@github.com").is_ok_and(|response| response.status == 1)
 }
 
 fn run_shell_script(shell_script: &str, work_dir: &Path, error_message: &str) -> Result<()> {

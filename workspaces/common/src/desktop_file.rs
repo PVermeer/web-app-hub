@@ -755,7 +755,7 @@ impl DesktopFile {
             .and_then(|caps| caps.get(1).map(|value| value.as_str().to_string()));
 
         if let Some(replace_value) = optional_replace_value {
-            let re = Regex::new(&format!(r"%\{{{conditional_key}\s*\?\s*[^}}]+\}}",))
+            let re = Regex::new(&format!(r"%\{{{conditional_key}\s*\?\s*[^}}]+\}}"))
                 .context(format!(
                     "Failed to compile regex for replacement with conditional key:
                     {conditional_key}"
