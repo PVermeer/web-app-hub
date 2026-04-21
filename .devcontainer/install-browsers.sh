@@ -41,6 +41,7 @@ system_repos=(
 
 copr_repos=(
     "erizur/firefox-esr"
+    "sneexy/zen-browser"
 )
 
 for repo in "${system_repos[@]}"; do
@@ -59,6 +60,7 @@ system_browsers=(
     "opera-stable"
     "librewolf"
     "firefox-esr"
+    "zen-browser"
 )
 sudo dnf install -y "${system_browsers[@]}"
 ln -sf "$(which brave-browser)" ~/.local/bin/brave # Install both brave-browser and brave
