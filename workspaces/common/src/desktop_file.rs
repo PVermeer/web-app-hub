@@ -15,7 +15,7 @@ use error::{DesktopFileError, ValidationError};
 use freedesktop_desktop_entry::DesktopEntry;
 use gtk::{Image, prelude::WidgetExt};
 use key::Key;
-use rand::{Rng, distr::Alphanumeric, rng};
+use rand::{RngExt, distr::Alphanumeric, rng};
 use regex::Regex;
 use semver::Version;
 use std::{
