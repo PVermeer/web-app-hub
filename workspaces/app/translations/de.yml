@@ -94,6 +94,9 @@ web_apps:
 
 browsers:
   title: Browser
+  # install_type:
+  #   system: System
+  #   flatpak: Flatpak
   no_browsers:
     title: Keine kompatiblen Browser gefunden
     description: Versuchen Sie, einen zu installieren!
@@ -157,3 +160,10 @@ app_menu:
       text: |
         Dadurch werden die Konfigurationsdateien zurückgesetzt (z. B. Browser-Konfigurationen).
         Ihre erstellten Web-Apps werden nicht entfernt.
+
+# forms:
+#   apply_changes: Apply changes
+#   select_option: Select an option
+#   select_icon: Select an icon
+#   force_close: Discard and close
+#   validation_error: Please review the fields

@@ -94,6 +94,9 @@ web_apps:
 
 browsers:
   title: Browser
+  # install_type:
+  #   system: System
+  #   flatpak: Flatpak
   no_browsers:
     title: Nessun browser compatibile trovato
     description: Prova ad installarne uno!
@@ -157,3 +160,10 @@ app_menu:
       text: |
         Questo reimposterà i file di configurazione (es.: configurazioni del browser).
         Non rimuoverà le tue web app create.
+
+# forms:
+#   apply_changes: Apply changes
+#   select_option: Select an option
+#   select_icon: Select an icon
+#   force_close: Discard and close
+#   validation_error: Please review the fields
