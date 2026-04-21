@@ -942,7 +942,7 @@ fn create_flathub_release_pr(new_version: &Version) -> Result<()> {
     let pr_title = &format!(r"--title={pr_branch}");
     let pr_body = &format!(r"--body=Automatic release for {new_version}");
     let command = "gh";
-    let mut args = ["pr", "create", pr_title, pr_body, "--draft"].to_vec();
+    let mut args = ["pr", "create", pr_title, pr_body].to_vec();
     let error_message = "Failed to create a new PR on flathub repo";
 
     if *DRY_RUN.get_value() {
