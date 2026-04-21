@@ -1,5 +1,8 @@
 name: Zen
 flatpak: app.zen_browser.zen
+system_bin:
+  - zen-browser
+  - zen-browser-bin
 can_isolate: true
 desktop_file_name_prefix: app.zen_browser.zen.zen
 base: firefox
