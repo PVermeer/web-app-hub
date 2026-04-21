@@ -434,12 +434,16 @@ fn update_cargo_with_new_version(new_version: &Version) -> Result<()> {
                 // For some reason it can fail with a sync error on the lockfile
                 let mut vendor_path = None;
                 for _ in 1..5 {
+                    let timeout = Duration::from_secs(5);
                     vendor_path = vendor_cargo_sources().ok();
                     if vendor_path.is_some() {
                         break;
                     }
-                    info!("Vendor cargo sources failed, retrying");
-                    sleep(Duration::from_secs(1));
+                    info!(
+                        "Vendor cargo sources failed, retrying in {:?} seconds",
+                        timeout
+                    );
+                    sleep(timeout);
                 }
 
                 let Some(vendor_path) = vendor_path else {
