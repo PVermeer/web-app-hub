@@ -18,8 +18,11 @@ RUN dnf download --arch=x86_64 libadwaita
 RUN rpm2cpio libadwaita-*.rpm | sudo cpio -idm -D /
 RUN rm libadwaita-*.rpm
 
-# Dev
-RUN sudo dnf install -y flatpak-builder gh rustup make git clang python3-devel pipx python3-pip gtk4-devel libdrm-devel vulkan-tools OpenCL-ICD-Loader-devel boost-devel cmake gcc gcc-c++ intel-mediasdk-devel libappindicator-gtk3-devel libcap-devel libcurl-devel libdrm-devel libevdev-devel libnotify-devel libva-devel libvdpau-devel libX11-devel libxcb-devel libXcursor-devel libXfixes-devel libXi-devel libXinerama-devel libXrandr-devel libXtst-devel mesa-libGL-devel miniupnpc-devel npm numactl-devel openssl-devel opus-devel pulseaudio-libs-devel rpm-build pipewire-devel pipewire-utils doxygen libadwaita-devel shfmt shellcheck
+# Dev tools
+RUN sudo dnf install -y git flatpak-builder rpmdevtools rpmlint jq curl gh rustup gcc gcc-c++ make cmake clang python3 python3-pip pipx shfmt shellcheck doxygen
+
+# Libs
+RUN sudo dnf install -y gtk4-devel libdrm-devel vulkan-tools OpenCL-ICD-Loader-devel boost-devel intel-mediasdk-devel libappindicator-gtk3-devel libcap-devel libcurl-devel libdrm-devel libevdev-devel libnotify-devel libva-devel libvdpau-devel libX11-devel libxcb-devel libXcursor-devel libXfixes-devel libXi-devel libXinerama-devel libXrandr-devel libXtst-devel mesa-libGL-devel miniupnpc-devel npm numactl-devel openssl-devel opus-devel pulseaudio-libs-devel rpm-build pipewire-devel pipewire-utils libadwaita-devel python3-devel
 
 # Don't use this, only --user, but for GTK4 and loading images in memory (PixBuf with glycin)
 # it needs a valid repo setup for it to work with flatpaks.
@@ -62,4 +65,5 @@ RUN mkdir -p /tmp/user/1000/gvfsd
 RUN sudo mkdir -p /run/dbus
 RUN flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 RUN pipx install poetry
-RUN ./home/${USERNAME}/.cargo/bin/cargo install cargo-machete
+RUN ./home/${USERNAME}/.cargo/bin/cargo install cargo-machete --locked
+RUN ./home/${USERNAME}/.cargo/bin/cargo install cargo-audit --locked --features=fix
