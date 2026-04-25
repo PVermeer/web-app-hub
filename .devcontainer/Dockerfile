@@ -65,5 +65,5 @@ RUN mkdir -p /tmp/user/1000/gvfsd
 RUN sudo mkdir -p /run/dbus
 RUN flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 RUN pipx install poetry
-RUN ./home/${USERNAME}/.cargo/bin/cargo install cargo-machete --locked
+RUN ./home/${USERNAME}/.cargo/bin/cargo install cargo-shear --locked
 RUN ./home/${USERNAME}/.cargo/bin/cargo install cargo-audit --locked --features=fix
