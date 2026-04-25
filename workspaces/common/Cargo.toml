@@ -18,3 +18,7 @@ toml = { workspace = true }
 tracing = { workspace = true }
 ureq = { workspace = true }
 url = { workspace = true }
+
+[lib]
+test = false
+doctest = false
