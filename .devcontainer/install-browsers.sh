@@ -63,6 +63,7 @@ system_browsers=(
     "zen-browser"
 )
 sudo dnf install -y "${system_browsers[@]}"
+mkdir -p ~/.local/bin
 ln -sf "$(which brave-browser)" ~/.local/bin/brave # Install both brave-browser and brave
 
 # Flatpaks

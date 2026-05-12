@@ -1,28 +1,28 @@
 FROM fedora:latest
 
-RUN sudo dnf update -y
-RUN sudo dnf install -y git dnf-plugins-core
-RUN sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
-RUN sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1
-RUN sudo dnf swap -y ffmpeg-free ffmpeg --allowerasing
-RUN sudo dnf swap -y mesa-va-drivers mesa-va-drivers-freeworld
-RUN sudo dnf install -y rpmfusion-free-release-tainted
-RUN sudo dnf install -y libdvdcss
-RUN sudo dnf install -y @gnome-desktop
-RUN sudo dnf install -y dbus-launch
+RUN dnf update -y
+RUN dnf install -y git dnf-plugins-core
+RUN dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+RUN dnf config-manager setopt fedora-cisco-openh264.enabled=1
+RUN dnf swap -y ffmpeg-free ffmpeg --allowerasing
+RUN dnf install -y mesa-va-drivers-freeworld
+RUN dnf install -y rpmfusion-free-release-tainted
+RUN dnf install -y libdvdcss
+RUN dnf install -y @gnome-desktop
+RUN dnf install -y dbus-launch
 
 # Language
-RUN sudo dnf install -y glibc-all-langpacks cpio
+RUN dnf install -y glibc-all-langpacks cpio
 # Libadwaita refuses to install libadwaita*.mo files in container
 RUN dnf download --arch=x86_64 libadwaita
 RUN rpm2cpio libadwaita-*.rpm | sudo cpio -idm -D /
 RUN rm libadwaita-*.rpm
 
 # Dev tools
-RUN sudo dnf install -y git flatpak-builder rpmdevtools rpmlint jq curl gh rustup gcc gcc-c++ make cmake clang python3 python3-pip pipx shfmt shellcheck doxygen
+RUN dnf install -y git flatpak-builder rpmdevtools rpmlint jq curl gh rustup gcc gcc-c++ make cmake clang python3 python3-pip pipx shfmt shellcheck doxygen
 
 # Libs
-RUN sudo dnf install -y gtk4-devel libdrm-devel vulkan-tools OpenCL-ICD-Loader-devel boost-devel intel-mediasdk-devel libappindicator-gtk3-devel libcap-devel libcurl-devel libdrm-devel libevdev-devel libnotify-devel libva-devel libvdpau-devel libX11-devel libxcb-devel libXcursor-devel libXfixes-devel libXi-devel libXinerama-devel libXrandr-devel libXtst-devel mesa-libGL-devel miniupnpc-devel npm numactl-devel openssl-devel opus-devel pulseaudio-libs-devel rpm-build pipewire-devel pipewire-utils libadwaita-devel python3-devel
+RUN dnf install -y gtk4-devel libdrm-devel vulkan-tools OpenCL-ICD-Loader-devel boost-devel intel-mediasdk-devel libappindicator-gtk3-devel libcap-devel libcurl-devel libdrm-devel libevdev-devel libnotify-devel libva-devel libvdpau-devel libX11-devel libxcb-devel libXcursor-devel libXfixes-devel libXi-devel libXinerama-devel libXrandr-devel libXtst-devel mesa-libGL-devel miniupnpc-devel npm numactl-devel openssl-devel opus-devel pulseaudio-libs-devel rpm-build pipewire-devel pipewire-utils libadwaita-devel python3-devel
 
 # Don't use this, only --user, but for GTK4 and loading images in memory (PixBuf with glycin)
 # it needs a valid repo setup for it to work with flatpaks.
