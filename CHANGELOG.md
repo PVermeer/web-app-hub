@@ -1,3 +1,20 @@
+## [1.0.0] - 2026-05-12
+
+### 🚀 Features
+
+- *(flatpak)* Update to gnome 50  runtime
+- *(not-breaking)* [**breaking**] Update to stable version 1
+
+### 💼 Other
+
+- *(deps)* Bump rustls-webpki in the cargo group across 1 directory (#54)
+- *(common)* Fixed cargo shear warnings
+- *(deps)* Bump rand in the cargo (unsound)
+
+### ⚙️ Miscellaneous Tasks
+
+- *(dev)* Change cargo-machete with cargo-shear
+- *(dev)* Update dev-container
 ## [0.12.0] - 2026-04-21
 
 ### 🚀 Features
@@ -25,6 +42,7 @@
 - *(release)* Removed draft status on flathub pr
 - *(release)* Increase timeout for vendored dependencies
 - *(release)* Changed lockfile update to tree command
+- *(release)* V0.12.0
 ## [0.11.0] - 2026-04-05
 
 ### 🚀 Features
@@ -98,12 +116,3 @@ This reverts commit 03c26db58d6ef51713c43bce953868b960a9bb23.
 - *(assets)* Update screenshots
 - *(translations)* Add browser install type translations
 - *(release)* V0.10.0
-## [0.9.4] - 2026-03-06
-
-### 🐛 Bug Fixes
-
-- *(web-app-view)* Reset button disabled on new web app
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V0.9.4
