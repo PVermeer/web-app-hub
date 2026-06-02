@@ -133,7 +133,7 @@ impl IconPicker {
 
         let dialog = AlertDialog::builder()
             .heading(t!("web_apps.web_app_view.icon.dialog.title"))
-            .width_request(500)
+            .width_request(360)
             .extra_child(&self.content_box)
             .build();
         dialog.add_response(
