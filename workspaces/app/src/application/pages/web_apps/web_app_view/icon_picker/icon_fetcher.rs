@@ -112,7 +112,7 @@ impl IconFetcher {
 
     fn set_icon_urls_from_html(&mut self, html_fragment: &Html, url: &Url) {
         let Ok(icon_selector) =
-            Selector::parse("link[rel~=\"icon\"], link[rel~=\"shortcut\"][rel~=\"icon\"]")
+            Selector::parse("link[rel~=\"apple-touch-icon\"], link[rel~=\"icon\"], link[rel~=\"shortcut\"][rel~=\"icon\"]")
         else {
             return;
         };
