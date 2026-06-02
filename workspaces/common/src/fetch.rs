@@ -35,7 +35,7 @@ impl Fetch {
             let mut call = agent_clone.get(url_clone).call()?;
             let body = call.body_mut();
             let mimetype = body.mime_type().map(std::string::ToString::to_string);
-            let text = body.read_to_vec().unwrap();
+            let text = body.read_to_vec()?;
             let response = String::from_utf8_lossy(&text).to_string();
             Ok((response, mimetype))
         })
