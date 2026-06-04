@@ -5,8 +5,7 @@ use crate::application::App;
 use anyhow::{Context, Result, bail};
 use common::desktop_file::DesktopFile;
 use gtk::{
-    self, Align, Button, ContentFit, FileDialog, FileFilter, FlowBox, Label, Orientation, Picture,
-    SelectionMode,
+    self, Align, Button, FileDialog, FileFilter, FlowBox, Image, Label, Orientation, SelectionMode,
     gdk_pixbuf::{Pixbuf, PixbufFormat},
     gio::prelude::FileExt,
     glib::GString,
@@ -15,8 +14,8 @@ use gtk::{
 use icon::Icon;
 use icon_fetcher::IconFetcher;
 use libadwaita::{
-    AlertDialog, ButtonContent, ButtonRow, PreferencesGroup, PreferencesPage, PreferencesRow,
-    ResponseAppearance, Spinner, StatusPage,
+    AlertDialog, ButtonContent, ButtonRow, DialogPresentationMode, PreferencesGroup,
+    PreferencesPage, PreferencesRow, ResponseAppearance, Spinner, StatusPage,
     gio::Cancellable,
     glib,
     prelude::{AdwDialogExt, AlertDialogExt, PreferencesGroupExt, PreferencesPageExt},
@@ -53,11 +52,16 @@ impl IconPicker {
     /// In seconds
     pub const ONLINE_FETCH_THROTTLE: u64 = 20;
     pub const CURRENT_ICON_KEY: &str = "current";
+    pub const ICON_MAX_SIZE: i32 = 64;
 
     pub fn new(app: &Rc<App>, desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
         let icons = Rc::new(RefCell::new(HashMap::new()));
         let icons_ordered = RefCell::new(Vec::new());
-        let content_box = gtk::Box::new(Orientation::Horizontal, 0);
+        let content_box = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .spacing(0)
+            .vexpand(true)
+            .build();
         let spinner = Self::build_spinner();
         let prefs_page = PreferencesPage::new();
         let pref_row_icons = Self::build_pref_row_icons();
@@ -133,7 +137,10 @@ impl IconPicker {
 
         let dialog = AlertDialog::builder()
             .heading(t!("web_apps.web_app_view.icon.dialog.title"))
-            .width_request(360)
+            .presentation_mode(DialogPresentationMode::Auto)
+            .content_height(690)
+            .content_width(500)
+            .follows_content_size(false)
             .extra_child(&self.content_box)
             .build();
         dialog.add_response(
@@ -287,9 +294,14 @@ impl IconPicker {
 
             let frame = gtk::Box::new(Orientation::Vertical, 0);
             frame.set_widget_name(key);
-            let picture = Picture::new();
-            picture.set_pixbuf(Some(&icon.pixbuf));
-            picture.set_content_fit(ContentFit::ScaleDown);
+            let picture = Image::from_pixbuf(Some(&icon.pixbuf));
+            let pixel_size = if icon.pixbuf.height() > Self::ICON_MAX_SIZE {
+                Self::ICON_MAX_SIZE
+            } else {
+                icon.pixbuf.height()
+            };
+            picture.set_pixel_size(pixel_size);
+            picture.set_size_request(Self::ICON_MAX_SIZE, Self::ICON_MAX_SIZE);
             frame.append(&picture);
 
             let size_text = format!("{} x {}", icon.pixbuf.width(), icon.pixbuf.height());
@@ -526,11 +538,9 @@ impl IconPicker {
     fn build_pref_row_icons_flow_box() -> FlowBox {
         FlowBox::builder()
             .height_request(96)
-            .column_spacing(10)
+            .column_spacing(20)
             .row_spacing(10)
             .homogeneous(false)
-            .max_children_per_line(4)
-            .min_children_per_line(4)
             .selection_mode(SelectionMode::Single)
             .build()
     }
