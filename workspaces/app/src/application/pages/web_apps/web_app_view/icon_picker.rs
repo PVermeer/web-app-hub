@@ -177,6 +177,10 @@ impl IconPicker {
             },
         );
 
+        dialog.connect_closed(|dialog| {
+            dialog.set_extra_child(None::<&gtk::Widget>);
+        });
+
         dialog.present(Some(&self.app.window.adw_window));
         dialog
     }
