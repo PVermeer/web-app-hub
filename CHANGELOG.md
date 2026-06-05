@@ -1,3 +1,13 @@
+## [1.0.1] - 2026-06-05
+
+### 🐛 Bug Fixes
+
+- *(icon-picker)* Improved icon fetcher (#58)
+- *(icon-picker)* Fix for mobile smallscreen (#59)
+
+### ⚙️ Miscellaneous Tasks
+
+- *(ci)* Added timout on release action
 ## [1.0.0] - 2026-05-12
 
 ### 🚀 Features
@@ -15,6 +25,7 @@
 
 - *(dev)* Change cargo-machete with cargo-shear
 - *(dev)* Update dev-container
+- *(release)* V1.0.0
 ## [0.12.0] - 2026-04-21
 
 ### 🚀 Features
@@ -77,42 +88,3 @@ This reverts commit 03c26db58d6ef51713c43bce953868b960a9bb23.
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* V0.10.1
-## [0.10.0] - 2026-03-27
-
-### 🚀 Features
-
-- *(web-app-view)* Added validation indicators for missing or not applied fields
-- *(optional-settings)* Added validation indicators for missing or not applied fields
-- *(web-app-view)* Added warning toasts on exit
-- *(web-app-view)* Added validation on save button
-- *(translations)* Update es translations (#35)
-
-### 🐛 Bug Fixes
-
-- *(desktop-file)* A valid url no longer gets rewritten
-
-### 💼 Other
-
-- *(deps)* Bump quinn-proto in the cargo group across 1 directory (#31)
-- *(deps)* Bump rustls-webpki in the cargo group across 1 directory (#38)
-
-### 🚜 Refactor
-
-- *(desktop-file)* Move path checks to getters
-
-### 🎨 Styling
-
-- *(translations)* Format
-
-### ⚙️ Miscellaneous Tasks
-
-- *(desktop-file)* Remove legacy icon name lookup
-- *(dev)* Move clippy config to source
-- *(web-app-view)* Add error:  to error toasts
-- *(optional-settings)* Changed is_applied_all to is_dirty
-- *(web-app-view)* Show validation error instead of actual error on changes
-- *(optional-settings)* Run apply check on apply
-- *(web-app-view)* Changed validation error message
-- *(assets)* Update screenshots
-- *(translations)* Add browser install type translations
-- *(release)* V0.10.0
