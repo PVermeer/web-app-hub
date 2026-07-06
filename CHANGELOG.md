@@ -1,3 +1,12 @@
+## [1.1.0] - 2026-07-06
+
+### 🚀 Features
+
+- *(icon-picker)* Added google favicon api lookup
+
+### 💼 Other
+
+- *(app)* Only do dev things on debug builds
 ## [1.0.1] - 2026-06-05
 
 ### 🐛 Bug Fixes
@@ -8,6 +17,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(ci)* Added timout on release action
+- *(release)* V1.0.1
 ## [1.0.0] - 2026-05-12
 
 ### 🚀 Features
@@ -79,12 +89,3 @@ This reverts commit 03c26db58d6ef51713c43bce953868b960a9bb23.
 - *(browser)* Add binary names for librewolf
 - *(dev)* Some dev optimisations
 - *(release)* V0.11.0
-## [0.10.1] - 2026-03-27
-
-### 🐛 Bug Fixes
-
-- *(web-app-view)* Hide discard button on validation toast for new app
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V0.10.1
