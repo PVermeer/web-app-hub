@@ -14,11 +14,13 @@ fn main() -> Result<()> {
     config::init();
     let app_dirs = AppDirs::new()?;
 
-    create_config_symlinks(&app_dirs);
-    create_data_symlinks(&app_dirs);
-    create_cache_symlinks(&app_dirs);
-    copy_dev_web_apps(&app_dirs);
-    copy_dev_custom_browsers(&app_dirs);
+    if cfg!(debug_assertions) {
+        create_config_symlinks(&app_dirs);
+        create_data_symlinks(&app_dirs);
+        create_cache_symlinks(&app_dirs);
+        copy_dev_web_apps(&app_dirs);
+        copy_dev_custom_browsers(&app_dirs);
+    }
 
     install_app_desktop_file(&app_dirs)?;
     install_app_icon(&app_dirs)?;
