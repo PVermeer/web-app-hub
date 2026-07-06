@@ -82,7 +82,15 @@ impl IconFetcher {
 
     fn set_default_icon_urls(&mut self, url: &Url) {
         let sanitized_url = url.sanitize();
-        let default_urls = [sanitized_url.join("favicon.ico").ok()];
+        let default_urls = [
+            // Most web pages store a favicon under /favicon.ico
+            sanitized_url.join("favicon.ico").ok(),
+            // Google favicon api lookup
+            Url::parse(&format!(
+                "https://www.google.com/s2/favicons?sz=256&domain={sanitized_url}"
+            ))
+            .ok(),
+        ];
 
         for default_url in default_urls {
             let Some(default) = default_url else {
