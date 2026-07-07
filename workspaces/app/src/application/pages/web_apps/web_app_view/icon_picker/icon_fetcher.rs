@@ -53,16 +53,33 @@ impl IconFetcher {
 
         let urls = [Some(self.url.clone()), self.base_url.clone()];
 
+        let mut handles = HashMap::new();
+
         for url in urls {
             let Some(url) = url else {
                 continue;
             };
-            let Ok(Response {
-                data: html_text, ..
-            }) = self.app.fetch.get_as_string(url.as_str()).await
-            else {
+
+            let app_clone = self.app.clone();
+            let url_clone = url.to_string();
+            // Spawn in parallel on main thread
+            let handle =
+                glib::spawn_future_local(
+                    async move { app_clone.fetch.get_as_string(&url_clone).await },
+                );
+
+            handles.insert(url, handle);
+        }
+
+        for (url, handle) in handles {
+            let Ok(Ok(response)) = handle.await else {
+                error!("Failed to fetch html: '{url}'");
                 continue;
             };
+
+            let Response {
+                data: html_text, ..
+            } = response;
             let fragment = Html::parse_document(&html_text);
 
             self.set_default_icon_urls(&url);
