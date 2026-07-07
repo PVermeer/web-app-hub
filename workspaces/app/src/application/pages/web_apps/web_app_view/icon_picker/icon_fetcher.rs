@@ -57,9 +57,12 @@ impl IconFetcher {
             let Some(url) = url else {
                 continue;
             };
-            let Response {
+            let Ok(Response {
                 data: html_text, ..
-            } = self.app.fetch.get_as_string(url.as_str()).await?;
+            }) = self.app.fetch.get_as_string(url.as_str()).await
+            else {
+                continue;
+            };
             let fragment = Html::parse_document(&html_text);
 
             self.set_default_icon_urls(&url);
