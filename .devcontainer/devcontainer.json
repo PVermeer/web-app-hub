@@ -16,8 +16,9 @@
 	"runArgs": [
 		"--privileged", // Unsecure but allows flatpak install
 		"--device=/dev/dri",
-		"--network=host", // If network is slow in container
-		"--device=/dev/fuse"
+		"--network=host", // If network is slow in container, fixes some dbus errors
+		"--dns-search=.", // Fixes a dns resolve lockup on non-existent domains
+		"--device=/dev/fuse" // For appImage
 	],
 	"containerEnv": {
 		"RUN_IN_VSCODE_DEVCONTAINER": "true",
