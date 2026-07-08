@@ -48,7 +48,9 @@ fn create_cache_symlinks(app_dirs: &AppDirs) {
 
 fn copy_dev_web_apps(app_dirs: &AppDirs) {
     let dev_desktop_files = dev_assets_path().join("desktop-files");
+    let dev_icons = dev_assets_path().join("icons");
     let user_applications_dir = &app_dirs.user_applications;
+    let user_icons_dir = &app_dirs.app_data_icons;
 
     for desktop_file in &utils::files::get_entries_in_dir(&dev_desktop_files).unwrap() {
         let id = desktop_file
@@ -74,6 +76,20 @@ fn copy_dev_web_apps(app_dirs: &AppDirs) {
             user_applications_dir.join(desktop_file.file_name()),
         )
         .unwrap();
+    }
+
+    for icon in &utils::files::get_entries_in_dir(&dev_icons).unwrap() {
+        let mut exists = false;
+        for file in &utils::files::get_entries_in_dir(user_icons_dir).unwrap() {
+            if file.file_name() == icon.file_name() {
+                exists = true;
+            }
+        }
+        if exists {
+            continue;
+        }
+
+        fs::copy(icon.path(), user_icons_dir.join(icon.file_name())).unwrap();
     }
 }
 

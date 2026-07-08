@@ -1,0 +1,19 @@
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run com.brave.Browser --no-first-run --app="https://github.com/pvermeer" --class=brave-github.com__pvermeer-Default --name=brave-github.com__pvermeer-Default --user-data-dir=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/66dseuYB 
+Icon=/home/vscode/.local/share/web-app-hub/icons/66dseuYB.png
+Name=Path
+StartupWMClass=brave-github.com__pvermeer-Default
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID=com.brave.Browser
+X-WAH-ID=66dseuYB
+X-WAH-ISOLATE=true
+X-WAH-MAXIMIZE=false
+X-WAH-PROFILE=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/66dseuYB
+X-WAH-URL=https://github.com/pvermeer
+X-WAH-VERSION=0.0.1
+

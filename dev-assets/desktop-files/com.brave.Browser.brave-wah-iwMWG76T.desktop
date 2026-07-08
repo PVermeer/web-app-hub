@@ -1,0 +1,19 @@
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run com.brave.Browser --no-first-run --app="https://www.google.com/s2/favicons?sz=256&domain=https://google.com" --class=brave-www.google.com__s2_favicons-Default --name=brave-www.google.com__s2_favicons-Default --user-data-dir=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/iwMWG76T 
+Icon=/home/vscode/.local/share/web-app-hub/icons/iwMWG76T.png
+Name=Path query
+StartupWMClass=brave-www.google.com__s2_favicons-Default
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID=com.brave.Browser
+X-WAH-ID=iwMWG76T
+X-WAH-ISOLATE=true
+X-WAH-MAXIMIZE=false
+X-WAH-PROFILE=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/iwMWG76T
+X-WAH-URL=https://www.google.com/s2/favicons?sz=256&domain=https://google.com
+X-WAH-VERSION=0.0.1
+
