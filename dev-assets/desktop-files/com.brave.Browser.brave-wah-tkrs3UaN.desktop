@@ -1,0 +1,19 @@
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run com.brave.Browser --no-first-run --app="https://twitch.tv" --class=brave-twitch.tv__-Default --name=brave-twitch.tv__-Default --user-data-dir=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/tkrs3UaN 
+Icon=/home/vscode/.local/share/web-app-hub/icons/tkrs3UaN.png
+Name=Twitch
+StartupWMClass=brave-twitch.tv__-Default
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID=com.brave.Browser_brave
+X-WAH-ID=tkrs3UaN
+X-WAH-ISOLATE=true
+X-WAH-MAXIMIZE=false
+X-WAH-PROFILE=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/tkrs3UaN
+X-WAH-URL=https://twitch.tv
+X-WAH-VERSION=1.1.0
+

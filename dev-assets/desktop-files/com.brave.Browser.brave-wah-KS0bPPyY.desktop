@@ -1,0 +1,19 @@
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run com.brave.Browser --no-first-run --app="https://mail.google.com" --class=brave-mail.google.com__-Default --name=brave-mail.google.com__-Default --user-data-dir=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/KS0bPPyY 
+Icon=/home/vscode/.local/share/web-app-hub/icons/KS0bPPyY.png
+Name=Mail
+StartupWMClass=brave-mail.google.com__-Default
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID=com.brave.Browser_brave
+X-WAH-ID=KS0bPPyY
+X-WAH-ISOLATE=true
+X-WAH-MAXIMIZE=false
+X-WAH-PROFILE=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/KS0bPPyY
+X-WAH-URL=https://mail.google.com
+X-WAH-VERSION=1.1.0
+

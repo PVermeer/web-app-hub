@@ -1,0 +1,19 @@
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run com.brave.Browser --no-first-run --app="https://youtube.com" --class=brave-youtube.com__-Default --name=brave-youtube.com__-Default --user-data-dir=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/gV8GERCK 
+Icon=/home/vscode/.local/share/web-app-hub/icons/gV8GERCK.png
+Name=Youtube
+StartupWMClass=brave-youtube.com__-Default
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID=com.brave.Browser_brave
+X-WAH-ID=gV8GERCK
+X-WAH-ISOLATE=true
+X-WAH-MAXIMIZE=false
+X-WAH-PROFILE=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/gV8GERCK
+X-WAH-URL=https://youtube.com
+X-WAH-VERSION=1.1.0
+

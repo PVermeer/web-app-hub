@@ -1,0 +1,19 @@
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run com.brave.Browser --no-first-run --app="https://calendar.google.com" --class=brave-calendar.google.com__-Default --name=brave-calendar.google.com__-Default --user-data-dir=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/CiEwEaZj 
+Icon=/home/vscode/.local/share/web-app-hub/icons/CiEwEaZj.png
+Name=Calendar
+StartupWMClass=brave-calendar.google.com__-Default
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID=com.brave.Browser_brave
+X-WAH-ID=CiEwEaZj
+X-WAH-ISOLATE=true
+X-WAH-MAXIMIZE=false
+X-WAH-PROFILE=/home/vscode/.var/app/com.brave.Browser/data/web-app-hub/profiles/CiEwEaZj
+X-WAH-URL=https://calendar.google.com
+X-WAH-VERSION=1.1.0
+
