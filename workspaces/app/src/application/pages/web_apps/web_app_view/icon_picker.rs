@@ -24,7 +24,7 @@ use std::{
     cell::RefCell,
     cmp::Reverse,
     collections::HashMap,
-    fs, mem,
+    fs,
     rc::Rc,
     time::{Duration, SystemTime},
 };
@@ -36,8 +36,9 @@ pub struct IconPicker {
     prefs_page: PreferencesPage,
     app: Rc<App>,
     desktop_file: Rc<RefCell<DesktopFile>>,
-    icons: Rc<RefCell<HashMap<String, Rc<Icon>>>>,
+    icons: RefCell<HashMap<String, Rc<Icon>>>,
     icons_ordered: RefCell<Vec<(String, Rc<Icon>)>>,
+    removed_icon: RefCell<Option<Rc<Icon>>>,
     pref_row_icons: PreferencesRow,
     pref_row_icons_fail: PreferencesRow,
     pref_row_icons_flow_box: RefCell<Option<FlowBox>>,
@@ -49,13 +50,12 @@ pub struct IconPicker {
 impl IconPicker {
     pub const DIALOG_SAVE: &str = "save";
     pub const DIALOG_CANCEL: &str = "cancel";
-    /// In seconds
-    pub const ONLINE_FETCH_THROTTLE: u64 = 20;
-    pub const CURRENT_ICON_KEY: &str = "current";
+    pub const ONLINE_FETCH_THROTTLE: Duration = Duration::from_secs(20);
+    pub const CURRENT_ICON_SOURCE: &str = "current";
     pub const ICON_MAX_SIZE: i32 = 64;
 
     pub fn new(app: &Rc<App>, desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
-        let icons = Rc::new(RefCell::new(HashMap::new()));
+        let icons = RefCell::new(HashMap::new());
         let icons_ordered = RefCell::new(Vec::new());
         let content_box = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
@@ -79,7 +79,7 @@ impl IconPicker {
 
         let fetched_icons_ts = RefCell::new(
             SystemTime::now()
-                .checked_sub(Duration::from_secs(Self::ONLINE_FETCH_THROTTLE + 5))
+                .checked_sub(Self::ONLINE_FETCH_THROTTLE + Duration::from_secs(5))
                 .unwrap_or(SystemTime::now()),
         );
 
@@ -91,6 +91,7 @@ impl IconPicker {
             desktop_file: desktop_file.clone(),
             icons,
             icons_ordered,
+            removed_icon: RefCell::new(None),
             pref_row_icons,
             pref_row_icons_fail,
             pref_row_icons_flow_box: RefCell::new(None),
@@ -190,7 +191,7 @@ impl IconPicker {
         self.set_icons_ordered();
         let icons_ordered_borrow = self.icons_ordered.borrow();
 
-        let Some((_url, icon)) = icons_ordered_borrow.first() else {
+        let Some((_source, icon)) = icons_ordered_borrow.first() else {
             bail!("No icons found")
         };
 
@@ -199,7 +200,7 @@ impl IconPicker {
     }
 
     fn get_selected_icon(self: &Rc<Self>) -> Result<Rc<Icon>> {
-        let url_or_path = self
+        let source = self
             .clone()
             .pref_row_icons_flow_box
             .borrow()
@@ -216,7 +217,7 @@ impl IconPicker {
         let icon = self
             .icons
             .borrow()
-            .get(&url_or_path)
+            .get(&source)
             .context("Cannot find icon in HashMap???")?
             .clone();
         Ok(icon)
@@ -243,13 +244,13 @@ impl IconPicker {
         self.pref_row_icons_fail.set_visible(false);
     }
 
-    fn select_icon(&self, filename: &str) {
+    fn select_icon(&self, source: &str) {
         let flow_box_borrow = self.pref_row_icons_flow_box.borrow();
         if let Some(flow_box) = flow_box_borrow.as_ref() {
             let mut index = 0;
             while let Some(flow_box_child) = flow_box.child_at_index(index) {
                 if let Some(widget) = flow_box_child.child()
-                    && filename == widget.widget_name()
+                    && source == widget.widget_name()
                 {
                     flow_box.select_child(&flow_box_child);
                     break;
@@ -288,16 +289,16 @@ impl IconPicker {
         let mut current_icon_item = None;
 
         for icon_item in icons_ordered_borrow.iter() {
-            let (key, icon) = icon_item;
+            let (source, icon) = icon_item;
             if first_icon_item.is_none() {
                 first_icon_item = Some(icon_item);
             }
-            if key == Self::CURRENT_ICON_KEY {
+            if source == Self::CURRENT_ICON_SOURCE {
                 current_icon_item = Some(icon_item);
             }
 
             let frame = gtk::Box::new(Orientation::Vertical, 0);
-            frame.set_widget_name(key);
+            frame.set_widget_name(source);
             let picture = Image::from_pixbuf(Some(&icon.pixbuf));
             let pixel_size = if icon.pixbuf.height() > Self::ICON_MAX_SIZE {
                 Self::ICON_MAX_SIZE
@@ -317,10 +318,10 @@ impl IconPicker {
 
         *self_clone.pref_row_icons_flow_box.borrow_mut() = Some(flow_box);
 
-        if let Some((key, _icon)) = current_icon_item {
-            self.select_icon(key);
-        } else if let Some((key, _icon)) = first_icon_item {
-            self.select_icon(key);
+        if let Some((source, _icon)) = current_icon_item {
+            self.select_icon(source);
+        } else if let Some((source, _icon)) = first_icon_item {
+            self.select_icon(source);
         }
 
         if icons_ordered_borrow.is_empty() {
@@ -348,10 +349,10 @@ impl IconPicker {
         };
 
         let mut self_icons_borrow = self.icons.borrow_mut();
-
-        for (url, icon) in icons {
-            self_icons_borrow.insert(url, icon);
-        }
+        *self_icons_borrow = icons
+            .into_iter()
+            .map(|icon| (icon.source.clone(), icon))
+            .collect();
 
         if self_icons_borrow.is_empty() {
             bail!("No icons found for: {url}")
@@ -366,25 +367,42 @@ impl IconPicker {
         };
         let current_icon =
             Rc::new(Icon::from_path(&current_icon_path).context("Could not load current image")?);
-        let mut icons_ordered_borrow = self.icons_ordered.borrow_mut();
 
-        let is_new_icon = self
-            .icons
-            .borrow_mut()
-            .insert(Self::CURRENT_ICON_KEY.into(), current_icon.clone())
-            .is_none();
+        let mut icons_borrow = self.icons.borrow_mut();
+        let mut removed_icon_borrow = self.removed_icon.borrow_mut();
 
-        if is_new_icon {
-            icons_ordered_borrow.insert(0, (Self::CURRENT_ICON_KEY.into(), current_icon.clone()));
-        } else if let Some(index) = icons_ordered_borrow
-            .iter()
-            .position(|(key, _icon)| key == Self::CURRENT_ICON_KEY)
-        {
-            let _ = mem::replace(
-                &mut icons_ordered_borrow[index],
-                (Self::CURRENT_ICON_KEY.into(), current_icon.clone()),
-            );
+        if let Some(removed_icon) = removed_icon_borrow.take() {
+            let removed_local_icon = icons_borrow.remove(Self::CURRENT_ICON_SOURCE);
+            if let Some(removed_local_icon) = removed_local_icon {
+                debug!(
+                    source = removed_local_icon.source,
+                    "Removed local icon from map"
+                );
+            }
+
+            let is_new_icon = icons_borrow
+                .insert(removed_icon.source.clone(), removed_icon.clone())
+                .is_some();
+            if is_new_icon {
+                debug!(
+                    source = removed_icon.source,
+                    "Restored icon from local find"
+                );
+            }
         }
+
+        let matched_icon = icons_borrow
+            .iter()
+            .find(|(_source, icon)| **icon == current_icon)
+            .map(|(source, icon)| (source.clone(), icon.clone()));
+
+        if let Some((matched_source, matched_icon)) = matched_icon {
+            icons_borrow.remove(&matched_source);
+            *removed_icon_borrow = Some(matched_icon);
+
+            debug!(source = matched_source, "Replaced icon with local find");
+        }
+        icons_borrow.insert(Self::CURRENT_ICON_SOURCE.into(), current_icon);
 
         Ok(())
     }
@@ -392,20 +410,24 @@ impl IconPicker {
     fn set_icons_ordered(&self) {
         let mut self_icons_ordered_borrow = self.icons_ordered.borrow_mut();
 
-        *self_icons_ordered_borrow = self.icons.borrow().clone().into_iter().collect();
-        self_icons_ordered_borrow.sort_by_key(|(_, a)| Reverse(a.pixbuf.byte_length()));
+        *self_icons_ordered_borrow = self
+            .icons
+            .borrow()
+            .iter()
+            .map(|(source, icon)| (source.clone(), icon.clone()))
+            .collect();
+        self_icons_ordered_borrow.sort_by_key(|(_source, icon)| Reverse(icon.pixbuf.byte_length()));
     }
 
     fn should_throttle(self: &Rc<Self>) -> bool {
         let now = SystemTime::now();
-        let throttle_duration = Duration::from_secs(Self::ONLINE_FETCH_THROTTLE);
         let previous_fetch_ts = *self.fetched_icons_ts.borrow();
         let Ok(previous_fetch_duration) = now.duration_since(previous_fetch_ts) else {
             error!("Could not calculate duration for throttle");
             return false;
         };
 
-        if previous_fetch_duration < throttle_duration {
+        if previous_fetch_duration < Self::ONLINE_FETCH_THROTTLE {
             return true;
         }
 

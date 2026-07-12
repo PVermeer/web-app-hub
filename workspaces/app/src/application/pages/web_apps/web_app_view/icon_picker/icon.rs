@@ -7,11 +7,32 @@ use gtk::{
     },
     glib,
 };
-use std::path::PathBuf;
+use std::{hash::Hash, path::PathBuf};
 
+/// Icon structure where icons can be compared
+#[derive(Debug)]
 pub struct Icon {
     pub pixbuf: Pixbuf,
+    pub source: String,
 }
+impl PartialEq for Icon {
+    fn eq(&self, other: &Self) -> bool {
+        self.pixbuf.width() == other.pixbuf.width()
+            && self.pixbuf.height() == other.pixbuf.height()
+            && self.pixbuf.n_channels() == other.pixbuf.n_channels()
+            && self.pixbuf.read_pixel_bytes() == other.pixbuf.read_pixel_bytes()
+    }
+}
+impl Eq for Icon {}
+impl Hash for Icon {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.pixbuf.width().hash(state);
+        self.pixbuf.height().hash(state);
+        self.pixbuf.n_channels().hash(state);
+        self.pixbuf.read_pixel_bytes().hash(state);
+    }
+}
+
 impl Icon {
     const SCALE_HEIGHT: i32 = 512;
 
@@ -33,10 +54,13 @@ impl Icon {
             Ok(pixbuf) => pixbuf,
         };
 
-        Ok(Self { pixbuf })
+        Ok(Self {
+            pixbuf,
+            source: path.to_string_lossy().to_string(),
+        })
     }
 
-    pub fn from_bytes(bytes: &Vec<u8>, mimetype: Option<String>) -> Result<Icon> {
+    pub fn from_bytes(bytes: &Vec<u8>, mimetype: Option<String>, source: &str) -> Result<Icon> {
         let pixbuf_format =
             mimetype.and_then(|mimetype| Self::get_pixbuf_format_from_mimetype(&mimetype));
         let g_bytes = glib::Bytes::from(bytes);
@@ -57,7 +81,10 @@ impl Icon {
             Ok(pixbuf) => pixbuf,
         };
 
-        Ok(Self { pixbuf })
+        Ok(Self {
+            pixbuf,
+            source: source.to_string(),
+        })
     }
 
     fn get_pixbuf_format_from_mimetype(mimetype: &str) -> Option<PixbufFormat> {

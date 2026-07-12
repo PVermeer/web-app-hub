@@ -48,7 +48,7 @@ impl IconFetcher {
         })
     }
 
-    pub async fn get_online_icons(&mut self) -> Result<Vec<(String, Rc<Icon>)>> {
+    pub async fn get_online_icons(&mut self) -> Result<HashSet<Rc<Icon>>> {
         debug!("Fetching online icons");
 
         let urls = [Some(self.url.clone()), self.base_url.clone()];
@@ -199,9 +199,9 @@ impl IconFetcher {
         }
     }
 
-    async fn fetch_icons_from_urls(&mut self) -> Vec<(String, Rc<Icon>)> {
+    async fn fetch_icons_from_urls(&mut self) -> HashSet<Rc<Icon>> {
         let mut icon_handles = HashMap::new();
-        let mut icons = Vec::new();
+        let mut icons = HashSet::new();
 
         for icon_url in &self.icon_urls {
             let app_clone = self.app.clone();
@@ -224,14 +224,18 @@ impl IconFetcher {
                 data: image_bytes,
                 mimetype,
             } = response;
-            let icon = match Icon::from_bytes(&image_bytes, mimetype) {
+            let icon = match Icon::from_bytes(&image_bytes, mimetype, url) {
                 Ok(icon) => icon,
                 Err(error) => {
                     error!(url, ?error, "Failed to convert image");
                     continue;
                 }
             };
-            icons.push((url.clone(), Rc::new(icon)));
+            let is_new_icon = icons.insert(Rc::new(icon));
+
+            if !is_new_icon {
+                debug!(url, "Icon already in set");
+            }
         }
 
         icons
