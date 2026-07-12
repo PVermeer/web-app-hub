@@ -46,14 +46,14 @@ impl Display for Key {
         let identifier = config::APP_NAME_SHORT.get_value().to_uppercase();
 
         match self {
-            Self::Gwa => write!(f, "X-{}", &identifier),
-            Self::Version => write!(f, "X-{}-VERSION", &identifier),
-            Self::Id => write!(f, "X-{}-ID", &identifier),
-            Self::Url => write!(f, "X-{}-URL", &identifier),
-            Self::BrowserId => write!(f, "X-{}-BROWSER-ID", &identifier),
-            Self::Isolate => write!(f, "X-{}-ISOLATE", &identifier),
-            Self::Maximize => write!(f, "X-{}-MAXIMIZE", &identifier),
-            Self::Profile => write!(f, "X-{}-PROFILE", &identifier),
+            Self::Gwa => write!(f, "X-{identifier}"),
+            Self::Version => write!(f, "X-{identifier}-VERSION"),
+            Self::Id => write!(f, "X-{identifier}-ID"),
+            Self::Url => write!(f, "X-{identifier}-URL"),
+            Self::BrowserId => write!(f, "X-{identifier}-BROWSER-ID"),
+            Self::Isolate => write!(f, "X-{identifier}-ISOLATE"),
+            Self::Maximize => write!(f, "X-{identifier}-MAXIMIZE"),
+            Self::Profile => write!(f, "X-{identifier}-PROFILE"),
             Self::Name => write!(f, "Name"),
             Self::Exec => write!(f, "Exec"),
             Self::Icon => write!(f, "Icon"),
