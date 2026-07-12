@@ -871,3 +871,87 @@ impl std::fmt::Display for DesktopFile {
         self.desktop_entry.fmt(f)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gtk::IconTheme;
+
+    fn desktop_file_is_correct(test_case: &str, browser_id: &str) -> Result<()> {
+        gtk::init().expect("Failed to init GTK");
+        config::init();
+
+        let icon_theme = Rc::new(IconTheme::new());
+        let app_dirs = Rc::new(AppDirs::new().expect("Failed to create AppDirs"));
+        let browser_configs = BrowserConfigs::new(&icon_theme, &app_dirs);
+        browser_configs.init();
+        let app_name_dense = config::APP_NAME_DENSE.get_value();
+
+        let mut desktop_file = DesktopFile::new(&browser_configs, &app_dirs);
+        let browser = browser_configs
+            .get_browser_by_id(browser_id)
+            .expect("Failed to get a browser");
+        let test_profile_path_str = &format!("/tmp/{app_name_dense}/test_profile");
+        let profile_path = Path::new(test_profile_path_str);
+
+        desktop_file.set_is_owned_app();
+        desktop_file.set_id("some-test-id");
+        desktop_file.set_category(&Category::Network);
+        desktop_file.set_browser(&browser);
+        desktop_file.set_icon_path(Path::new("../../dev-assets/icons/YouTube.png"));
+        desktop_file.set_name("Test app");
+        desktop_file.set_url("https://some.nice.url");
+        desktop_file.set_isolated(true);
+        desktop_file.set_maximized(true);
+        desktop_file.set_profile_path(profile_path);
+
+        let test_case_destop_file = DesktopFile::from_string(
+            Path::new("./fake.desktop"),
+            test_case,
+            &browser_configs,
+            &app_dirs,
+        )
+        .context("Failed to create test case desktop file")?;
+
+        desktop_file = desktop_file.to_new_from_browser()?;
+
+        println!("=== Test case:\n{test_case_destop_file}");
+        println!("=== Generated:\n{desktop_file}");
+
+        assert_eq!(desktop_file.to_string(), test_case_destop_file.to_string());
+
+        Ok(())
+    }
+
+    #[test]
+    fn brave_desktop_file_is_correct() -> Result<()> {
+        config::init();
+        let app_version = config::VERSION.get_value();
+        let browser_id = "com.brave.Browser_brave";
+
+        let test_case = format!(
+            r#"
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run com.brave.Browser --no-first-run --app="https://some.nice.url" --class=brave-some.nice.url__-Default --name=brave-some.nice.url__-Default --user-data-dir=/tmp/WebAppHub/test_profile --start-maximized
+Icon=../../dev-assets/icons/YouTube.png
+Name=Test app
+StartupWMClass=brave-some.nice.url__-Default
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID={browser_id}
+X-WAH-ID=some-test-id
+X-WAH-ISOLATE=true
+X-WAH-MAXIMIZE=true
+X-WAH-PROFILE=/tmp/WebAppHub/test_profile
+X-WAH-URL=https://some.nice.url
+X-WAH-VERSION={app_version}
+        "#
+        );
+
+        desktop_file_is_correct(&test_case, browser_id)
+    }
+}
