@@ -1,3 +1,34 @@
+## [1.1.1] - 2026-07-18
+
+### 🐛 Bug Fixes
+
+- *(icon-picker)* Don't stop fetching on html fetch error
+- *(icon-picker)* Try to remove duplicate icons
+
+### 💼 Other
+
+- Changed environment check to optional
+
+### 🚜 Refactor
+
+- *(desktop-file)* Make updated clippy happy
+- *(browsers)* Changed gtk IconTheme to trait implementation
+
+### ⚡ Performance
+
+- *(icon-picker)* Load html urls in parallel
+
+### 🧪 Testing
+
+- *(desktop-file)* Added brave test case
+- *(desktop-file)* Updated to chromium / firefox tests
+
+### ⚙️ Miscellaneous Tasks
+
+- *(dev)* Fix dns resolve lockup in dev-container
+- *(dev)* Fixup dev web apps
+- *(dev)* Added some more dev web apps
+- *(dev)* Only do dev env things in dev container
 ## [1.1.0] - 2026-07-06
 
 ### 🚀 Features
@@ -7,6 +38,10 @@
 ### 💼 Other
 
 - *(app)* Only do dev things on debug builds
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V1.1.0
 ## [1.0.1] - 2026-06-05
 
 ### 🐛 Bug Fixes
@@ -64,28 +99,3 @@
 - *(release)* Increase timeout for vendored dependencies
 - *(release)* Changed lockfile update to tree command
 - *(release)* V0.12.0
-## [0.11.0] - 2026-04-05
-
-### 🚀 Features
-
-- *(browser)* Added librewolf
-- *(browser)* Added firefox-esr
-- *(web-app-view)* Improve form navigation with keyboard
-
-### 💼 Other
-
-- Revert "refactor(desktop-file): use space instead of '=' for conditional replacement"
-
-This reverts commit 03c26db58d6ef51713c43bce953868b960a9bb23.
-
-### 🚜 Refactor
-
-- *(desktop-file)* Use space instead of '=' for conditional replacement
-- *(desktop-file)* Added exception for firefox-esr to use space instead of '=' for conditional replacements
-- *(web-app-view)* More improvements for form navigation
-
-### ⚙️ Miscellaneous Tasks
-
-- *(browser)* Add binary names for librewolf
-- *(dev)* Some dev optimisations
-- *(release)* V0.11.0

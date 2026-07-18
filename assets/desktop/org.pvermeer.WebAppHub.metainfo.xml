@@ -29,7 +29,7 @@
   <url type="contact">https://github.com/pvermeer/web-app-hub/issues</url>
   <!-- <url type="donation"></url> -->
   <url type="vcs-browser">https://github.com/pvermeer/web-app-hub</url>
-  <url type="help">https://github.com/pvermeer/web-app-hub/blob/v1.1.0/README.md</url>
+  <url type="help">https://github.com/pvermeer/web-app-hub/blob/v1.1.1/README.md</url>
   <url type="contribute">https://github.com/pvermeer/web-app-hub</url>
 
   <recommends>
@@ -45,28 +45,38 @@
   <screenshots>
 
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v1.1.0/assets/screenshots/1-Web-App.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v1.1.1/assets/screenshots/1-Web-App.png</image>
       <caption>Web-App</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v1.1.0/assets/screenshots/2-Web-Apps.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v1.1.1/assets/screenshots/2-Web-Apps.png</image>
       <caption>Web-Apps</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v1.1.0/assets/screenshots/3-Browsers.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v1.1.1/assets/screenshots/3-Browsers.png</image>
       <caption>Browsers</caption>
     </screenshot>
 
     <screenshot>
-      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v1.1.0/assets/screenshots/4-Info.png</image>
+      <image>https://raw.githubusercontent.com/pvermeer/web-app-hub/refs/tags/v1.1.1/assets/screenshots/4-Info.png</image>
       <caption>Info</caption>
     </screenshot>
   </screenshots>
 
   <releases>
 
+    <release version="1.1.1" date="2026-07-18">
+      <description>
+        <p>Fixes:</p>
+        <ul>
+          <li>icon-picker: don't stop fetching on html fetch error</li>
+          <li>icon-picker: try to remove duplicate icons</li>
+        </ul>
+      </description>
+    </release>
+    
     <release version="1.1.0" date="2026-07-06">
       <description>
         <p>New features:</p>
@@ -101,17 +111,6 @@
         <p>New features:</p>
         <ul>
           <li>browser: added system binaries for zen browser (#52)</li>
-        </ul>
-      </description>
-    </release>
-    
-    <release version="0.11.0" date="2026-04-05">
-      <description>
-        <p>New features:</p>
-        <ul>
-          <li>browser: added librewolf</li>
-          <li>browser: added firefox-esr</li>
-          <li>web-app-view: improve form navigation with keyboard</li>
         </ul>
       </description>
     </release>
