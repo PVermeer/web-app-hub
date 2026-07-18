@@ -1,5 +1,6 @@
 mod css_provider;
 mod error_dialog;
+mod icon_theme;
 mod pages;
 mod window;
 
@@ -7,14 +8,15 @@ use anyhow::{Error, Result};
 use common::{
     app_dirs::AppDirs,
     assets::{self},
-    browsers::BrowserConfigs,
+    browsers::{BrowserConfigs, BrowserIconTheme},
     cache_settings::CacheSettings,
     config::{self},
     fetch::Fetch,
     utils::{self, OnceLockExt},
 };
 use error_dialog::ErrorDialog;
-use gtk::{IconTheme, Image, Settings, gdk};
+use gtk::{Image, Settings, gdk};
+use icon_theme::AppIconTheme;
 use pages::{Page, Pages};
 use std::{cell::RefCell, path::Path, rc::Rc};
 use tracing::{debug, error};
@@ -32,7 +34,7 @@ pub struct App {
     pub error_dialog: ErrorDialog,
     pub locale: Locale,
     adw_application: libadwaita::Application,
-    icon_theme: Rc<IconTheme>,
+    icon_theme: Rc<AppIconTheme>,
     window: AppWindow,
     fetch: Fetch,
     pages: Pages,
@@ -42,14 +44,14 @@ impl App {
     pub fn new(adw_application: &libadwaita::Application) -> Rc<Self> {
         Rc::new({
             let display = gdk::Display::default().expect("Failed to connect to display");
-            let icon_theme = Rc::new(IconTheme::for_display(&display));
+            let icon_theme = Rc::new(AppIconTheme::for_display(&display));
             let app_dirs = AppDirs::new().expect("Failed to get all needed directories");
             let settings = Settings::default().expect("Failed to load gtk settings");
             let cache_settings = RefCell::new(CacheSettings::new(&app_dirs));
             let window = AppWindow::new(adw_application);
             let fetch = Fetch::new();
             let pages = Pages::new();
-            let browsers = BrowserConfigs::new(&icon_theme, &app_dirs);
+            let browsers = BrowserConfigs::new(icon_theme.clone(), &app_dirs);
             let error_dialog = ErrorDialog::new();
             let locale = Locale {
                 current: rust_i18n::locale().to_string(),

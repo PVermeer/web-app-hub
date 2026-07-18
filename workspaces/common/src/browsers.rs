@@ -5,11 +5,19 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use freedesktop_desktop_entry::DesktopEntry;
-use gtk::{IconTheme, Image};
+use gtk::Image;
 use serde::Deserialize;
 use std::{cell::OnceCell, collections::HashMap, fs, path::Path, rc::Rc};
 use std::{fmt::Write as _, path::PathBuf};
 use tracing::{debug, error, info};
+
+pub trait BrowserIconTheme {
+    fn new() -> Self
+    where
+        Self: Sized;
+    fn has_icon(&self, icon_name: &str) -> bool;
+    fn add_search_path(&self, path: &Path);
+}
 
 #[derive(PartialEq)]
 pub enum Installation {
@@ -88,7 +96,7 @@ pub struct Browser {
     pub profile_setup_keybind: Option<String>,
     configs: Rc<BrowserConfigs>,
     config: Option<Rc<BrowserConfig>>,
-    icon_theme: Rc<IconTheme>,
+    icon_theme: Rc<dyn BrowserIconTheme>,
     icon_names: Vec<String>,
     app_dirs: Rc<AppDirs>,
 }
@@ -99,7 +107,7 @@ impl Browser {
         browser_config: &Rc<BrowserConfig>,
         installation: Installation,
         browser_configs: &Rc<BrowserConfigs>,
-        icon_theme: &Rc<IconTheme>,
+        icon_theme: &Rc<dyn BrowserIconTheme>,
         app_dirs: &Rc<AppDirs>,
     ) -> Self {
         let icon_names = Self::get_icon_names_from_config(browser_config);
@@ -358,18 +366,18 @@ pub struct BrowserConfigs {
     all_browsers: OnceCell<Vec<Rc<Browser>>>,
     installed_browsers: OnceCell<Vec<Rc<Browser>>>,
     uninstalled_browsers: OnceCell<Vec<Rc<Browser>>>,
-    icon_theme: Rc<IconTheme>,
+    icon_theme: Rc<dyn BrowserIconTheme>,
     app_dirs: Rc<AppDirs>,
 }
 impl BrowserConfigs {
     pub const NO_BROWSER_NAME: &str = "No browser";
 
-    pub fn new(icon_theme: &Rc<IconTheme>, app_dirs: &Rc<AppDirs>) -> Rc<Self> {
+    pub fn new(icon_theme: Rc<dyn BrowserIconTheme>, app_dirs: &Rc<AppDirs>) -> Rc<Self> {
         Rc::new(Self {
             all_browsers: OnceCell::new(),
             installed_browsers: OnceCell::new(),
             uninstalled_browsers: OnceCell::new(),
-            icon_theme: icon_theme.clone(),
+            icon_theme,
             app_dirs: app_dirs.clone(),
         })
     }
