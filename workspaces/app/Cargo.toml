@@ -6,6 +6,7 @@ edition = { workspace = true }
 [[bin]]
 name = "web-app-hub"
 path = "src/main.rs"
+test = false
 
 [dependencies]
 anyhow = { workspace = true }

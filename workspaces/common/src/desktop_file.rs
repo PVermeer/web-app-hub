@@ -875,15 +875,33 @@ impl std::fmt::Display for DesktopFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gtk::IconTheme;
+    use crate::browsers::BrowserIconTheme;
 
-    fn desktop_file_is_correct(test_case: &str, browser_id: &str) -> Result<()> {
-        gtk::init().expect("Failed to init GTK");
+    struct IconThemeMock {}
+    impl BrowserIconTheme for IconThemeMock {
+        fn new() -> Self
+        where
+            Self: Sized,
+        {
+            Self {}
+        }
+        fn has_icon(&self, _icon_name: &str) -> bool {
+            true
+        }
+        fn add_search_path(&self, _path: &Path) {}
+    }
+
+    fn desktop_file_is_correct(
+        expected_desktop_file: &str,
+        expected_file_name: &str,
+        browser_id: &str,
+    ) -> Result<()> {
+        let expected_desktop_file = expected_desktop_file.trim();
         config::init();
 
-        let icon_theme = Rc::new(IconTheme::new());
+        let icon_theme = Rc::new(IconThemeMock::new());
         let app_dirs = Rc::new(AppDirs::new().expect("Failed to create AppDirs"));
-        let browser_configs = BrowserConfigs::new(&icon_theme, &app_dirs);
+        let browser_configs = BrowserConfigs::new(icon_theme, &app_dirs);
         browser_configs.init();
         let app_name_dense = config::APP_NAME_DENSE.get_value();
 
@@ -905,38 +923,42 @@ mod tests {
         desktop_file.set_maximized(true);
         desktop_file.set_profile_path(profile_path);
 
-        let test_case_destop_file = DesktopFile::from_string(
-            Path::new("./fake.desktop"),
-            test_case,
-            &browser_configs,
-            &app_dirs,
-        )
-        .context("Failed to create test case desktop file")?;
-
         desktop_file = desktop_file.to_new_from_browser()?;
 
-        println!("=== Test case:\n{test_case_destop_file}");
-        println!("=== Generated:\n{desktop_file}");
+        let desktop_file_string = desktop_file.to_string();
+        let desktop_file_string = desktop_file_string.trim();
 
-        assert_eq!(desktop_file.to_string(), test_case_destop_file.to_string());
+        let desktop_file_path = desktop_file.get_path();
+        let file_name_string = desktop_file_path
+            .file_name()
+            .context("Failed to get filename on desktop file")?
+            .to_string_lossy();
+
+        println!("\n=== Test case:\n{expected_desktop_file}\n===");
+        println!("\n=== Generated:\n{desktop_file_string}\n===");
+        println!("\n=== Filename:\n{file_name_string}\n");
+
+        assert_eq!(desktop_file_string, expected_desktop_file);
+        assert_eq!(file_name_string, expected_file_name);
 
         Ok(())
     }
 
     #[test]
-    fn brave_desktop_file_is_correct() -> Result<()> {
+    fn chromium_desktop_file_is_correct() -> Result<()> {
         config::init();
         let app_version = config::VERSION.get_value();
-        let browser_id = "com.brave.Browser_brave";
+        let browser_id = "org.chromium.Chromium_chromium";
+        let file_name = "org.chromium.Chromium.chromium-wah-some-test-id.desktop";
 
-        let test_case = format!(
+        let expected_desktop_file = format!(
             r#"
 [Desktop Entry]
 Categories=Network
-Exec=flatpak run com.brave.Browser --no-first-run --app="https://some.nice.url" --class=brave-some.nice.url__-Default --name=brave-some.nice.url__-Default --user-data-dir=/tmp/WebAppHub/test_profile --start-maximized
+Exec=flatpak run org.chromium.Chromium --no-first-run --app="https://some.nice.url" --class=chrome-some.nice.url__-Default --name=chrome-some.nice.url__-Default --user-data-dir=/tmp/WebAppHub/test_profile --start-maximized
 Icon=../../dev-assets/icons/YouTube.png
 Name=Test app
-StartupWMClass=brave-some.nice.url__-Default
+StartupWMClass=chrome-some.nice.url__-Default
 Terminal=false
 Type=Application
 Version=1.0
@@ -949,9 +971,42 @@ X-WAH-MAXIMIZE=true
 X-WAH-PROFILE=/tmp/WebAppHub/test_profile
 X-WAH-URL=https://some.nice.url
 X-WAH-VERSION={app_version}
-        "#
+"#
         );
 
-        desktop_file_is_correct(&test_case, browser_id)
+        desktop_file_is_correct(&expected_desktop_file, file_name, browser_id)
+    }
+
+    #[test]
+    fn firefox_desktop_file_is_correct() -> Result<()> {
+        config::init();
+        let app_version = config::VERSION.get_value();
+        let browser_id = "org.mozilla.firefox_firefox";
+        let file_name = "org.mozilla.firefox.firefox-wah-some-test-id.desktop";
+
+        let expected_desktop_file = format!(
+            r"
+[Desktop Entry]
+Categories=Network
+Exec=flatpak run org.mozilla.firefox --class=wah-some-test-id --name=wah-some-test-id --profile=/tmp/WebAppHub/test_profile --no-remote https://some.nice.url
+Icon=../../dev-assets/icons/YouTube.png
+Name=Test app
+StartupWMClass=wah-some-test-id
+Terminal=false
+Type=Application
+Version=1.0
+X-MultipleArgs=false
+X-WAH=true
+X-WAH-BROWSER-ID={browser_id}
+X-WAH-ID=some-test-id
+X-WAH-ISOLATE=true
+X-WAH-MAXIMIZE=true
+X-WAH-PROFILE=/tmp/WebAppHub/test_profile
+X-WAH-URL=https://some.nice.url
+X-WAH-VERSION={app_version}
+"
+        );
+
+        desktop_file_is_correct(&expected_desktop_file, file_name, browser_id)
     }
 }
