@@ -14,6 +14,7 @@ use std::{hash::Hash, path::PathBuf};
 pub struct Icon {
     pub pixbuf: Pixbuf,
     pub source: String,
+    pub is_transparent: bool,
 }
 impl PartialEq for Icon {
     fn eq(&self, other: &Self) -> bool {
@@ -54,9 +55,12 @@ impl Icon {
             Ok(pixbuf) => pixbuf,
         };
 
+        let is_transparent = Self::has_transparent_background(&pixbuf).unwrap_or(false);
+
         Ok(Self {
             pixbuf,
             source: path.to_string_lossy().to_string(),
+            is_transparent,
         })
     }
 
@@ -81,10 +85,46 @@ impl Icon {
             Ok(pixbuf) => pixbuf,
         };
 
+        let is_transparent = Self::has_transparent_background(&pixbuf).unwrap_or(false);
+
         Ok(Self {
             pixbuf,
             source: source.to_string(),
+            is_transparent,
         })
+    }
+
+    /// Only checks corners
+    fn has_transparent_background(pixbuf: &Pixbuf) -> Result<bool> {
+        if !pixbuf.has_alpha() {
+            return Ok(false);
+        }
+
+        let width = pixbuf.width();
+        let height = pixbuf.height();
+        let rowstride = pixbuf.rowstride();
+        let n_channels = pixbuf.n_channels();
+        let alpha_offset = n_channels - 1;
+
+        let pixels = pixbuf.read_pixel_bytes();
+        let data = pixels.as_ref();
+
+        // Check all four corners
+        let corners = [
+            (0, 0),                  // Top-left
+            (width - 1, 0),          // Top-right
+            (0, height - 1),         // Bottom-left
+            (width - 1, height - 1), // Bottom-right
+        ];
+
+        for (x, y) in corners {
+            let pixel_offset: usize = (y * rowstride + x * n_channels + alpha_offset).try_into()?;
+            if data.get(pixel_offset).is_some_and(|pixel| *pixel == 0) {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 
     fn get_pixbuf_format_from_mimetype(mimetype: &str) -> Option<PixbufFormat> {

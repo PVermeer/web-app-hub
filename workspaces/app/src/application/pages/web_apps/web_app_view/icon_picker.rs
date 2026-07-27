@@ -22,7 +22,6 @@ use libadwaita::{
 };
 use std::{
     cell::RefCell,
-    cmp::Reverse,
     collections::HashMap,
     fs,
     rc::Rc,
@@ -416,7 +415,12 @@ impl IconPicker {
             .iter()
             .map(|(source, icon)| (source.clone(), icon.clone()))
             .collect();
-        self_icons_ordered_borrow.sort_by_key(|(_source, icon)| Reverse(icon.pixbuf.byte_length()));
+        self_icons_ordered_borrow.sort_by_key(|(_source, icon)| {
+            (
+                std::cmp::Reverse(icon.is_transparent),
+                std::cmp::Reverse(icon.pixbuf.byte_length()),
+            )
+        });
     }
 
     fn should_throttle(self: &Rc<Self>) -> bool {
