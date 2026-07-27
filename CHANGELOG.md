@@ -1,3 +1,8 @@
+## [1.1.2] - 2026-07-27
+
+### 🐛 Bug Fixes
+
+- *(icon-picker)* Icons are now first ordered by transparency
 ## [1.1.1] - 2026-07-18
 
 ### 🐛 Bug Fixes
@@ -29,6 +34,7 @@
 - *(dev)* Fixup dev web apps
 - *(dev)* Added some more dev web apps
 - *(dev)* Only do dev env things in dev container
+- *(release)* V1.1.1
 ## [1.1.0] - 2026-07-06
 
 ### 🚀 Features
@@ -71,31 +77,3 @@
 - *(dev)* Change cargo-machete with cargo-shear
 - *(dev)* Update dev-container
 - *(release)* V1.0.0
-## [0.12.0] - 2026-04-21
-
-### 🚀 Features
-
-- *(browser)* Added system binaries for zen browser (#52)
-
-### 💼 Other
-
-- *(deps)* Bump rand in the cargo group across 1 directory (#49)
-- *(deps)* Bump rand in the cargo group across 1 directory (#50)
-- *(deps)* Bump rustls-webpki from 0.103.10 to 0.103.12 in the cargo group across 1 directory (#53)
-
-### 🎨 Styling
-
-- Fix pedantic clippy errors
-
-### ⚙️ Miscellaneous Tasks
-
-- *(dev)* Cleanup deps
-- *(desktop-file)* Update rand api for updated version
-- *(dev)* Update dev-container
-- *(dev)* Added zen-browser system browser
-- *(translations)* Added missing keys in translation files
-- *(release)* Added fallback to vendored deps
-- *(release)* Removed draft status on flathub pr
-- *(release)* Increase timeout for vendored dependencies
-- *(release)* Changed lockfile update to tree command
-- *(release)* V0.12.0
