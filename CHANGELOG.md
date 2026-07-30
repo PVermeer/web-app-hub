@@ -1,21 +1,8 @@
-## [1.2.0] - 2026-07-30
-
-### 🚀 Features
-
-- *(browser)* Added brave-origin browser
-
-### 💼 Other
-
-- *(deps)* Bump quinn-proto in the cargo group across 1 directory (#64)
 ## [1.1.2] - 2026-07-27
 
 ### 🐛 Bug Fixes
 
 - *(icon-picker)* Icons are now first ordered by transparency
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V1.1.2
 ## [1.1.1] - 2026-07-18
 
 ### 🐛 Bug Fixes
@@ -72,3 +59,21 @@
 
 - *(ci)* Added timout on release action
 - *(release)* V1.0.1
+## [1.0.0] - 2026-05-12
+
+### 🚀 Features
+
+- *(flatpak)* Update to gnome 50  runtime
+- *(not-breaking)* [**breaking**] Update to stable version 1
+
+### 💼 Other
+
+- *(deps)* Bump rustls-webpki in the cargo group across 1 directory (#54)
+- *(common)* Fixed cargo shear warnings
+- *(deps)* Bump rand in the cargo (unsound)
+
+### ⚙️ Miscellaneous Tasks
+
+- *(dev)* Change cargo-machete with cargo-shear
+- *(dev)* Update dev-container
+- *(release)* V1.0.0
