@@ -55,6 +55,7 @@ system_browsers=(
     "chromium"
     "firefox"
     "brave-browser"
+    "brave-origin"
     "google-chrome-stable"
     "vivaldi-stable"
     "opera-stable"
