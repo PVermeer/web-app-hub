@@ -1,6 +1,7 @@
 name: Brave Origin
 system_bin:
   - brave-origin
+  - brave-origin-bin
 can_isolate: true
 can_start_maximized: true
 desktop_file_name_prefix: com.brave.Browser.brave-origin
