@@ -514,6 +514,9 @@ impl DesktopFile {
                 }
             }
         }
+        if let Err(error) = self.delete_wm_class_desktop_file() {
+            error!("Failed to remove WMClass desktop file before saving new: {error:?}");
+        }
 
         let save_path = new_desktop_file.desktop_entry.path.clone();
 
@@ -521,6 +524,51 @@ impl DesktopFile {
         fs::write(&save_path, new_desktop_file.desktop_entry.to_string())
             .context("Saving desktop file")?;
         self.desktop_entry = new_desktop_file.desktop_entry;
+
+        if let Err(error) = self.save_wm_class_desktop_file() {
+            error!("Failed to save WMClass desktop file: {error:?}");
+        }
+
+        Ok(())
+    }
+
+    /// KDE on Wayland ignores `StartupWMClass` and resolves the window icon from a desktop file
+    /// named after the window app id, so a hidden copy with that name is needed.
+    fn get_wm_class_desktop_file_path(&self) -> Option<PathBuf> {
+        let wm_class = self
+            .desktop_entry
+            .desktop_entry(&Key::StartupWMClass.to_string())
+            .and_then(map_to_string_option)?;
+        let mut path = self.app_dirs.user_applications.join(wm_class);
+        path.add_extension("desktop");
+
+        (path != self.desktop_entry.path).then_some(path)
+    }
+
+    fn save_wm_class_desktop_file(&self) -> Result<()> {
+        let Some(path) = self.get_wm_class_desktop_file_path() else {
+            return Ok(());
+        };
+
+        let mut desktop_entry = DesktopEntry::from_appid(String::new());
+        for key in [Key::Name, Key::Exec, Key::Icon] {
+            if let Some(value) = self.desktop_entry.desktop_entry(&key.to_string()) {
+                desktop_entry.add_desktop_entry(key.to_string(), value.to_string());
+            }
+        }
+        desktop_entry.add_desktop_entry("Type".to_string(), "Application".to_string());
+        desktop_entry.add_desktop_entry("NoDisplay".to_string(), true.to_string());
+
+        debug!("Saving WMClass desktop file to: {}", path.display());
+        fs::write(&path, desktop_entry.to_string()).context("Saving WMClass desktop file")
+    }
+
+    fn delete_wm_class_desktop_file(&self) -> Result<()> {
+        if let Some(path) = self.get_wm_class_desktop_file_path()
+            && path.is_file()
+        {
+            fs::remove_file(&path).context("Removing WMClass desktop file")?;
+        }
 
         Ok(())
     }
@@ -536,6 +584,11 @@ impl DesktopFile {
                     is_error = true;
                 }
             }
+        }
+
+        if let Err(error) = self.delete_wm_class_desktop_file() {
+            error!("Failed to remove WMClass desktop file: {error:?}");
+            is_error = true;
         }
 
         if let Some(icon_path) = self.get_icon_path()
