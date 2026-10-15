@@ -2,7 +2,7 @@
 {
 	"name": "Fedora",
 	"build": {
-		"dockerfile": "Dockerfile"
+		"dockerfile": "gtk.Dockerfile"
 	},
 	"features": {
 		"ghcr.io/devcontainers/features/common-utils:2": {
