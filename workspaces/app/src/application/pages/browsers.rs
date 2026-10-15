@@ -184,10 +184,7 @@ impl BrowsersPage {
             let _ = writeln!(
                 capabilities_list,
                 "• {}",
-                t!(
-                    "browsers.capabilities.setup",
-                    key_bind = format!("{setup_keybind}")
-                )
+                t!("browsers.capabilities.setup", key_bind = setup_keybind)
             );
         }
 
