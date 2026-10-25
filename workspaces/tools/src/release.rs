@@ -201,10 +201,12 @@ fn generate_changelog() -> Result<(String, Version)> {
     let changelog_path = &project_path().join("CHANGELOG.md");
     let mut changelog_file = &File::create(changelog_path)?;
     let mut git_cliff_args = Opt::parse_from([""]);
-    git_cliff_args.config = project_path()
-        .join("workspaces")
-        .join("tools")
-        .join("git-cliff.toml");
+    git_cliff_args.config = Some(
+        project_path()
+            .join("workspaces")
+            .join("tools")
+            .join("git-cliff.toml"),
+    );
     let mut changelog = git_cliff::run(git_cliff_args.clone())?;
 
     let Ok(last_released_version) = changelog
