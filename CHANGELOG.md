@@ -1,3 +1,19 @@
+## [1.3.0] - 2026-10-25
+
+### 🚀 Features
+
+- *(deps)* Gnome 51 + dep updates + dep fixes
+
+### ⚙️ Miscellaneous Tasks
+
+- *(dev)* Update dev-container
+- *(clippy)* Fix clippy errors
+- *(dev)* Updated dev-container
+
+### 💼 Other
+
+- *(deps)* Bump xxhash-rust (#69)
+- *(deps)* Bump rustls (#73)
 ## [1.2.0] - 2026-07-30
 
 ### 🚀 Features
@@ -8,16 +24,17 @@
 
 - *(browser)* Added aur brave-origin-bin to brave-origin
 
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V1.2.0
+- *(release)* V1.2.0
+
 ### 💼 Other
 
 - *(deps)* Bump quinn-proto in the cargo group across 1 directory (#64)
 - Revert "chore(release): v1.2.0"
 
 This reverts commit f80487b1e31314c17473fac0d43c0294f014236f.
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V1.2.0
 ## [1.1.2] - 2026-07-27
 
 ### 🐛 Bug Fixes
@@ -34,18 +51,14 @@ This reverts commit f80487b1e31314c17473fac0d43c0294f014236f.
 - *(icon-picker)* Don't stop fetching on html fetch error
 - *(icon-picker)* Try to remove duplicate icons
 
-### 💼 Other
+### ⚡ Performance
 
-- Changed environment check to optional
+- *(icon-picker)* Load html urls in parallel
 
 ### 🚜 Refactor
 
 - *(desktop-file)* Make updated clippy happy
 - *(browsers)* Changed gtk IconTheme to trait implementation
-
-### ⚡ Performance
-
-- *(icon-picker)* Load html urls in parallel
 
 ### 🧪 Testing
 
@@ -59,27 +72,20 @@ This reverts commit f80487b1e31314c17473fac0d43c0294f014236f.
 - *(dev)* Added some more dev web apps
 - *(dev)* Only do dev env things in dev container
 - *(release)* V1.1.1
+
+### 💼 Other
+
+- Changed environment check to optional
 ## [1.1.0] - 2026-07-06
 
 ### 🚀 Features
 
 - *(icon-picker)* Added google favicon api lookup
 
-### 💼 Other
-
-- *(app)* Only do dev things on debug builds
-
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* V1.1.0
-## [1.0.1] - 2026-06-05
 
-### 🐛 Bug Fixes
+### 💼 Other
 
-- *(icon-picker)* Improved icon fetcher (#58)
-- *(icon-picker)* Fix for mobile smallscreen (#59)
-
-### ⚙️ Miscellaneous Tasks
-
-- *(ci)* Added timout on release action
-- *(release)* V1.0.1
+- *(app)* Only do dev things on debug builds
