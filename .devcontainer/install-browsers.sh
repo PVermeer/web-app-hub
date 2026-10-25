@@ -91,7 +91,7 @@ flatpak_browsers=(
     "app.zen_browser.zen"
     "io.gitlab.librewolf-community"
 )
-flatpak "$1" install -y "${flatpak_browsers[@]}"
-sudo flatpak --installation=some_custom_installation install -y org.chromium.Chromium
+flatpak "$1" install -y flathub "${flatpak_browsers[@]}"
+sudo flatpak --installation=some_custom_installation install -y flathub org.chromium.Chromium
 
 echo "==== Done"
