@@ -627,6 +627,20 @@ impl DesktopFile {
         Ok(true)
     }
 
+    pub fn validate_url(url: &str) -> Result<Url> {
+        Url::parse(url)
+            .map_err(|error| anyhow!(error.to_string()))
+            .and_then(|url| {
+                if url.domain().is_none() {
+                    return Err(anyhow!("Failed to get domain part"));
+                }
+                if url.host_str().is_none() {
+                    return Err(anyhow!("Failed to get host string"));
+                }
+                Ok(url)
+            })
+    }
+
     fn get_entries(&self) -> Result<DesktopFileEntries, DesktopFileError> {
         let name = self.get_name().ok_or(ValidationError {
             field: Key::Name,
@@ -640,6 +654,7 @@ impl DesktopFile {
             field: Key::Version,
             message: "Missing".to_string(),
         })?;
+
         let url = self
             .get_url()
             .ok_or(ValidationError {
@@ -647,13 +662,12 @@ impl DesktopFile {
                 message: "Missing".to_string(),
             })
             .and_then(|url| {
-                let _ = Url::parse(&url).map_err(|_| ValidationError {
+                let _ = Self::validate_url(&url).map_err(|_| ValidationError {
                     field: Key::Url,
                     message: "Invalid".to_string(),
                 })?;
                 Ok(url)
             })?;
-
         let url_object = self
             .get_url()
             .ok_or(ValidationError {

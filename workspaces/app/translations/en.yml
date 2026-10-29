@@ -24,10 +24,10 @@ web_apps:
       header:
         name: No name...
     name:
-      title: Web app name
-      validate: Name is empty
+      title: Web App Name
+      validate: Please enter a name for your app
     url:
-      title: Website URL
+      title: Website URL (e.g., https://example.com)
       validate: Please enter a valid URL (e.g., https://example.com)
     isolate:
       title: Isolate

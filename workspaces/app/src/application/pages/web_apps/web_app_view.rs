@@ -42,7 +42,6 @@ use std::{
 };
 use std::{fmt::Write as _, fs};
 use tracing::{debug, error};
-use url::Url;
 
 struct ComboRowStateObject {
     is_selectable: bool,
@@ -662,13 +661,27 @@ impl WebAppView {
         form_field.emit_by_name::<()>("changed", &[]);
     }
 
+    fn send_apply_to_a_form_field(form_field: &EntryRow) {
+        form_field.emit_by_name::<()>("apply", &[]);
+
+        // Reset button
+        form_field.set_show_apply_button(false);
+        form_field.set_show_apply_button(true);
+    }
+
     fn set_changed_on_form(self: &Rc<Self>) {
         Self::set_changed_on_form_field(&self.name_row);
         Self::set_changed_on_form_field(&self.url_row);
     }
 
+    fn apply_form(self: &Rc<Self>) {
+        Self::send_apply_to_a_form_field(&self.name_row);
+        Self::send_apply_to_a_form_field(&self.url_row);
+    }
+
     fn exit_validation(self: &Rc<Self>, show_discard: bool) -> bool {
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
+        self.apply_form();
         self.set_changed_on_form();
 
         if self.is_dirty() {
@@ -723,8 +736,7 @@ impl WebAppView {
         applied_text: &Rc<RefCell<String>>,
         apply_icon: &Image,
     ) {
-        let applied_text_borrow = applied_text.borrow();
-        let is_applied = entry_row.text().is_empty() || *applied_text_borrow == entry_row.text();
+        let is_applied = entry_row.text().is_empty() || *applied_text.borrow() == entry_row.text();
 
         if is_applied || !entry_row.shows_apply_button() {
             apply_icon.set_tooltip_text(None);
@@ -732,6 +744,12 @@ impl WebAppView {
         } else {
             apply_icon.set_tooltip_text(Some(&t!("forms.apply_changes")));
             apply_icon.set_visible(true);
+
+            let entry_row_clone = entry_row.clone();
+
+            glib::timeout_add_local_once(Duration::ZERO, move || {
+                Self::send_apply_to_a_form_field(&entry_row_clone);
+            });
         }
     }
 
@@ -923,6 +941,8 @@ impl WebAppView {
         );
 
         let self_clone = self.clone();
+        let title = self.name_row.title().to_string();
+
         self.name_row.connect_changed(move |entry_row| {
             let is_valid = !entry_row.text().is_empty();
 
@@ -930,10 +950,10 @@ impl WebAppView {
 
             validate_icon.set_visible(!is_valid);
             if is_valid {
-                entry_row.set_show_apply_button(true);
                 entry_row.set_tooltip_text(None);
+                entry_row.remove_css_class("error");
+                entry_row.set_title(&title);
             } else {
-                entry_row.set_show_apply_button(false);
                 entry_row.set_tooltip_text(Some(&t!("web_apps.web_app_view.name.validate")));
             }
 
@@ -946,6 +966,8 @@ impl WebAppView {
         self.name_row.connect_apply(move |entry_row| {
             let title = entry_row.text();
             if title.is_empty() {
+                entry_row.add_css_class("error");
+                entry_row.set_title(&t!("web_apps.web_app_view.name.validate"));
                 return;
             }
 
@@ -959,11 +981,10 @@ impl WebAppView {
 
             *applied_text_clone.borrow_mut() = title.to_string();
             Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
-
-            self_clone.url_row.grab_focus();
         });
     }
 
+    #[allow(clippy::too_many_lines)]
     fn connect_url_row(self: &Rc<Self>) {
         let validate_icon_url = Self::build_validate_icon();
         let apply_icon = Self::build_validate_icon();
@@ -988,20 +1009,21 @@ impl WebAppView {
         self.url_row.add_suffix(&spinner);
 
         let self_clone = self.clone();
+        let title = self.url_row.title().to_string();
+
         self.url_row.connect_changed(move |entry_row| {
             let input = entry_row.text().to_string();
-            let is_valid = Url::parse(&input)
-                .is_ok_and(|url| url.domain().is_some() || url.host_str().is_some());
+            let is_valid = DesktopFile::validate_url(&input).is_ok();
 
             debug!(is_valid, input, "Validate input: {}", entry_row.title());
 
             validate_icon_url.set_visible(!is_valid);
             if is_valid {
-                entry_row.set_show_apply_button(true);
                 entry_row.set_tooltip_text(None);
+                entry_row.remove_css_class("error");
+                entry_row.set_title(&title);
                 self_clone.change_icon_button.set_sensitive(true);
             } else {
-                entry_row.set_show_apply_button(false);
                 entry_row.set_tooltip_text(Some(&t!("web_apps.web_app_view.url.validate")));
                 self_clone.change_icon_button.set_sensitive(false);
             }
@@ -1015,6 +1037,18 @@ impl WebAppView {
         let apply_icon_clone = apply_icon.clone();
         let missing_icon_icon_clone = self.missing_icon_icon.clone();
         self.url_row.connect_apply(move |entry_row| {
+            let input = entry_row.text().to_string();
+            let is_valid = DesktopFile::validate_url(&input).is_ok();
+
+            debug!(is_valid, input, "Validate input: {}", entry_row.title());
+
+            if !is_valid {
+                entry_row.add_css_class("error");
+                entry_row.set_title(&t!("web_apps.web_app_view.url.validate"));
+
+                return;
+            }
+
             self_clone.change_icon_button.set_sensitive(true);
 
             self_clone
@@ -1035,8 +1069,6 @@ impl WebAppView {
             let running_icon_search_id_clone = running_icon_search_id.clone();
             *applied_text_clone.borrow_mut() = entry_row.text().to_string();
             Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
-
-            self_clone.isolate_row.grab_focus();
 
             let missing_icon_icon_clone = missing_icon_icon_clone.clone();
             // Bug with clippy, make sure its dropped before await future
@@ -1095,8 +1127,6 @@ impl WebAppView {
 
             self_clone.on_isolation_change();
             self_clone.on_desktop_file_change();
-
-            switch_row.grab_focus();
         });
     }
 
@@ -1110,8 +1140,6 @@ impl WebAppView {
                 .set_maximized(switch_row.is_active());
 
             self_clone.on_desktop_file_change();
-
-            switch_row.grab_focus();
         });
     }
 
