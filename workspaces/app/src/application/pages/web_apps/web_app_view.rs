@@ -1,3 +1,4 @@
+mod entry_row_ext;
 mod icon_picker;
 mod optional_settings;
 
@@ -8,9 +9,10 @@ use crate::application::{
 use anyhow::anyhow;
 use common::{
     browsers::{Base, Browser},
-    desktop_file::{DesktopFile, error::DesktopFileError},
+    desktop_file::{self, DesktopFile, error::DesktopFileError},
     utils,
 };
+use entry_row_ext::EntryRowAppExt;
 use gtk::{
     Align, EventControllerFocus, EventControllerMotion, ListItem, SignalListItemFactory,
     gio::{self},
@@ -124,6 +126,9 @@ impl WebAppView {
         let browser_row = Self::build_browser_row(app, desktop_file, is_new);
         let optional_row = Self::build_optional_row();
 
+        name_row.set_entry_row_ext(desktop_file, desktop_file::Key::Name, &name_row.title());
+        url_row.set_entry_row_ext(desktop_file, desktop_file::Key::Url, &url_row.title());
+
         Rc::new(Self {
             is_new: RefCell::new(is_new),
             nav_page,
@@ -177,25 +182,9 @@ impl WebAppView {
 
         self.connect_change_icon_button();
         self.connect_run_app_button();
-
-        if !self.get_is_new() {
-            self.set_changed_on_form();
-        }
-
-        // Add a slight delay so widgets (toasts) with timeouts are not blocked
-        let self_clone = self.clone();
-        glib::timeout_add_local_once(Duration::from_millis(50), move || {
-            // Check desktop file
-            self_clone.on_desktop_file_change();
-
-            // Init reset
-            *self_clone.desktop_file_original.borrow_mut() =
-                self_clone.desktop_file.borrow().clone();
-            self_clone.reset_reset_button();
-        });
     }
 
-    pub fn get_is_new(self: &Rc<Self>) -> bool {
+    pub fn is_new(self: &Rc<Self>) -> bool {
         *self.is_new.borrow()
     }
 
@@ -216,7 +205,7 @@ impl WebAppView {
 
         let self_clone = self.clone();
         back_button.connect_clicked(move |_button| {
-            if self_clone.get_is_new() {
+            if self_clone.is_new() {
                 self_clone.nav_view.pop();
                 return;
             }
@@ -681,7 +670,9 @@ impl WebAppView {
 
     fn exit_validation(self: &Rc<Self>, show_discard: bool) -> bool {
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
-        self.apply_form();
+        if self.is_dirty() {
+            self.apply_form();
+        }
         self.set_changed_on_form();
 
         if self.is_dirty() {
@@ -927,128 +918,49 @@ impl WebAppView {
     }
 
     fn connect_name_row(self: &Rc<Self>) {
-        let validate_icon = Self::build_validate_icon();
-        let apply_icon = Self::build_validate_icon();
-        self.name_row.add_suffix(&validate_icon);
-        let applied_text = Rc::new(RefCell::new(
-            self.desktop_file.borrow().get_name().unwrap_or_default(),
-        ));
-        Self::connect_entry_row_focus_controller_for_apply(
-            &self.name_row,
-            &applied_text,
-            &apply_icon,
-            Some(self.get_is_new()),
-        );
-
-        let self_clone = self.clone();
-        let title = self.name_row.title().to_string();
-
         self.name_row.connect_changed(move |entry_row| {
-            let is_valid = !entry_row.text().is_empty();
-
-            debug!(is_valid = is_valid, "Validate input: {}", entry_row.title());
-
-            validate_icon.set_visible(!is_valid);
-            if is_valid {
-                entry_row.set_tooltip_text(None);
-                entry_row.remove_css_class("error");
-                entry_row.set_title(&title);
-            } else {
-                entry_row.set_tooltip_text(Some(&t!("web_apps.web_app_view.name.validate")));
-            }
-
-            self_clone.on_validate();
+            let validation = entry_row.validate(false);
+            debug!(?validation, "Validate input: {}", entry_row.title());
         });
 
         let self_clone = self.clone();
-        let applied_text_clone = applied_text.clone();
-        let apply_icon_clone = apply_icon.clone();
-        self.name_row.connect_apply(move |entry_row| {
-            let title = entry_row.text();
-            if title.is_empty() {
-                entry_row.add_css_class("error");
-                entry_row.set_title(&t!("web_apps.web_app_view.name.validate"));
-                return;
-            }
 
+        self.name_row.connect_apply(move |entry_row| {
             self_clone
                 .desktop_file
                 .borrow_mut()
                 .set_name(&entry_row.text());
 
             self_clone.on_desktop_file_change();
-            self_clone.nav_page.set_title(&title);
-
-            *applied_text_clone.borrow_mut() = title.to_string();
-            Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
+            entry_row.set_show_apply_button(false);
         });
+
+        let focus_controller = EventControllerFocus::new();
+        let name_row_clone = self.name_row.clone();
+
+        focus_controller.connect_leave(move |_| {
+            name_row_clone.validate(true);
+        });
+
+        self.name_row.add_controller(focus_controller);
     }
 
     #[allow(clippy::too_many_lines)]
     fn connect_url_row(self: &Rc<Self>) {
-        let validate_icon_url = Self::build_validate_icon();
-        let apply_icon = Self::build_validate_icon();
         let spinner = Spinner::new();
         spinner.set_visible(false);
-        let applied_text = Rc::new(RefCell::new(
-            self.desktop_file.borrow().get_url().unwrap_or_default(),
-        ));
-        Self::connect_entry_row_focus_controller_for_apply(
-            &self.url_row,
-            &applied_text,
-            &apply_icon,
-            Some(self.get_is_new()),
-        );
-        Self::missing_icon_check(
-            &self.url_row,
-            &self.desktop_file.borrow(),
-            &self.missing_icon_icon,
-        );
-
-        self.url_row.add_suffix(&validate_icon_url);
         self.url_row.add_suffix(&spinner);
 
-        let self_clone = self.clone();
-        let title = self.url_row.title().to_string();
-
         self.url_row.connect_changed(move |entry_row| {
-            let input = entry_row.text().to_string();
-            let is_valid = DesktopFile::validate_url(&input).is_ok();
+            let validation = entry_row.validate(false);
 
-            debug!(is_valid, input, "Validate input: {}", entry_row.title());
-
-            validate_icon_url.set_visible(!is_valid);
-            if is_valid {
-                entry_row.set_tooltip_text(None);
-                entry_row.remove_css_class("error");
-                entry_row.set_title(&title);
-                self_clone.change_icon_button.set_sensitive(true);
-            } else {
-                entry_row.set_tooltip_text(Some(&t!("web_apps.web_app_view.url.validate")));
-                self_clone.change_icon_button.set_sensitive(false);
-            }
-
-            self_clone.on_validate();
+            debug!(?validation, "Validate input: {}", entry_row.title());
         });
 
         let self_clone = self.clone();
         let running_icon_search_id = Rc::new(RefCell::new(0));
-        let applied_text_clone = applied_text.clone();
-        let apply_icon_clone = apply_icon.clone();
-        let missing_icon_icon_clone = self.missing_icon_icon.clone();
+
         self.url_row.connect_apply(move |entry_row| {
-            let input = entry_row.text().to_string();
-            let is_valid = DesktopFile::validate_url(&input).is_ok();
-
-            debug!(is_valid, input, "Validate input: {}", entry_row.title());
-
-            if !is_valid {
-                entry_row.add_css_class("error");
-                entry_row.set_title(&t!("web_apps.web_app_view.url.validate"));
-
-                return;
-            }
-
             self_clone.change_icon_button.set_sensitive(true);
 
             self_clone
@@ -1064,13 +976,10 @@ impl WebAppView {
             self_clone.reset_app_header();
             self_clone.reset_icon_picker();
 
-            let self_clone = self_clone.clone();
+            let self_clone2 = self_clone.clone();
             let spinner_clone = spinner.clone();
             let running_icon_search_id_clone = running_icon_search_id.clone();
-            *applied_text_clone.borrow_mut() = entry_row.text().to_string();
-            Self::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
 
-            let missing_icon_icon_clone = missing_icon_icon_clone.clone();
             // Bug with clippy, make sure its dropped before await future
             #[allow(clippy::await_holding_refcell_ref)]
             glib::spawn_future_local(async move {
@@ -1080,40 +989,67 @@ impl WebAppView {
                 drop(is_running_icon_search_borrow);
 
                 spinner_clone.set_visible(true);
-                self_clone.change_icon_button.set_sensitive(false);
+                self_clone2.change_icon_button.set_sensitive(false);
 
-                let icon_picker = self_clone.get_icon_picker();
+                let icon_picker = self_clone2.get_icon_picker();
                 if let Err(error) = icon_picker.save_first_icon_found().await {
                     if *running_icon_search_id_clone.borrow() != run_id {
                         return;
                     }
 
-                    self_clone
+                    self_clone2
                         .desktop_file
                         .borrow_mut()
                         .set_icon_path(Path::new(""));
                     error!("{error:?}");
                 }
 
-                let current_focus_widget = self_clone.app.window.adw_window.focus();
+                let current_focus_widget = self_clone2.app.window.adw_window.focus();
 
                 if *running_icon_search_id_clone.borrow() != run_id {
                     return;
                 }
-                self_clone.on_desktop_file_change();
+
+                // Communicate potentially missing icon to user
+                if self_clone2
+                    .desktop_file
+                    .borrow()
+                    .get_icon_path()
+                    .is_some_and(|icon_path| !icon_path.to_string_lossy().is_empty())
+                {
+                    self_clone2.change_icon_button.remove_css_class("error");
+                } else {
+                    self_clone2.change_icon_button.add_css_class("error");
+                    let toast = Toast::builder()
+                        .title(format!(
+                            "{} ({})",
+                            t!("web_apps.web_app_view.icon.validate"),
+                            t!("web_apps.web_app_view.button.icon")
+                        ))
+                        .priority(ToastPriority::High)
+                        .timeout(6)
+                        .build();
+                    self_clone2.toast_overlay.add_toast(toast);
+                }
+
+                self_clone2.change_icon_button.set_sensitive(true);
                 spinner_clone.set_visible(false);
-                self_clone.change_icon_button.set_sensitive(true);
-                Self::missing_icon_check(
-                    &self_clone.url_row,
-                    &self_clone.desktop_file.borrow(),
-                    &missing_icon_icon_clone,
-                );
+                self_clone2.on_desktop_file_change();
 
                 if let Some(widget) = current_focus_widget {
                     widget.grab_focus();
                 }
             });
         });
+
+        let focus_controller = EventControllerFocus::new();
+        let url_row_clone = self.url_row.clone();
+
+        focus_controller.connect_leave(move |_| {
+            url_row_clone.validate(true);
+        });
+
+        self.url_row.add_controller(focus_controller);
     }
 
     fn connect_isolate_row(self: &Rc<Self>) {
@@ -1264,31 +1200,11 @@ impl WebAppView {
     }
 
     fn is_dirty(self: &Rc<Self>) -> bool {
-        let desktop_file_borrow = self.desktop_file.borrow();
-        let name_saved = desktop_file_borrow.get_name().unwrap_or_default();
-        let url_saved = desktop_file_borrow.get_url().unwrap_or_default();
-        drop(desktop_file_borrow);
-
-        let is_dirty = name_saved != self.name_row.text() || url_saved != self.url_row.text();
+        let is_dirty = self.name_row.is_dirty() || self.url_row.is_dirty();
 
         debug!(is_dirty = is_dirty, "Desktop file dirty validation");
 
         is_dirty
-    }
-
-    fn is_valid(self: &Rc<Self>) -> bool {
-        let is_valid = !self.is_dirty() && self.desktop_file.borrow().validate().is_ok();
-        debug!(is_valid = is_valid, "Desktop file Validation");
-
-        is_valid
-    }
-
-    fn on_validate(self: &Rc<Self>) {
-        if *self.is_new.borrow() && self.is_valid() && !self.is_dirty() {
-            self.save_button.remove_css_class("dimmed");
-        } else {
-            self.save_button.add_css_class("dimmed");
-        }
     }
 
     fn on_desktop_file_change(self: &Rc<Self>) {
@@ -1299,11 +1215,9 @@ impl WebAppView {
         self.reset_browser_isolation();
         self.reset_browser_maximize();
 
-        let is_new = *self.is_new.borrow();
-        if is_new {
-            self.on_validate();
-        }
-        if !is_new && let Err(error) = self.desktop_file.borrow_mut().save() {
+        if !self.is_new()
+            && let Err(error) = self.desktop_file.borrow_mut().save()
+        {
             match error {
                 DesktopFileError::ValidationError(_error) => {
                     let validate_toast = Toast::builder()

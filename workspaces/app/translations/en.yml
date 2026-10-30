@@ -70,6 +70,7 @@ web_apps:
               utility: Utility
     icon:
       title: Icons
+      validate: No icon found, please add an icon
       dialog:
         title: Pick an icon
         save: Save
@@ -167,3 +168,7 @@ forms:
   select_icon: Select an icon
   force_close: Discard and close
   validation_error: Please review the fields
+  validation:
+    empty: "%{field} is required"
+    dirty: "%{field} is not applied"
+    url: "Enter a valid url (e.g. https://example.org)"

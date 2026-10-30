@@ -94,7 +94,7 @@ impl WebAppsPage {
             let nav_page = app_page.get_navpage();
             let app_page_clone = app_page.clone();
             nav_page.connect_unrealize(move |_| {
-                if app_page_clone.get_is_new() {
+                if app_page_clone.is_new() {
                     let _ = desktop_file.borrow().delete();
                 }
             });

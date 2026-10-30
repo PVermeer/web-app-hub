@@ -14,7 +14,7 @@ use category::Category;
 use error::{DesktopFileError, ValidationError};
 use freedesktop_desktop_entry::DesktopEntry;
 use gtk::{Image, prelude::WidgetExt};
-use key::Key;
+pub use key::Key;
 use rand::{RngExt, distr::Alphanumeric, rng};
 use regex::Regex;
 use semver::Version;
@@ -105,6 +105,17 @@ impl DesktopFile {
             browser_configs: browser_configs.clone(),
             app_dirs: app_dirs.clone(),
         })
+    }
+
+    pub fn get_by_key(&self, key: &Key) -> Option<String> {
+        match key {
+            Key::Url => self.get_url(),
+            Key::Name => self.get_name(),
+            _ => {
+                error!("Only url and name are implemented");
+                None
+            }
+        }
     }
 
     pub fn get_path(&self) -> PathBuf {
