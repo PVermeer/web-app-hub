@@ -22,6 +22,7 @@ use tracing::error;
 pub enum EntryRowValidation {
     Empty(EntryRow),
     InvalidUrl(EntryRow),
+    Dirty(EntryRow),
     Valid(EntryRow),
 }
 
@@ -112,6 +113,7 @@ pub trait EntryRowAppExt {
     fn saved_text(&self) -> Option<String>;
     fn default_title(&self) -> Option<String>;
     fn validate(&self, do_dirty_check: bool) -> EntryRowValidation;
+    fn is_valid(&self, do_dirty_check: bool) -> bool;
     fn is_dirty(&self) -> bool;
 }
 
@@ -161,6 +163,8 @@ impl EntryRowAppExt for EntryRow {
                 && DesktopFile::validate_url(current_text).is_err()
             {
                 EntryRowValidation::InvalidUrl(self.clone())
+            } else if do_dirty_check && self.is_dirty() {
+                EntryRowValidation::Dirty(self.clone())
             } else {
                 EntryRowValidation::Valid(self.clone())
             };
@@ -178,14 +182,15 @@ impl EntryRowAppExt for EntryRow {
                     self.set_show_apply_button(false);
                 }
 
+                EntryRowValidation::Dirty(ref _entry_row) => {
+                    self.add_css_class("error");
+                    self.set_title(&t!("forms.validation.dirty", field = &default_title));
+                    self.set_show_apply_button(true);
+                }
+
                 EntryRowValidation::Valid(ref _entry_row) => {
-                    if do_dirty_check && self.is_dirty() {
-                        self.add_css_class("error");
-                        self.set_title(&t!("forms.validation.dirty", field = &default_title));
-                    } else {
-                        self.remove_css_class("error");
-                        self.set_title(&default_title);
-                    }
+                    self.remove_css_class("error");
+                    self.set_title(&default_title);
                     self.set_show_apply_button(true);
                 }
             }
@@ -195,6 +200,10 @@ impl EntryRowAppExt for EntryRow {
             error!("validate Called on EntryRow before set_entry_row_ext is set");
             EntryRowValidation::Valid(self.clone())
         }
+    }
+
+    fn is_valid(&self, do_dirty_check: bool) -> bool {
+        matches!(self.validate(do_dirty_check), EntryRowValidation::Valid(_))
     }
 
     fn is_dirty(&self) -> bool {

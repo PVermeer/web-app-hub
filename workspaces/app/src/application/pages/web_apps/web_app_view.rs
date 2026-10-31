@@ -14,10 +14,9 @@ use common::{
 };
 use entry_row_ext::EntryRowAppExt;
 use gtk::{
-    Align, EventControllerFocus, EventControllerMotion, ListItem, SignalListItemFactory,
-    gio::{self},
+    Align, EventControllerFocus, EventControllerMotion, ListItem, SignalListItemFactory, gio,
     glib::{
-        self, BoxedAnyObject,
+        self, BoxedAnyObject, JoinHandle,
         object::{Cast, ObjectExt},
     },
     prelude::{GtkWindowExt, ListItemExt},
@@ -63,7 +62,7 @@ pub struct WebAppView {
     toast_overlay: ToastOverlay,
     reset_button: Button,
     general_pref_group_header: gtk::Box,
-    missing_icon_icon: Image,
+    missing_icon_label: Label,
     change_icon_button: Button,
     run_app_button: Button,
     save_button: Button,
@@ -74,7 +73,10 @@ pub struct WebAppView {
     maximize_row: SwitchRow,
     browser_row: ComboRow,
     optional_row: ActionRow,
+    validation_fields: [EntryRow; 2],
     icon_picker: RefCell<Option<Rc<IconPicker>>>,
+    icon_fetcher_join_handle: RefCell<Option<JoinHandle<()>>>,
+    is_fetching_icon: RefCell<bool>,
 }
 impl NavPage for WebAppView {
     fn get_navpage(&self) -> &NavigationPage {
@@ -114,8 +116,8 @@ impl WebAppView {
 
         let reset_button = Self::build_header_reset_button();
         let general_pref_group_header = gtk::Box::new(Orientation::Horizontal, 12);
-        let missing_icon_icon = Self::build_validate_icon();
         let change_icon_button = Self::build_change_icon_button();
+        let missing_icon_label = Self::build_validate_icon_label();
         let run_app_button = Self::build_run_app_button(is_new);
         let save_button = Self::build_save_button(is_new);
         let delete_button = Self::build_delete_button();
@@ -128,6 +130,8 @@ impl WebAppView {
 
         name_row.set_entry_row_ext(desktop_file, desktop_file::Key::Name, &name_row.title());
         url_row.set_entry_row_ext(desktop_file, desktop_file::Key::Url, &url_row.title());
+
+        let validation_fields = [name_row.clone(), url_row.clone()];
 
         Rc::new(Self {
             is_new: RefCell::new(is_new),
@@ -142,7 +146,7 @@ impl WebAppView {
             toast_overlay,
             reset_button,
             general_pref_group_header,
-            missing_icon_icon,
+            missing_icon_label,
             change_icon_button,
             run_app_button,
             save_button,
@@ -153,7 +157,10 @@ impl WebAppView {
             maximize_row,
             browser_row,
             optional_row,
+            validation_fields,
             icon_picker: RefCell::new(None),
+            icon_fetcher_join_handle: RefCell::new(None),
+            is_fetching_icon: RefCell::new(false),
         })
     }
 
@@ -205,22 +212,21 @@ impl WebAppView {
 
         let self_clone = self.clone();
         back_button.connect_clicked(move |_button| {
-            if self_clone.is_new() {
+            let self_clone = self_clone.clone();
+
+            glib::spawn_future_local(async move {
+                self_clone
+                    .app
+                    .window
+                    .adw_window
+                    .set_focus(None::<&gtk::Widget>);
+
+                if !self_clone.exit_validation(true, false).await {
+                    return;
+                }
+
                 self_clone.nav_view.pop();
-                return;
-            }
-
-            self_clone
-                .app
-                .window
-                .adw_window
-                .set_focus(None::<&gtk::Widget>);
-
-            if !self_clone.exit_validation(true) {
-                return;
-            }
-
-            self_clone.nav_view.pop();
+            });
         });
     }
 
@@ -325,7 +331,7 @@ impl WebAppView {
 
     fn build_general_pref_group(self: &Rc<Self>) -> PreferencesGroup {
         self.general_pref_group_header
-            .append(&self.missing_icon_icon);
+            .append(&self.missing_icon_label);
         self.general_pref_group_header
             .append(&self.change_icon_button);
         let pref_group = PreferencesGroup::builder()
@@ -646,8 +652,15 @@ impl WebAppView {
         validate_icon
     }
 
-    fn set_changed_on_form_field(form_field: &impl ObjectExt) {
-        form_field.emit_by_name::<()>("changed", &[]);
+    fn build_validate_icon_label() -> Label {
+        Label::builder()
+            .label(t!(
+                "forms.validation.empty",
+                field = t!("web_apps.web_app_view.button.icon")
+            ))
+            .css_classes(["error"])
+            .visible(false)
+            .build()
     }
 
     fn send_apply_to_a_form_field(form_field: &EntryRow) {
@@ -658,24 +671,29 @@ impl WebAppView {
         form_field.set_show_apply_button(true);
     }
 
-    fn set_changed_on_form(self: &Rc<Self>) {
-        Self::set_changed_on_form_field(&self.name_row);
-        Self::set_changed_on_form_field(&self.url_row);
-    }
-
-    fn apply_form(self: &Rc<Self>) {
+    async fn apply_form(self: &Rc<Self>) {
         Self::send_apply_to_a_form_field(&self.name_row);
         Self::send_apply_to_a_form_field(&self.url_row);
+
+        let icon_fetcher_join_handle = self.icon_fetcher_join_handle.borrow_mut().take();
+
+        if let Some(icon_fetcher_join_handle) = icon_fetcher_join_handle {
+            debug!("Icon fetcher is running");
+            let _ = icon_fetcher_join_handle.await;
+        }
     }
 
-    fn exit_validation(self: &Rc<Self>, show_discard: bool) -> bool {
+    async fn exit_validation(self: &Rc<Self>, show_discard: bool, auto_apply: bool) -> bool {
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
-        if self.is_dirty() {
-            self.apply_form();
+        if auto_apply && self.form_is_dirty() {
+            self.apply_form().await;
         }
-        self.set_changed_on_form();
 
-        if self.is_dirty() {
+        if self.is_fetching_icon() {
+            return false;
+        }
+
+        if !self.form_is_valid(true) {
             let apply_toast = Toast::builder()
                 .title(t!("forms.validation_error"))
                 .priority(ToastPriority::High)
@@ -691,31 +709,6 @@ impl WebAppView {
             });
             self.toast_overlay.dismiss_all();
             self.toast_overlay.add_toast(apply_toast);
-            return false;
-        }
-
-        if let Err(error) = self.desktop_file.borrow().validate() {
-            let message = match error {
-                DesktopFileError::ValidationError(_error) => &t!("forms.validation_error"),
-                DesktopFileError::Other(error) => {
-                    error!("{error}");
-                    "Error: Failed to run validate"
-                }
-            };
-            let validate_toast = Toast::builder()
-                .title(message)
-                .priority(ToastPriority::High)
-                .timeout(Self::TOAST_MESSAGE_TIMEOUT)
-                .build();
-            if show_discard {
-                validate_toast.set_button_label(Some(&t!("forms.force_close")));
-            }
-            let nav_view_clone = self.nav_view.clone();
-            validate_toast.connect_button_clicked(move |_toast| {
-                nav_view_clone.pop();
-            });
-            self.toast_overlay.dismiss_all();
-            self.toast_overlay.add_toast(validate_toast);
             return false;
         }
 
@@ -763,22 +756,6 @@ impl WebAppView {
         }
     }
 
-    fn missing_icon_check(
-        entry_row: &EntryRow,
-        desktop_file: &DesktopFile,
-        missing_icon_icon: &Image,
-    ) {
-        let has_valid_icon = desktop_file.get_icon_path().is_some();
-
-        if has_valid_icon || entry_row.text().is_empty() {
-            missing_icon_icon.set_tooltip_text(None);
-            missing_icon_icon.set_visible(false);
-        } else {
-            missing_icon_icon.set_tooltip_text(Some(&t!("forms.select_icon")));
-            missing_icon_icon.set_visible(true);
-        }
-    }
-
     fn connect_entry_row_focus_controller_for_apply(
         entry_row: &EntryRow,
         applied_text: &Rc<RefCell<String>>,
@@ -809,8 +786,9 @@ impl WebAppView {
 
         let self_clone = self.clone();
         self.change_icon_button.connect_clicked(move |button| {
-            let desktop_file_borrow = self_clone.desktop_file.borrow();
-            let undo_icon_path = desktop_file_borrow
+            let undo_icon_path = self_clone
+                .desktop_file
+                .borrow()
                 .get_icon_path()
                 .unwrap_or_default()
                 .to_string_lossy()
@@ -820,21 +798,18 @@ impl WebAppView {
             let self_clone_success = self_clone.clone();
             let self_clone_fail = self_clone.clone();
 
-            drop(desktop_file_borrow);
-
             let icon_picker = self_clone.get_icon_picker();
 
             let button_clone = button.clone();
             let button_clone2 = button.clone();
+            let self_clone = self_clone.clone();
+            let self_clone2 = self_clone.clone();
+
             icon_picker.show_dialog(
                 Some(move || {
                     // Success
                     self_clone_success.on_desktop_file_change();
-                    Self::missing_icon_check(
-                        &self_clone_success.url_row,
-                        &self_clone_success.desktop_file.borrow(),
-                        &self_clone_success.missing_icon_icon,
-                    );
+                    self_clone.is_missing_icon();
                     button_clone.grab_focus();
                 }),
                 Some(move || {
@@ -847,11 +822,7 @@ impl WebAppView {
 
                     self_clone_fail.on_desktop_file_change();
                     self_clone_fail.on_error("Failed to save icon", None);
-                    Self::missing_icon_check(
-                        &self_clone_fail.url_row,
-                        &self_clone_fail.desktop_file.borrow(),
-                        &self_clone_fail.missing_icon_icon,
-                    );
+                    self_clone2.is_missing_icon();
                     button_clone2.grab_focus();
                 }),
             );
@@ -900,6 +871,10 @@ impl WebAppView {
         let self_clone = self.clone();
 
         self.delete_button.connect_clicked(move |_| {
+            if self_clone.is_fetching_icon() {
+                return;
+            }
+
             debug!(
                 "Deleting web app: {}",
                 self_clone
@@ -982,12 +957,13 @@ impl WebAppView {
 
             // Bug with clippy, make sure its dropped before await future
             #[allow(clippy::await_holding_refcell_ref)]
-            glib::spawn_future_local(async move {
+            let join_handle = glib::spawn_future_local(async move {
                 let mut is_running_icon_search_borrow = running_icon_search_id_clone.borrow_mut();
                 *is_running_icon_search_borrow += 1;
                 let run_id = *is_running_icon_search_borrow;
                 drop(is_running_icon_search_borrow);
 
+                *self_clone2.is_fetching_icon.borrow_mut() = true;
                 spinner_clone.set_visible(true);
                 self_clone2.change_icon_button.set_sensitive(false);
 
@@ -1010,36 +986,20 @@ impl WebAppView {
                     return;
                 }
 
-                // Communicate potentially missing icon to user
-                if self_clone2
-                    .desktop_file
-                    .borrow()
-                    .get_icon_path()
-                    .is_some_and(|icon_path| !icon_path.to_string_lossy().is_empty())
-                {
-                    self_clone2.change_icon_button.remove_css_class("error");
-                } else {
-                    self_clone2.change_icon_button.add_css_class("error");
-                    let toast = Toast::builder()
-                        .title(format!(
-                            "{} ({})",
-                            t!("web_apps.web_app_view.icon.validate"),
-                            t!("web_apps.web_app_view.button.icon")
-                        ))
-                        .priority(ToastPriority::High)
-                        .timeout(6)
-                        .build();
-                    self_clone2.toast_overlay.add_toast(toast);
-                }
-
+                self_clone2.is_missing_icon();
                 self_clone2.change_icon_button.set_sensitive(true);
+
                 spinner_clone.set_visible(false);
                 self_clone2.on_desktop_file_change();
 
                 if let Some(widget) = current_focus_widget {
                     widget.grab_focus();
                 }
+
+                *self_clone2.is_fetching_icon.borrow_mut() = false;
             });
+
+            *self_clone.icon_fetcher_join_handle.borrow_mut() = Some(join_handle);
         });
 
         let focus_controller = EventControllerFocus::new();
@@ -1199,16 +1159,76 @@ impl WebAppView {
         }
     }
 
-    fn is_dirty(self: &Rc<Self>) -> bool {
-        let is_dirty = self.name_row.is_dirty() || self.url_row.is_dirty();
+    fn is_missing_icon(self: &Rc<Self>) -> bool {
+        if self
+            .desktop_file
+            .borrow()
+            .get_icon_path()
+            .is_some_and(|icon_path| !icon_path.to_string_lossy().is_empty())
+        {
+            self.change_icon_button.remove_css_class("error");
+            self.missing_icon_label.set_visible(false);
+            false
+        } else {
+            self.change_icon_button.add_css_class("error");
+            self.missing_icon_label.set_visible(true);
+            true
+        }
+    }
 
-        debug!(is_dirty = is_dirty, "Desktop file dirty validation");
+    fn is_fetching_icon(self: &Rc<Self>) -> bool {
+        let is_fetching_icon = *self.is_fetching_icon.borrow();
 
-        is_dirty
+        if is_fetching_icon {
+            debug!("Icon fetcher is running");
+
+            let icon_fetch_toast = Toast::builder()
+                .title(t!("forms.fetching_icon"))
+                .priority(ToastPriority::High)
+                .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+                .build();
+            self.toast_overlay.dismiss_all();
+            self.toast_overlay.add_toast(icon_fetch_toast);
+        }
+
+        is_fetching_icon
+    }
+
+    fn form_is_valid(self: &Rc<Self>, do_dirty_check: bool) -> bool {
+        let mut form_is_valid = true;
+
+        for field in &self.validation_fields {
+            if !field.is_valid(do_dirty_check) {
+                form_is_valid = false;
+            }
+        }
+
+        if form_is_valid {
+            form_is_valid = !self.is_missing_icon();
+        }
+
+        debug!(form_is_valid, "Form valid validation");
+
+        form_is_valid
+    }
+
+    fn form_is_dirty(self: &Rc<Self>) -> bool {
+        let mut form_is_dirty = false;
+
+        for field in &self.validation_fields {
+            if field.is_dirty() {
+                form_is_dirty = true;
+            }
+        }
+        debug!(form_is_dirty, "Form dirty validation");
+
+        form_is_dirty
     }
 
     fn on_desktop_file_change(self: &Rc<Self>) {
         debug!("Desktop file changed");
+
+        let current_focus_widget = self.app.window.adw_window.focus();
 
         self.reset_change_icon_button();
         self.reset_reset_button();
@@ -1235,19 +1255,28 @@ impl WebAppView {
         }
 
         self.reset_app_header();
+
+        if let Some(widget) = current_focus_widget {
+            widget.grab_focus();
+        }
     }
 
     fn on_new_desktop_file_save(self: &Rc<Self>) {
-        if !self.exit_validation(false) {
-            return;
-        }
+        let self_clone = self.clone();
 
-        *self.is_new.borrow_mut() = false;
-        self.run_app_button.set_visible(true);
-        self.save_button.set_visible(false);
-        self.on_desktop_file_change();
-        *self.desktop_file_original.borrow_mut() = self.desktop_file.borrow().clone();
-        self.reset_reset_button();
+        glib::spawn_future_local(async move {
+            if !self_clone.exit_validation(false, true).await {
+                return;
+            }
+
+            *self_clone.is_new.borrow_mut() = false;
+            self_clone.run_app_button.set_visible(true);
+            self_clone.save_button.set_visible(false);
+            self_clone.on_desktop_file_change();
+            *self_clone.desktop_file_original.borrow_mut() =
+                self_clone.desktop_file.borrow().clone();
+            self_clone.reset_reset_button();
+        });
     }
 
     fn on_isolation_change(self: &Rc<Self>) {

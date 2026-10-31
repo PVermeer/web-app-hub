@@ -167,6 +167,7 @@ forms:
   select_option: Select an option
   select_icon: Select an icon
   force_close: Discard and close
+  fetching_icon: Still fetchin icon, please wait
   validation_error: Please review the fields
   validation:
     empty: "%{field} is required"
