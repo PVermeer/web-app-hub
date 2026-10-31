@@ -21,6 +21,7 @@ clap = "4.5.53"
 dotenv = "0.15.0"
 freedesktop-desktop-entry = "0.7.19"
 fs_extra = "1.3.0"
+futures = "0.3.34"
 git-cliff = "2.11.0"
 gtk = { version = "0.10.1", features = ["v4_10"], package = "gtk4" }
 include_dir = "0.7.4"

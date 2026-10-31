@@ -27,7 +27,7 @@ use std::{
     rc::Rc,
     time::{Duration, SystemTime},
 };
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
 pub struct IconPicker {
     init: RefCell<bool>,
@@ -587,5 +587,9 @@ impl IconPicker {
             .build();
 
         PreferencesRow::builder().child(&status_page).build()
+    }
+
+    pub fn reset(&self) {
+        warn!("RESET NOT YET IMPLEMENTED");
     }
 }

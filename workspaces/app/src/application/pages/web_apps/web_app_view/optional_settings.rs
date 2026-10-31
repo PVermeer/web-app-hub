@@ -243,9 +243,9 @@ impl OptionalSettings {
         }
     }
 
-    fn connect_description_row(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
+    fn connect_description_row(self: &Rc<Self>, _web_app_view: &Rc<WebAppView>) {
         let self_clone = self.clone();
-        let web_app_view_clone = web_app_view.clone();
+        // let web_app_view_clone = web_app_view.clone();
         let apply_icon = WebAppView::build_validate_icon();
         let applied_text = Rc::new(RefCell::new(
             self.desktop_file
@@ -268,7 +268,7 @@ impl OptionalSettings {
                 .desktop_file
                 .borrow_mut()
                 .set_description(&entry_row.text());
-            web_app_view_clone.on_desktop_file_change();
+            // web_app_view_clone.on_desktop_file_change();
 
             *applied_text_clone.borrow_mut() = entry_row.text().to_string();
             WebAppView::entry_row_apply_check(entry_row, &applied_text_clone, &apply_icon_clone);
@@ -296,7 +296,7 @@ impl OptionalSettings {
                 };
                 let category = category_item_boxed.borrow::<Category>();
                 desktop_file_clone.borrow_mut().set_category(&category);
-                web_app_view_clone.on_desktop_file_change();
+                // web_app_view_clone.on_desktop_file_change();
             });
     }
 

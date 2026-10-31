@@ -11,6 +11,7 @@ test = false
 [dependencies]
 anyhow = { workspace = true }
 common = { workspace = true }
+futures= { workspace = true }
 gtk = { workspace = true }
 libadwaita = { workspace = true }
 rust-i18n = { workspace = true }
