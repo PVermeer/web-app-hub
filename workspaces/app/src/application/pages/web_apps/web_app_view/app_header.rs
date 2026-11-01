@@ -5,8 +5,8 @@ use common::{
     utils,
 };
 use gtk::{
-    Button, Image, Label, Orientation,
-    glib::JoinHandle,
+    Button, Image, Label, Orientation, Widget,
+    glib::{JoinHandle, object::Cast},
     prelude::{BoxExt, ButtonExt, WidgetExt},
 };
 use libadwaita::{PreferencesGroup, WrapBox, prelude::PreferencesGroupExt};
@@ -181,5 +181,9 @@ impl FormField for AppHeader {
 
     fn is_dirty(&self) -> bool {
         false
+    }
+
+    fn form_widget(&self) -> Widget {
+        self.run_app_button.clone().upcast()
     }
 }

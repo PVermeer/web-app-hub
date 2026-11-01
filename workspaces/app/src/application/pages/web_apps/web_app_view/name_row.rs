@@ -1,8 +1,8 @@
 use super::{EntryRowAppExt, form::FormField};
 use common::desktop_file::{self, DesktopFile};
 use gtk::{
-    EventControllerFocus, InputPurpose,
-    glib::JoinHandle,
+    EventControllerFocus, InputPurpose, Widget,
+    glib::{JoinHandle, object::Cast},
     prelude::{EditableExt, WidgetExt},
 };
 use libadwaita::{
@@ -24,7 +24,6 @@ impl NameRow {
         let entry_row = EntryRow::builder()
             .title(&title)
             .text(name)
-            .show_apply_button(true)
             .input_purpose(InputPurpose::FreeForm)
             .build();
 
@@ -47,8 +46,10 @@ impl NameRow {
         // Apply
         let self_clone = self.clone();
 
-        self.entry_row.connect_apply(move |_| {
-            self_clone.on_apply();
+        self.entry_row.connect_entry_activated(move |_| {
+            if self_clone.is_valid(false) {
+                self_clone.unfocus_widget();
+            }
         });
 
         // Focus changes
@@ -56,7 +57,7 @@ impl NameRow {
         let self_clone = self.clone();
 
         focus_controller.connect_leave(move |_| {
-            self_clone.on_leave();
+            self_clone.on_apply();
         });
 
         self.entry_row.add_controller(focus_controller);
@@ -68,21 +69,13 @@ impl NameRow {
     }
 
     fn on_apply(&self) {
+        if !self.is_valid(false) || !self.is_dirty() {
+            return;
+        }
+
         self.desktop_file
             .borrow_mut()
             .set_name(&self.entry_row.text());
-
-        self.entry_row.set_show_apply_button(false);
-
-        if self.is_valid(false)
-            && let Some(next_field) = self.entry_row.next_sibling()
-        {
-            next_field.grab_focus();
-        }
-    }
-
-    fn on_leave(&self) {
-        self.entry_row.validate(true);
     }
 
     fn on_reset(&self, do_dirty_check: bool) {
@@ -117,6 +110,10 @@ impl FormField for NameRow {
     }
 
     fn is_dirty(&self) -> bool {
-        false
+        self.entry_row.is_dirty()
+    }
+
+    fn form_widget(&self) -> Widget {
+        self.entry_row.clone().upcast()
     }
 }

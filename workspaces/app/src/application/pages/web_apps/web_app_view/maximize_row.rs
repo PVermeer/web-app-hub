@@ -1,6 +1,10 @@
 use super::form::FormField;
 use common::desktop_file::DesktopFile;
-use gtk::{glib::JoinHandle, prelude::WidgetExt};
+use gtk::{
+    Widget,
+    glib::{JoinHandle, object::Cast},
+    prelude::WidgetExt,
+};
 use libadwaita::SwitchRow;
 use std::{cell::RefCell, rc::Rc};
 use tracing::debug;
@@ -104,5 +108,9 @@ impl FormField for MaximizeRow {
 
     fn is_dirty(&self) -> bool {
         false
+    }
+
+    fn form_widget(&self) -> Widget {
+        self.switch_row.clone().upcast()
     }
 }

@@ -173,25 +173,21 @@ impl EntryRowAppExt for EntryRow {
                 EntryRowValidation::Empty(ref _entry_row) => {
                     self.add_css_class("error");
                     self.set_title(&t!("forms.validation.empty", field = &default_title));
-                    self.set_show_apply_button(false);
                 }
 
                 EntryRowValidation::InvalidUrl(ref _entry_row) => {
                     self.add_css_class("error");
                     self.set_title(&t!("forms.validation.url", field = &default_title));
-                    self.set_show_apply_button(false);
                 }
 
                 EntryRowValidation::Dirty(ref _entry_row) => {
                     self.add_css_class("error");
                     self.set_title(&t!("forms.validation.dirty", field = &default_title));
-                    self.set_show_apply_button(true);
                 }
 
                 EntryRowValidation::Valid(ref _entry_row) => {
                     self.remove_css_class("error");
                     self.set_title(&default_title);
-                    self.set_show_apply_button(true);
                 }
             }
 

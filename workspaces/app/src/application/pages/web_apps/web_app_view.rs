@@ -26,7 +26,7 @@ use form::FormField;
 use futures::future::join_all;
 use gtk::{
     Align, EventControllerFocus, EventControllerMotion,
-    glib::{self, object::ObjectExt},
+    glib::{self},
     prelude::GtkWindowExt,
 };
 use icon_picker::IconPicker;
@@ -341,12 +341,12 @@ impl WebAppView {
         validate_icon
     }
 
-    fn send_apply_to_a_form_field(form_field: &EntryRow) {
-        form_field.emit_by_name::<()>("apply", &[]);
+    fn send_apply_to_a_form_field(_form_field: &EntryRow) {
+        // form_field.emit_by_name::<()>("apply", &[]);
 
-        // Reset button
-        form_field.set_show_apply_button(false);
-        form_field.set_show_apply_button(true);
+        // // Reset button
+        // form_field.set_show_apply_button(false);
+        // form_field.set_show_apply_button(true);
     }
 
     async fn apply_form(self: &Rc<Self>) {

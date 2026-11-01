@@ -1,5 +1,5 @@
 use super::WebAppViewShared;
-use gtk::glib::JoinHandle;
+use gtk::{Widget, glib::JoinHandle, prelude::WidgetExt};
 use std::rc::Rc;
 
 pub trait FormField {
@@ -8,4 +8,12 @@ pub trait FormField {
     fn reset(&self, web_app_view: Rc<dyn WebAppViewShared>, do_dirty_check: bool);
     fn is_valid(&self, do_dirty_check: bool) -> bool;
     fn is_dirty(&self) -> bool;
+
+    fn form_widget(&self) -> Widget;
+
+    fn unfocus_widget(&self) {
+        if let Some(parent) = self.form_widget().parent() {
+            parent.grab_focus();
+        }
+    }
 }

@@ -1,8 +1,8 @@
 use super::{form::FormField, icon_picker::IconPicker};
 use common::desktop_file::DesktopFile;
 use gtk::{
-    Button, Label, Orientation,
-    glib::JoinHandle,
+    Button, Label, Orientation, Widget,
+    glib::{JoinHandle, object::Cast},
     prelude::{BoxExt, ButtonExt, WidgetExt},
 };
 use libadwaita::ButtonContent;
@@ -122,5 +122,9 @@ impl FormField for ChangeIconHeader {
 
     fn is_dirty(&self) -> bool {
         false
+    }
+
+    fn form_widget(&self) -> Widget {
+        self.change_icon_button.clone().upcast()
     }
 }

@@ -3,7 +3,7 @@ use crate::application::App;
 use anyhow::anyhow;
 use common::{browsers::Browser, desktop_file::DesktopFile};
 use gtk::{
-    Image, Label, ListItem, SignalListItemFactory, gio,
+    Image, Label, ListItem, SignalListItemFactory, Widget, gio,
     glib::{BoxedAnyObject, JoinHandle, object::Cast},
     prelude::{BoxExt, ListItemExt, WidgetExt},
 };
@@ -193,5 +193,9 @@ impl FormField for BrowserRow {
 
     fn is_dirty(&self) -> bool {
         false
+    }
+
+    fn form_widget(&self) -> Widget {
+        self.combo_row.clone().upcast()
     }
 }

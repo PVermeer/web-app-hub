@@ -4,15 +4,19 @@ use super::{
 };
 use common::desktop_file::{self, DesktopFile};
 use gtk::{
-    EventControllerFocus, InputPurpose, glib,
-    glib::JoinHandle,
+    EventControllerFocus, InputPurpose, Widget,
+    glib::{self, JoinHandle, object::Cast},
     prelude::{EditableExt, WidgetExt},
 };
 use libadwaita::{
     EntryRow, Spinner,
     prelude::{EntryRowExt as _, PreferencesRowExt},
 };
-use std::{cell::RefCell, path::Path, rc::Rc};
+use std::{
+    cell::{OnceCell, RefCell},
+    path::Path,
+    rc::Rc,
+};
 use tracing::{debug, error};
 
 pub struct UrlRow {
@@ -22,6 +26,7 @@ pub struct UrlRow {
     change_icon_form_header: Rc<ChangeIconHeader>,
     spinner: Spinner,
     is_fetching_icon: RefCell<bool>,
+    is_applied_once: OnceCell<()>,
 }
 impl UrlRow {
     pub fn new(
@@ -35,7 +40,6 @@ impl UrlRow {
         let entry_row = EntryRow::builder()
             .title(&title)
             .text(url)
-            .show_apply_button(true)
             .input_purpose(InputPurpose::Url)
             .build();
 
@@ -52,6 +56,7 @@ impl UrlRow {
             change_icon_form_header: change_icon_form_header.clone(),
             spinner,
             is_fetching_icon: RefCell::new(false),
+            is_applied_once: OnceCell::new(),
         })
     }
 
@@ -59,24 +64,25 @@ impl UrlRow {
         // Text changes
         let self_clone = self.clone();
 
-        self.entry_row.connect_changed(move |_| {
-            self_clone.on_changes();
-        });
+        self.entry_row
+            .connect_changed(move |_| self_clone.on_changes());
 
         // Apply
         let self_clone = self.clone();
-        let web_app_view_clone = web_app_view.clone();
 
-        self.entry_row.connect_apply(move |_| {
-            self_clone.on_apply(&web_app_view_clone);
+        self.entry_row.connect_entry_activated(move |_| {
+            if self_clone.is_valid(false) {
+                self_clone.unfocus_widget();
+            }
         });
 
         // Focus changes
         let focus_controller = EventControllerFocus::new();
         let self_clone = self.clone();
+        let web_app_view_clone = web_app_view.clone();
 
         focus_controller.connect_leave(move |_| {
-            self_clone.on_leave();
+            self_clone.on_apply(&web_app_view_clone);
         });
 
         self.entry_row.add_controller(focus_controller);
@@ -87,12 +93,25 @@ impl UrlRow {
     }
 
     fn on_changes(self: &Rc<Self>) {
+        if self.is_applied_once.get().is_none() {
+            return;
+        }
+
         let validation = self.entry_row.validate(false);
 
         debug!(?validation, "Validate input: {}", self.entry_row.title());
     }
 
-    fn on_apply(self: &Rc<Self>, web_app_view: &Rc<dyn WebAppViewShared>) -> JoinHandle<()> {
+    fn on_apply(
+        self: &Rc<Self>,
+        web_app_view: &Rc<dyn WebAppViewShared>,
+    ) -> Option<JoinHandle<()>> {
+        let _ = self.is_applied_once.set(());
+
+        if !self.is_valid(false) || !self.is_dirty() {
+            return None;
+        }
+
         self.change_icon_form_header
             .change_icon_button
             .set_sensitive(true);
@@ -119,7 +138,7 @@ impl UrlRow {
 
         // Bug with clippy, make sure its dropped before await future
         #[allow(clippy::await_holding_refcell_ref)]
-        glib::spawn_future_local(async move {
+        let join_handle = glib::spawn_future_local(async move {
             *self_clone.is_fetching_icon.borrow_mut() = true;
             self_clone.spinner.set_visible(true);
             change_icon_form_header
@@ -141,11 +160,9 @@ impl UrlRow {
             self_clone.spinner.set_visible(false);
 
             *self_clone.is_fetching_icon.borrow_mut() = false;
-        })
-    }
+        });
 
-    fn on_leave(self: &Rc<Self>) {
-        self.entry_row.validate(true);
+        Some(join_handle)
     }
 
     fn on_reset(&self, do_dirty_check: bool) {
@@ -164,8 +181,7 @@ impl FormField for UrlRow {
     }
 
     fn apply(self: Rc<Self>, web_app_view: Rc<dyn WebAppViewShared>) -> Option<JoinHandle<()>> {
-        let join_handle = self.on_apply(&web_app_view);
-        Some(join_handle)
+        self.on_apply(&web_app_view)
     }
 
     fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, do_dirty_check: bool) {
@@ -178,5 +194,9 @@ impl FormField for UrlRow {
 
     fn is_dirty(&self) -> bool {
         self.entry_row.is_dirty()
+    }
+
+    fn form_widget(&self) -> Widget {
+        self.entry_row.clone().upcast()
     }
 }
