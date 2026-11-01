@@ -35,7 +35,7 @@ impl NameRow {
         })
     }
 
-    pub fn on_init(self: &Rc<Self>) {
+    pub fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         // Text changes
         let self_clone = self.clone();
 
@@ -55,9 +55,10 @@ impl NameRow {
         // Focus changes
         let focus_controller = EventControllerFocus::new();
         let self_clone = self.clone();
+        let web_app_view = web_app_view.clone();
 
         focus_controller.connect_leave(move |_| {
-            self_clone.on_apply();
+            self_clone.on_apply(&web_app_view);
         });
 
         self.entry_row.add_controller(focus_controller);
@@ -68,7 +69,7 @@ impl NameRow {
         debug!(?validation, "Validate input: {}", self.entry_row.title());
     }
 
-    fn on_apply(&self) {
+    fn on_apply(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         if !self.is_valid(false) || !self.is_dirty() {
             return;
         }
@@ -76,6 +77,8 @@ impl NameRow {
         self.desktop_file
             .borrow_mut()
             .set_name(&self.entry_row.text());
+
+        web_app_view.clone().reset();
     }
 
     fn on_reset(&self, do_dirty_check: bool) {
@@ -89,15 +92,15 @@ impl NameRow {
 }
 
 impl FormField for NameRow {
-    fn init(self: Rc<Self>, _web_app_view: Rc<dyn super::WebAppViewShared>) {
-        self.on_init();
+    fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init(&web_app_view);
     }
 
     fn apply(
         self: Rc<Self>,
-        _web_app_view: Rc<dyn super::WebAppViewShared>,
+        web_app_view: Rc<dyn super::WebAppViewShared>,
     ) -> Option<JoinHandle<()>> {
-        self.on_apply();
+        self.on_apply(&web_app_view);
         None
     }
 
