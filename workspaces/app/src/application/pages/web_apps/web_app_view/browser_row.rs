@@ -12,7 +12,7 @@ use libadwaita::{
     prelude::{ActionRowExt, ComboRowExt},
 };
 use std::{cell::RefCell, rc::Rc};
-use tracing::{error, warn};
+use tracing::error;
 
 struct ComboRowStateObject {
     is_selectable: bool,
@@ -167,9 +167,7 @@ impl FormField for BrowserRow {
         None
     }
 
-    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
-        warn!("RESET NOT YET IMPLEMENTED FOR BROWSER ROW");
-    }
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {}
 
     fn is_valid(&self, _do_dirty_check: bool) -> bool {
         let Some(selected_item) = self.combo_row.selected_item() else {
