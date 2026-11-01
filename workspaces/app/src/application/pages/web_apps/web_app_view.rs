@@ -17,10 +17,11 @@ use crate::application::{
         web_apps::web_app_view::optional_settings::OptionalSettings,
     },
 };
+use anyhow::anyhow;
 use app_header::AppHeader;
 use browser_row::BrowserRow;
 use change_icon_header::ChangeIconHeader;
-use common::desktop_file::DesktopFile;
+use common::desktop_file::{DesktopFile, error::DesktopFileError};
 pub use entry_row_ext::EntryRowAppExt;
 use form::FormField;
 use futures::future::join_all;
@@ -65,8 +66,8 @@ pub struct WebAppView {
     desktop_file: Rc<RefCell<DesktopFile>>,
     desktop_file_original: RefCell<DesktopFile>,
     toasts: ToastOverlay,
+    app_header: Rc<AppHeader>,
     reset_button: Button,
-    run_app_button: Button,
     save_button: Button,
     delete_button: Button,
     url_row: Rc<UrlRow>,
@@ -107,23 +108,19 @@ impl WebAppView {
         let icon_picker = IconPicker::new(app, desktop_file);
 
         let reset_button = Self::build_header_reset_button();
-        let run_app_button = Self::build_run_app_button(is_new);
         let save_button = Self::build_save_button(is_new);
         let delete_button = Self::build_delete_button();
         let optional_row = Self::build_optional_row();
 
         header.pack_end(&reset_button);
 
-        // Some form rows set a default in the Desktop file.
-        // This means that order matters when building.
-        // E.g. BrowserRow set a found browser -> isolate sets sensitive based on the browser
-        let browser_row = BrowserRow::new(desktop_file, app, is_new);
+        let app_header = AppHeader::new(desktop_file);
         let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
         let name_row = NameRow::new(desktop_file);
         let url_row = UrlRow::new(desktop_file, &icon_picker, &change_icon_form_header);
         let isolate_row = IsolateRow::new(desktop_file);
         let maximize_row = MaximizeRow::new(desktop_file);
-        let app_header = AppHeader::new(desktop_file);
+        let browser_row = BrowserRow::new(desktop_file, app);
 
         let form_fields: Vec<Rc<dyn FormField>> = vec![
             app_header.clone(),
@@ -164,8 +161,8 @@ impl WebAppView {
             desktop_file: desktop_file.clone(),
             desktop_file_original: RefCell::new(desktop_file_original),
             toasts: toast_overlay,
+            app_header,
             reset_button,
-            run_app_button,
             save_button,
             delete_button,
             url_row,
@@ -188,6 +185,9 @@ impl WebAppView {
         self.connect_optional_row();
         self.connect_save_button();
         self.connect_delete_button();
+
+        // Pick up some possible changes after init
+        self.reset_form_fields();
     }
 
     pub fn is_new(&self) -> bool {
@@ -282,34 +282,11 @@ impl WebAppView {
         pref_group
     }
 
-    fn build_run_app_button(is_new: bool) -> Button {
-        Button::builder()
-            .label(t!("web_apps.web_app_view.button.open"))
-            .css_classes(["suggested-action", "pill"])
-            .visible(!is_new)
-            .build()
-    }
-
     fn build_save_button(is_new: bool) -> Button {
-        let button = Button::builder()
+        Button::builder()
             .label(t!("web_apps.web_app_view.button.save"))
-            .css_classes(["suggested-action", "pill", "dimmed"])
-            .visible(is_new)
-            .build();
-
-        let controller = EventControllerMotion::new();
-        let button_clone = button.clone();
-        controller.connect_enter(move |_, _, _| {
-            button_clone.remove_css_class("dimmed");
-        });
-        let button_clone = button.clone();
-        controller.connect_leave(move |_| {
-            button_clone.add_css_class("dimmed");
-        });
-
-        button.add_controller(controller);
-
-        button
+            .css_classes(["suggested-action", "pill"])
+            .build()
     }
 
     fn build_delete_button() -> Button {
@@ -432,7 +409,7 @@ impl WebAppView {
         let self_clone = self.clone();
 
         self.save_button.connect_clicked(move |_| {
-            self_clone.on_new_desktop_file_save();
+            self_clone.save();
         });
     }
 
@@ -472,7 +449,7 @@ impl WebAppView {
         });
     }
 
-    fn reset_reset_button(self: &Rc<Self>) {
+    fn reset_reset_button(&self) {
         if self.desktop_file_original.borrow().to_string() == self.desktop_file.borrow().to_string()
         {
             self.reset_button.set_sensitive(false);
@@ -481,11 +458,15 @@ impl WebAppView {
         }
     }
 
-    fn form_is_valid(self: &Rc<Self>, do_dirty_check: bool) -> bool {
-        let form_is_valid = self
-            .form_fields
-            .iter()
-            .all(|field| field.is_valid(do_dirty_check));
+    fn form_is_valid(&self, do_dirty_check: bool) -> bool {
+        let mut form_is_valid = true;
+
+        // Don't short circuit. Run validation on all fields to also set the errors.
+        for field in &self.form_fields {
+            if !field.is_valid(do_dirty_check) {
+                form_is_valid = false;
+            }
+        }
 
         debug!(form_is_valid, "Form valid validation");
 
@@ -500,27 +481,40 @@ impl WebAppView {
         form_is_dirty
     }
 
-    fn on_new_desktop_file_save(self: &Rc<Self>) {
-        let self_clone = self.clone();
-
-        glib::spawn_future_local(async move {
-            if !self_clone.exit_validation(false, true).await {
-                return;
-            }
-
-            *self_clone.is_new.borrow_mut() = false;
-            self_clone.run_app_button.set_visible(true);
-            self_clone.save_button.set_visible(false);
-            *self_clone.desktop_file_original.borrow_mut() =
-                self_clone.desktop_file.borrow().clone();
-            self_clone.reset_reset_button();
-        });
-    }
-
     fn reset_form_fields(self: &Rc<Self>) {
         for field in &self.form_fields {
             field.reset(self.clone(), false);
         }
+    }
+
+    fn save(&self) {
+        self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
+
+        if self.url_row.is_fetching_icon() {
+            self.message(&t!("forms.fetching_icon"));
+            return;
+        }
+
+        if !self.form_is_valid(true) {
+            self.message(&t!("forms.validation_error"));
+            return;
+        }
+
+        if let Err(error) = self.desktop_file.borrow_mut().save() {
+            match error {
+                DesktopFileError::ValidationError(error) => {
+                    self.error_message(&error.to_string_ui(), Some(&anyhow!(error)));
+                }
+                DesktopFileError::Other(error) => {
+                    self.error_message(&t!("forms.save_error"), Some(&error));
+                }
+            }
+        }
+
+        *self.is_new.borrow_mut() = false;
+        self.app_header.run_app_button.set_visible(true);
+        *self.desktop_file_original.borrow_mut() = self.desktop_file.borrow().clone();
+        self.reset_reset_button();
     }
 }
 

@@ -55,10 +55,10 @@ impl NameRow {
         // Focus changes
         let focus_controller = EventControllerFocus::new();
         let self_clone = self.clone();
-        let web_app_view = web_app_view.clone();
+        let web_app_view_clone = web_app_view.clone();
 
         focus_controller.connect_leave(move |_| {
-            self_clone.on_apply(&web_app_view);
+            self_clone.on_apply(&web_app_view_clone);
         });
 
         self.entry_row.add_controller(focus_controller);
@@ -81,13 +81,11 @@ impl NameRow {
         web_app_view.clone().reset();
     }
 
-    fn on_reset(&self, do_dirty_check: bool) {
-        debug!("Resetting change icon");
+    fn on_reset(&self, _do_dirty_check: bool) {
+        debug!("Resetting name_row");
 
         self.entry_row
             .set_text(&self.desktop_file.borrow().get_name().unwrap_or_default());
-
-        self.is_valid(do_dirty_check);
     }
 }
 

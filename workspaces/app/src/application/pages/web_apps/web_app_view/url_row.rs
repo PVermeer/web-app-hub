@@ -71,6 +71,8 @@ impl UrlRow {
         let self_clone = self.clone();
 
         self.entry_row.connect_entry_activated(move |_| {
+            let _ = self_clone.is_applied_once.set(());
+
             if self_clone.is_valid(false) {
                 self_clone.unfocus_widget();
             }
@@ -82,6 +84,8 @@ impl UrlRow {
         let web_app_view_clone = web_app_view.clone();
 
         focus_controller.connect_leave(move |_| {
+            let _ = self_clone.is_applied_once.set(());
+
             self_clone.on_apply(&web_app_view_clone);
         });
 
@@ -106,8 +110,6 @@ impl UrlRow {
         self: &Rc<Self>,
         web_app_view: &Rc<dyn WebAppViewShared>,
     ) -> Option<JoinHandle<()>> {
-        let _ = self.is_applied_once.set(());
-
         if !self.is_valid(false) || !self.is_dirty() {
             return None;
         }
@@ -124,12 +126,6 @@ impl UrlRow {
 
         web_app_view.clone().reset();
         self.icon_picker.reset();
-
-        if self.is_valid(false)
-            && let Some(next_field) = self.entry_row.next_sibling()
-        {
-            next_field.grab_focus();
-        }
 
         let self_clone = self.clone();
         let change_icon_form_header = self.change_icon_form_header.clone();
@@ -153,7 +149,8 @@ impl UrlRow {
                 error!(?error);
             }
 
-            web_app_view.reset();
+            web_app_view.clone().reset();
+
             change_icon_form_header
                 .change_icon_button
                 .set_sensitive(true);
@@ -165,13 +162,11 @@ impl UrlRow {
         Some(join_handle)
     }
 
-    fn on_reset(&self, do_dirty_check: bool) {
-        debug!("Resetting change icon");
+    fn on_reset(&self, _do_dirty_check: bool) {
+        debug!("Resetting url_row");
 
         self.entry_row
             .set_text(&self.desktop_file.borrow().get_url().unwrap_or_default());
-
-        self.is_valid(do_dirty_check);
     }
 }
 

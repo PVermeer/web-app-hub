@@ -12,7 +12,7 @@ use libadwaita::{
     prelude::{ActionRowExt, ComboRowExt},
 };
 use std::{cell::RefCell, rc::Rc};
-use tracing::error;
+use tracing::{debug, error};
 
 struct ComboRowStateObject {
     is_selectable: bool,
@@ -21,12 +21,15 @@ struct ComboRowStateObject {
 
 pub struct BrowserRow {
     pub combo_row: ComboRow,
+    app: Rc<App>,
     desktop_file: Rc<RefCell<DesktopFile>>,
+    list: gio::ListStore,
+    no_browser_boxed: BoxedAnyObject,
     validate_icon: Image,
 }
 
 impl BrowserRow {
-    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>, app: &Rc<App>, is_new: bool) -> Rc<Self> {
+    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>, app: &Rc<App>) -> Rc<Self> {
         let installed_browsers = app.browser_configs.get_installed_browsers();
         let no_browser = Rc::new(app.browser_configs.build_no_browser());
 
@@ -92,34 +95,22 @@ impl BrowserRow {
             .factory(&factory)
             .build();
 
-        if let Some(browser_index) = desktop_file
-            .borrow()
-            .get_browser()
-            .and_then(|browser| browser.get_index())
-            && let Ok(index) = browser_index.try_into()
-        {
-            combo_row.set_selected(index);
-        } else if is_new && let Some(browser) = installed_browsers.first() {
-            // ComboRow has already selected the first item on load, so sync this if new.
-            desktop_file.borrow_mut().set_browser(browser);
-        } else {
-            // Last should be no browser
-            combo_row.set_selected(list.find(&no_browser_boxed).unwrap_or_default());
-        }
-
         let validate_icon = Image::from_icon_name("dialog-warning-symbolic");
-        validate_icon.set_visible(false);
-        validate_icon.set_css_classes(&["error"]);
         combo_row.add_suffix(&validate_icon);
 
         Rc::new(Self {
+            app: app.clone(),
             combo_row,
             desktop_file: desktop_file.clone(),
+            list: list.clone(),
+            no_browser_boxed: no_browser_boxed.clone(),
             validate_icon,
         })
     }
 
     fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        self.set_from_desktop_file(web_app_view);
+
         let self_clone = self.clone();
         let web_app_view_clone = web_app_view.clone();
 
@@ -146,12 +137,38 @@ impl BrowserRow {
         self.desktop_file.borrow_mut().set_browser(&browser);
 
         web_app_view.clone().reset();
+    }
 
-        if self.is_valid(false)
-            && let Some(next_field) = self.combo_row.next_sibling()
+    fn set_from_desktop_file(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        let installed_browsers = self.app.browser_configs.get_installed_browsers();
+
+        if let Some(browser_index) = self
+            .desktop_file
+            .borrow()
+            .get_browser()
+            .and_then(|browser| browser.get_index())
+            && let Ok(index) = browser_index.try_into()
         {
-            next_field.grab_focus();
+            self.combo_row.set_selected(index);
+        } else if web_app_view.is_new()
+            && let Some(browser) = installed_browsers.first()
+        {
+            // ComboRow has already selected the first item on load, so sync this if new.
+            self.desktop_file.borrow_mut().set_browser(browser);
+        } else {
+            // Last should be no browser
+            self.combo_row
+                .set_selected(self.list.find(&self.no_browser_boxed).unwrap_or_default());
         }
+
+        self.validate_icon.set_visible(false);
+        self.validate_icon.set_css_classes(&["error"]);
+    }
+
+    fn on_reset(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        debug!("Resetting browser_row");
+
+        self.set_from_desktop_file(web_app_view);
     }
 }
 
@@ -167,7 +184,9 @@ impl FormField for BrowserRow {
         None
     }
 
-    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {}
+    fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
+        self.on_reset(&web_app_view);
+    }
 
     fn is_valid(&self, _do_dirty_check: bool) -> bool {
         let Some(selected_item) = self.combo_row.selected_item() else {

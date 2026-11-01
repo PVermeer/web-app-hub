@@ -1,9 +1,5 @@
 use super::form::FormField;
-use common::{
-    browsers::{Base, Browser},
-    desktop_file::DesktopFile,
-    utils,
-};
+use common::{browsers::Base, desktop_file::DesktopFile, utils};
 use gtk::{
     Button, Image, Label, Orientation, Widget,
     glib::{JoinHandle, object::Cast},
@@ -24,40 +20,29 @@ pub struct AppHeader {
 
 impl AppHeader {
     pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
-        let desktop_file_borrow = desktop_file.borrow();
         let content_box = gtk::Box::new(Orientation::Vertical, 6);
 
         // Visual representation of the Web App
-        let app_name = desktop_file_borrow
-            .get_name()
-            .unwrap_or(t!("web_apps.web_app_view.new_app.header.name").to_string());
-        let app_label = Label::builder()
-            .label(app_name)
-            .css_classes(["title-1"])
-            .build();
+        let app_label = Label::builder().css_classes(["title-1"]).build();
 
-        let app_image = desktop_file_borrow.get_icon();
-        Self::style_app_icon(&app_image);
+        let app_image = Image::builder()
+            .pixel_size(96)
+            .margin_start(25)
+            .margin_end(25)
+            .css_classes(["icon-dropshadow"])
+            .use_fallback(true)
+            .build();
 
         let browser_label = Label::builder()
             .css_classes(["subtitle"])
             .sensitive(false)
             .build();
-        if let Some(browser) = desktop_file_borrow.get_browser() {
-            browser_label.set_label(&browser.get_name_with_installation());
-        }
 
         // Run app button
         let run_app_button = Button::builder()
             .label(t!("web_apps.web_app_view.button.open"))
             .css_classes(["suggested-action", "pill"])
             .build();
-
-        if desktop_file_borrow.get_exec().is_some() {
-            run_app_button.set_sensitive(true);
-        } else {
-            run_app_button.set_sensitive(false);
-        }
 
         let button_wrap_box = WrapBox::builder()
             .align(0.5)
@@ -86,9 +71,7 @@ impl AppHeader {
     }
 
     fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
-        let is_new = web_app_view.is_new();
-
-        self.run_app_button.set_visible(is_new);
+        self.set_from_desktop_file(web_app_view);
 
         let self_clone = self.clone();
 
@@ -96,40 +79,42 @@ impl AppHeader {
             .connect_clicked(move |_| self_clone.on_run_app_clicked());
     }
 
-    fn set_app_name(&self, name: &str) {
-        self.app_name.set_label(name);
-    }
+    fn set_from_desktop_file(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        let desktop_file_borrow = self.desktop_file.borrow();
+        let is_new = web_app_view.is_new();
 
-    fn set_app_icon(&self, app_image: &Image) {
+        // Get values
+        let app_name = desktop_file_borrow
+            .get_name()
+            .unwrap_or(t!("web_apps.web_app_view.new_app.header.name").to_string());
+        let app_image = desktop_file_borrow.get_icon();
+        let browser_name = desktop_file_borrow
+            .get_browser()
+            .map(|browser| browser.get_name_with_installation())
+            .unwrap_or_default();
+        let has_exec = desktop_file_borrow.get_exec().is_some();
+
+        // Update the app header
         if let Some(paintable) = app_image.paintable() {
             self.app_icon.set_paintable(Some(&paintable));
         } else if let Some(icon_name) = app_image.icon_name() {
             self.app_icon.set_icon_name(Some(&icon_name));
         }
+        if app_image.uses_fallback() {
+            self.app_icon.add_css_class("error");
+        } else {
+            self.app_icon.remove_css_class("error");
+        }
+        self.app_name.set_label(&app_name);
+        self.browser_name.set_label(&browser_name);
+        self.run_app_button.set_visible(!is_new);
+        self.run_app_button.set_sensitive(has_exec);
     }
 
-    fn set_browser(&self, browser: &Rc<Browser>) {
-        self.browser_name
-            .set_label(&browser.get_name_with_installation());
-    }
-
-    fn on_reset(&self) {
+    fn on_reset(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         debug!("Resetting app header");
 
-        let desktop_file_borrow = self.desktop_file.borrow();
-
-        self.set_app_name(&desktop_file_borrow.get_name().unwrap_or_default());
-        self.set_app_icon(&desktop_file_borrow.get_icon());
-        if let Some(browser) = desktop_file_borrow.get_browser() {
-            self.set_browser(&browser);
-        }
-    }
-
-    fn style_app_icon(app_image: &Image) {
-        app_image.add_css_class("icon-dropshadow");
-        app_image.set_pixel_size(96);
-        app_image.set_margin_start(25);
-        app_image.set_margin_end(25);
+        self.set_from_desktop_file(web_app_view);
     }
 
     fn on_run_app_clicked(&self) {
@@ -171,8 +156,8 @@ impl FormField for AppHeader {
         None
     }
 
-    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
-        self.on_reset();
+    fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
+        self.on_reset(&web_app_view);
     }
 
     fn is_valid(&self, _do_dirty_check: bool) -> bool {

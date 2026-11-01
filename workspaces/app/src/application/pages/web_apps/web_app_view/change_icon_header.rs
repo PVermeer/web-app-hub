@@ -85,7 +85,7 @@ impl ChangeIconHeader {
     }
 
     fn on_reset(&self, do_dirty_check: bool) {
-        debug!("Resetting change icon");
+        debug!("Resetting change_icon_header");
 
         if self.is_valid(do_dirty_check) {
             self.change_icon_button.remove_css_class("error");
@@ -114,10 +114,19 @@ impl FormField for ChangeIconHeader {
     }
 
     fn is_valid(&self, _do_dirty_check: bool) -> bool {
-        self.desktop_file
+        let has_icon = self
+            .desktop_file
             .borrow()
             .get_icon_path()
-            .is_some_and(|icon_path| !icon_path.to_string_lossy().is_empty())
+            .is_some_and(|icon_path| !icon_path.to_string_lossy().is_empty());
+
+        let has_url = self
+            .desktop_file
+            .borrow()
+            .get_url()
+            .is_some_and(|url| !url.is_empty());
+
+        if has_url { has_icon } else { true }
     }
 
     fn is_dirty(&self) -> bool {

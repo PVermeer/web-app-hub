@@ -169,6 +169,7 @@ forms:
   force_close: Discard and close
   fetching_icon: Still fetchin icon, please wait
   validation_error: Please review the fields
+  save_error: Failed to save
   validation:
     empty: "%{field} is required"
     dirty: "%{field} is not applied"

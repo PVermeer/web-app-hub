@@ -28,29 +28,26 @@ impl MaximizeRow {
         })
     }
 
-    fn on_init(self: &Rc<Self>) {
+    fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         self.set_from_desktop_file();
 
         let self_clone = self.clone();
+        let web_app_view = web_app_view.clone();
 
         self.switch_row.connect_active_notify(move |_| {
-            self_clone.on_active();
+            self_clone.on_active(&web_app_view);
         });
     }
 
-    fn on_active(&self) {
+    fn on_active(&self, _web_app_view: &Rc<dyn super::WebAppViewShared>) {
         self.desktop_file
             .borrow_mut()
             .set_maximized(self.switch_row.is_active());
-
-        if self.is_valid(false)
-            && let Some(next_field) = self.switch_row.next_sibling()
-        {
-            next_field.grab_focus();
-        }
     }
 
     fn on_reset(&self) {
+        debug!("Resetting maximize_row");
+
         self.set_from_desktop_file();
     }
 
@@ -64,7 +61,7 @@ impl MaximizeRow {
 
         self.switch_row.set_active(is_maximized);
         self.switch_row.set_sensitive(browser_can_maximize);
-        self.switch_row.set_has_tooltip(browser_can_maximize);
+        self.switch_row.set_has_tooltip(!browser_can_maximize);
 
         if !browser_can_maximize && is_maximized {
             debug!("Found desktop file with maximize on a browser that is incapable");
@@ -79,8 +76,8 @@ impl MaximizeRow {
 }
 
 impl FormField for MaximizeRow {
-    fn init(self: Rc<Self>, _web_app_view: Rc<dyn super::WebAppViewShared>) {
-        self.on_init();
+    fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init(&web_app_view);
     }
 
     fn apply(
