@@ -27,7 +27,7 @@ use std::{
     rc::Rc,
     time::{Duration, SystemTime},
 };
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 pub struct IconPicker {
     init: RefCell<bool>,
@@ -590,6 +590,6 @@ impl IconPicker {
     }
 
     pub fn reset(&self) {
-        warn!("RESET NOT YET IMPLEMENTED");
+        *self.fetched_icons_ts.borrow_mut() = SystemTime::UNIX_EPOCH;
     }
 }
