@@ -117,11 +117,11 @@ impl WebAppView {
         // Some form rows set a default in the Desktop file.
         // This means that order matters when building.
         // E.g. BrowserRow set a found browser -> isolate sets sensitive based on the browser
-        let isolate_row = IsolateRow::new(desktop_file);
         let browser_row = BrowserRow::new(desktop_file, app, is_new);
-        let name_row = NameRow::new(desktop_file);
         let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
+        let name_row = NameRow::new(desktop_file);
         let url_row = UrlRow::new(desktop_file, &icon_picker, &change_icon_form_header);
+        let isolate_row = IsolateRow::new(desktop_file);
         let maximize_row = MaximizeRow::new(desktop_file);
         let app_header = AppHeader::new(desktop_file);
 
