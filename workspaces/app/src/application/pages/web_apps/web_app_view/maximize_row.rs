@@ -1,4 +1,4 @@
-use super::{WebAppView, form::FormField};
+use super::form::FormField;
 use common::desktop_file::DesktopFile;
 use gtk::{glib::JoinHandle, prelude::WidgetExt};
 use libadwaita::SwitchRow;
@@ -44,7 +44,7 @@ impl MaximizeRow {
         })
     }
 
-    pub fn init(self: &Rc<Self>) {
+    fn on_init(self: &Rc<Self>) {
         let self_clone = self.clone();
 
         self.switch_row.connect_active_notify(move |_| {
@@ -63,22 +63,8 @@ impl MaximizeRow {
             next_field.grab_focus();
         }
     }
-}
 
-impl FormField for MaximizeRow {
-    fn apply(self: Rc<Self>, _web_app_view: &Rc<WebAppView>) -> Option<JoinHandle<()>> {
-        None
-    }
-
-    fn is_valid(&self, _do_dirty_check: bool) -> bool {
-        true
-    }
-
-    fn is_dirty(&self) -> bool {
-        false
-    }
-
-    fn reset(&self, _do_dirty_check: bool) {
+    fn on_reset(&self) {
         let browser_can_maximize = self
             .desktop_file
             .borrow()
@@ -93,5 +79,30 @@ impl FormField for MaximizeRow {
             self.switch_row.set_active(false);
             self.switch_row.set_has_tooltip(true);
         }
+    }
+}
+
+impl FormField for MaximizeRow {
+    fn init(self: Rc<Self>, _web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init();
+    }
+
+    fn apply(
+        self: Rc<Self>,
+        _web_app_view: Rc<dyn super::WebAppViewShared>,
+    ) -> Option<JoinHandle<()>> {
+        None
+    }
+
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
+        self.on_reset();
+    }
+
+    fn is_valid(&self, _do_dirty_check: bool) -> bool {
+        true
+    }
+
+    fn is_dirty(&self) -> bool {
+        false
     }
 }

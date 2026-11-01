@@ -1,4 +1,4 @@
-use super::{WebAppView, form::FormField};
+use super::form::FormField;
 use common::{
     browsers::{Base, Browser},
     desktop_file::DesktopFile,
@@ -85,21 +85,22 @@ impl AppHeader {
         })
     }
 
-    pub fn init(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
-        self.run_app_button
-            .set_visible(*web_app_view.is_new.borrow());
+    fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        let is_new = web_app_view.is_new();
 
-        let web_app_view_clone = web_app_view.clone();
+        self.run_app_button.set_visible(is_new);
+
+        let self_clone = self.clone();
 
         self.run_app_button
-            .connect_clicked(move |_| Self::on_run_app_clicked(&web_app_view_clone));
+            .connect_clicked(move |_| self_clone.on_run_app_clicked());
     }
 
-    pub fn set_app_name(&self, name: &str) {
+    fn set_app_name(&self, name: &str) {
         self.app_name.set_label(name);
     }
 
-    pub fn set_app_icon(&self, app_image: &Image) {
+    fn set_app_icon(&self, app_image: &Image) {
         if let Some(paintable) = app_image.paintable() {
             self.app_icon.set_paintable(Some(&paintable));
         } else if let Some(icon_name) = app_image.icon_name() {
@@ -107,12 +108,12 @@ impl AppHeader {
         }
     }
 
-    pub fn set_browser(&self, browser: &Rc<Browser>) {
+    fn set_browser(&self, browser: &Rc<Browser>) {
         self.browser_name
             .set_label(&browser.get_name_with_installation());
     }
 
-    pub fn reset(self: &Rc<Self>) {
+    fn on_reset(&self) {
         debug!("Resetting app header");
 
         let desktop_file_borrow = self.desktop_file.borrow();
@@ -131,8 +132,8 @@ impl AppHeader {
         app_image.set_margin_end(25);
     }
 
-    fn on_run_app_clicked(web_app_view: &Rc<WebAppView>) {
-        let desktop_file_borrow = web_app_view.desktop_file.borrow();
+    fn on_run_app_clicked(&self) {
+        let desktop_file_borrow = self.desktop_file.borrow();
         let Some(mut executable) = desktop_file_borrow.get_exec() else {
             return;
         };
@@ -159,8 +160,19 @@ impl AppHeader {
 }
 
 impl FormField for AppHeader {
-    fn apply(self: Rc<Self>, _web_app_view: &Rc<WebAppView>) -> Option<JoinHandle<()>> {
+    fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init(&web_app_view);
+    }
+
+    fn apply(
+        self: Rc<Self>,
+        _web_app_view: Rc<dyn super::WebAppViewShared>,
+    ) -> Option<JoinHandle<()>> {
         None
+    }
+
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
+        self.on_reset();
     }
 
     fn is_valid(&self, _do_dirty_check: bool) -> bool {
@@ -169,17 +181,5 @@ impl FormField for AppHeader {
 
     fn is_dirty(&self) -> bool {
         false
-    }
-
-    fn reset(&self, _do_dirty_check: bool) {
-        debug!("Resetting app header");
-
-        let desktop_file_borrow = self.desktop_file.borrow();
-
-        self.set_app_name(&desktop_file_borrow.get_name().unwrap_or_default());
-        self.set_app_icon(&desktop_file_borrow.get_icon());
-        if let Some(browser) = desktop_file_borrow.get_browser() {
-            self.set_browser(&browser);
-        }
     }
 }

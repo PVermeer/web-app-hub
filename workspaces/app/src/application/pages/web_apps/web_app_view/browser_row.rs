@@ -1,4 +1,4 @@
-use super::{WebAppView, form::FormField};
+use super::form::FormField;
 use crate::application::App;
 use anyhow::anyhow;
 use common::{browsers::Browser, desktop_file::DesktopFile};
@@ -119,7 +119,7 @@ impl BrowserRow {
         })
     }
 
-    pub fn init(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
+    fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         let self_clone = self.clone();
         let web_app_view_clone = web_app_view.clone();
 
@@ -128,13 +128,13 @@ impl BrowserRow {
         });
     }
 
-    fn on_select(&self, web_app_view: &Rc<WebAppView>) {
+    fn on_select(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         let selected_item = self.combo_row.selected_item();
         let Some(selected_item) = selected_item else {
             return;
         };
         let Ok(browser_item_boxed) = selected_item.downcast::<BoxedAnyObject>() else {
-            web_app_view.on_error(
+            web_app_view.error_message(
                 "Failed to save browser",
                 Some(&anyhow!("Failed to downcast selected item in browser_row")),
             );
@@ -145,7 +145,7 @@ impl BrowserRow {
 
         self.desktop_file.borrow_mut().set_browser(&browser);
 
-        web_app_view.isolate_row.on_isolation_change(web_app_view);
+        web_app_view.clone().reset();
 
         if self.is_valid(false)
             && let Some(next_field) = self.combo_row.next_sibling()
@@ -156,8 +156,19 @@ impl BrowserRow {
 }
 
 impl FormField for BrowserRow {
-    fn apply(self: Rc<Self>, _web_app_view: &Rc<WebAppView>) -> Option<JoinHandle<()>> {
+    fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init(&web_app_view);
+    }
+
+    fn apply(
+        self: Rc<Self>,
+        _web_app_view: Rc<dyn super::WebAppViewShared>,
+    ) -> Option<JoinHandle<()>> {
         None
+    }
+
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
+        warn!("RESET NOT YET IMPLEMENTED FOR BROWSER ROW");
     }
 
     fn is_valid(&self, _do_dirty_check: bool) -> bool {
@@ -184,9 +195,5 @@ impl FormField for BrowserRow {
 
     fn is_dirty(&self) -> bool {
         false
-    }
-
-    fn reset(&self, _do_dirty_check: bool) {
-        warn!("RESET NOT YET IMPLEMENTED FOR BROWSER ROW");
     }
 }

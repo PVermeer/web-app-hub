@@ -1,3 +1,4 @@
+use super::{EntryRowAppExt, form::FormField};
 use common::desktop_file::{self, DesktopFile};
 use gtk::{
     EventControllerFocus, InputPurpose,
@@ -10,8 +11,6 @@ use libadwaita::{
 };
 use std::{cell::RefCell, rc::Rc};
 use tracing::debug;
-
-use super::{EntryRowAppExt, WebAppView, form::FormField};
 
 pub struct NameRow {
     pub entry_row: EntryRow,
@@ -37,7 +36,7 @@ impl NameRow {
         })
     }
 
-    pub fn init(self: &Rc<Self>) {
+    pub fn on_init(self: &Rc<Self>) {
         // Text changes
         let self_clone = self.clone();
 
@@ -85,12 +84,32 @@ impl NameRow {
     fn on_leave(&self) {
         self.entry_row.validate(true);
     }
+
+    fn on_reset(&self, do_dirty_check: bool) {
+        debug!("Resetting change icon");
+
+        self.entry_row
+            .set_text(&self.desktop_file.borrow().get_name().unwrap_or_default());
+
+        self.is_valid(do_dirty_check);
+    }
 }
 
 impl FormField for NameRow {
-    fn apply(self: Rc<Self>, _web_app_view: &Rc<WebAppView>) -> Option<JoinHandle<()>> {
+    fn init(self: Rc<Self>, _web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init();
+    }
+
+    fn apply(
+        self: Rc<Self>,
+        _web_app_view: Rc<dyn super::WebAppViewShared>,
+    ) -> Option<JoinHandle<()>> {
         self.on_apply();
         None
+    }
+
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, do_dirty_check: bool) {
+        self.on_reset(do_dirty_check);
     }
 
     fn is_valid(&self, do_dirty_check: bool) -> bool {
@@ -99,14 +118,5 @@ impl FormField for NameRow {
 
     fn is_dirty(&self) -> bool {
         false
-    }
-
-    fn reset(&self, do_dirty_check: bool) {
-        debug!("Resetting change icon");
-
-        self.entry_row
-            .set_text(&self.desktop_file.borrow().get_name().unwrap_or_default());
-
-        self.is_valid(do_dirty_check);
     }
 }

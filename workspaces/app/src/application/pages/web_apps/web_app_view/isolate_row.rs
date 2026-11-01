@@ -1,4 +1,4 @@
-use super::{WebAppView, form::FormField};
+use super::form::FormField;
 use common::desktop_file::DesktopFile;
 use gtk::{glib::JoinHandle, prelude::WidgetExt};
 use libadwaita::SwitchRow;
@@ -51,7 +51,7 @@ impl IsolateRow {
         })
     }
 
-    pub fn init(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
+    fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         let self_clone = self.clone();
         let web_app_view_clone = web_app_view.clone();
 
@@ -60,7 +60,7 @@ impl IsolateRow {
         });
     }
 
-    fn on_active(&self, web_app_view: &Rc<WebAppView>) {
+    fn on_active(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         self.desktop_file
             .borrow_mut()
             .set_isolated(self.switch_row.is_active());
@@ -74,7 +74,7 @@ impl IsolateRow {
         }
     }
 
-    pub fn on_isolation_change(&self, web_app_view: &Rc<WebAppView>) {
+    fn on_isolation_change(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         let mut desktop_file_borrow = self.desktop_file.borrow_mut();
         let is_isolated = self.switch_row.is_active();
         let old_profile_path = desktop_file_borrow.get_profile_path().unwrap_or_default();
@@ -86,7 +86,7 @@ impl IsolateRow {
             match desktop_file_borrow.build_profile_path() {
                 Err(error) => {
                     drop(desktop_file_borrow);
-                    web_app_view.on_error("Could not set isolation", Some(&error));
+                    web_app_view.error_message("Could not set isolation", Some(&error));
                     return;
                 }
                 Ok(profile) => profile,
@@ -105,22 +105,10 @@ impl IsolateRow {
 
         desktop_file_borrow.set_profile_path(&new_profile_path);
     }
-}
 
-impl FormField for IsolateRow {
-    fn apply(self: Rc<Self>, _web_app_view: &Rc<WebAppView>) -> Option<JoinHandle<()>> {
-        None
-    }
+    fn on_reset(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        self.on_isolation_change(web_app_view);
 
-    fn is_valid(&self, _do_dirty_check: bool) -> bool {
-        true
-    }
-
-    fn is_dirty(&self) -> bool {
-        false
-    }
-
-    fn reset(&self, _do_dirty_check: bool) {
         let browser = self.desktop_file.borrow().get_browser();
         let browser_can_isolate = browser.as_ref().is_some_and(|browser| browser.can_isolate);
 
@@ -134,5 +122,30 @@ impl FormField for IsolateRow {
         if browser.is_some() && !browser_can_isolate {
             self.switch_row.set_active(false);
         }
+    }
+}
+
+impl FormField for IsolateRow {
+    fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init(&web_app_view);
+    }
+
+    fn apply(
+        self: Rc<Self>,
+        _web_app_view: Rc<dyn super::WebAppViewShared>,
+    ) -> Option<JoinHandle<()>> {
+        None
+    }
+
+    fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
+        self.on_reset(&web_app_view);
+    }
+
+    fn is_valid(&self, _do_dirty_check: bool) -> bool {
+        true
+    }
+
+    fn is_dirty(&self) -> bool {
+        false
     }
 }

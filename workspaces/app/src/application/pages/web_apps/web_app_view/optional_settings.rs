@@ -288,10 +288,10 @@ impl OptionalSettings {
                     return;
                 };
                 let Ok(category_item_boxed) = selected_item.downcast::<BoxedAnyObject>() else {
-                    web_app_view_clone.on_error(
-                        "Failed to set category",
-                        Some(&anyhow!("Failed to downcast category from list")),
-                    );
+                    // web_app_view_clone.on_error(
+                    //     "Failed to set category",
+                    //     Some(&anyhow!("Failed to downcast category from list")),
+                    // );
                     return;
                 };
                 let category = category_item_boxed.borrow::<Category>();

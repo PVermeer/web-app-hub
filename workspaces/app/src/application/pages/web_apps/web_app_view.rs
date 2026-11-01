@@ -12,7 +12,10 @@ mod url_row;
 
 use crate::application::{
     App,
-    pages::{NavPage, PrefPage, web_apps::web_app_view::optional_settings::OptionalSettings},
+    pages::{
+        NavPage, PrefPage, ToastOverlayAppExt,
+        web_apps::web_app_view::optional_settings::OptionalSettings,
+    },
 };
 use app_header::AppHeader;
 use browser_row::BrowserRow;
@@ -30,7 +33,7 @@ use icon_picker::IconPicker;
 use isolate_row::IsolateRow;
 use libadwaita::{
     ActionRow, EntryRow, HeaderBar, NavigationPage, NavigationView, PreferencesGroup, Toast,
-    ToastOverlay, ToastPriority, WrapBox,
+    ToastOverlay, WrapBox,
     gtk::{
         self, Button, Image, Orientation,
         prelude::{BoxExt, ButtonExt, EditableExt, WidgetExt},
@@ -42,8 +45,16 @@ use libadwaita::{
 use maximize_row::MaximizeRow;
 use name_row::NameRow;
 use std::{cell::RefCell, rc::Rc, time::Duration};
-use tracing::{debug, error};
+use tracing::debug;
 use url_row::UrlRow;
+
+pub trait WebAppViewShared {
+    fn is_new(&self) -> bool;
+    fn message(&self, message: &str);
+    fn discard_message(&self, message: &str) -> Toast;
+    fn error_message(&self, message: &str, error: Option<&anyhow::Error>);
+    fn reset(self: Rc<Self>);
+}
 
 pub struct WebAppView {
     is_new: RefCell<bool>,
@@ -53,19 +64,12 @@ pub struct WebAppView {
     header: HeaderBar,
     desktop_file: Rc<RefCell<DesktopFile>>,
     desktop_file_original: RefCell<DesktopFile>,
-    toast_overlay: ToastOverlay,
-    icon_picker: Rc<IconPicker>,
+    toasts: ToastOverlay,
     reset_button: Button,
-    app_header: Rc<AppHeader>,
-    change_icon_form_header: Rc<ChangeIconHeader>,
     run_app_button: Button,
     save_button: Button,
     delete_button: Button,
-    name_row: Rc<NameRow>,
     url_row: Rc<UrlRow>,
-    isolate_row: Rc<IsolateRow>,
-    maximize_row: Rc<MaximizeRow>,
-    browser_row: Rc<BrowserRow>,
     optional_row: ActionRow,
     form_fields: Vec<Rc<dyn FormField>>,
 }
@@ -79,8 +83,6 @@ impl NavPage for WebAppView {
     }
 }
 impl WebAppView {
-    const TOAST_MESSAGE_TIMEOUT: u32 = 4;
-
     pub fn new(
         app: &Rc<App>,
         nav_view: &Rc<NavigationView>,
@@ -115,12 +117,12 @@ impl WebAppView {
         // Some form rows set a default in the Desktop file.
         // This means that order matters when building.
         // E.g. BrowserRow set a found browser -> isolate sets sensitive based on the browser
+        let isolate_row = IsolateRow::new(desktop_file);
         let browser_row = BrowserRow::new(desktop_file, app, is_new);
         let name_row = NameRow::new(desktop_file);
-        let url_row = UrlRow::new(desktop_file);
-        let change_icon_form_header = ChangeIconHeader::new(desktop_file);
+        let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
+        let url_row = UrlRow::new(desktop_file, &icon_picker, &change_icon_form_header);
         let maximize_row = MaximizeRow::new(desktop_file);
-        let isolate_row = IsolateRow::new(desktop_file);
         let app_header = AppHeader::new(desktop_file);
 
         let form_fields: Vec<Rc<dyn FormField>> = vec![
@@ -161,32 +163,21 @@ impl WebAppView {
             header,
             desktop_file: desktop_file.clone(),
             desktop_file_original: RefCell::new(desktop_file_original),
-            toast_overlay,
-            icon_picker,
+            toasts: toast_overlay,
             reset_button,
-            app_header,
-            change_icon_form_header,
             run_app_button,
             save_button,
             delete_button,
-            name_row,
             url_row,
-            isolate_row,
-            maximize_row,
-            browser_row,
             optional_row,
             form_fields,
         })
     }
 
     pub fn init(self: &Rc<Self>) {
-        self.app_header.init(self);
-        self.change_icon_form_header.init(self);
-        self.name_row.init();
-        self.url_row.init(self);
-        self.isolate_row.init(self);
-        self.maximize_row.init();
-        self.browser_row.init(self);
+        for field in &self.form_fields {
+            field.clone().init(self.clone());
+        }
 
         let self_clone = self.clone();
 
@@ -199,7 +190,7 @@ impl WebAppView {
         self.connect_delete_button();
     }
 
-    pub fn is_new(self: &Rc<Self>) -> bool {
+    pub fn is_new(&self) -> bool {
         *self.is_new.borrow()
     }
 
@@ -238,11 +229,9 @@ impl WebAppView {
             desktop_file_borrow.set_path(&save_path);
         }
 
-        for field in &self.form_fields {
-            field.reset(false);
-        }
+        self.reset_form_fields();
 
-        self.add_toast_message(&t!("web_apps.web_app_view.toast.reset"));
+        self.message(&t!("web_apps.web_app_view.toast.reset"));
     }
 
     fn build_header_reset_button() -> Button {
@@ -364,13 +353,13 @@ impl WebAppView {
         let handles: Vec<_> = self
             .form_fields
             .iter()
-            .filter_map(|field| field.clone().apply(self))
+            .filter_map(|field| field.clone().apply(self.clone()))
             .collect();
 
         join_all(handles).await;
     }
 
-    async fn exit_validation(self: &Rc<Self>, show_discard: bool, auto_apply: bool) -> bool {
+    async fn exit_validation(self: &Rc<Self>, _show_discard: bool, auto_apply: bool) -> bool {
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
         if auto_apply && self.form_is_dirty() {
             self.apply_form().await;
@@ -381,21 +370,13 @@ impl WebAppView {
         }
 
         if !self.form_is_valid(true) {
-            let apply_toast = Toast::builder()
-                .title(t!("forms.validation_error"))
-                .priority(ToastPriority::High)
-                .timeout(Self::TOAST_MESSAGE_TIMEOUT)
-                .build();
-            if show_discard {
-                apply_toast.set_button_label(Some(&t!("forms.force_close")));
-            }
-
+            let toast = self.discard_message(&t!("forms.validation_error"));
             let nav_view_clone = self.nav_view.clone();
-            apply_toast.connect_button_clicked(move |_toast| {
+
+            toast.connect_button_clicked(move |_toast| {
                 nav_view_clone.pop();
             });
-            self.toast_overlay.dismiss_all();
-            self.toast_overlay.add_toast(apply_toast);
+
             return false;
         }
 
@@ -473,7 +454,7 @@ impl WebAppView {
             );
 
             if !*self_clone.is_new.borrow() && self_clone.desktop_file.borrow().delete().is_err() {
-                self_clone.on_error("Failed to delete all files", None);
+                self_clone.error_message("Failed to delete all files", None);
             }
 
             self_clone.nav_view.pop();
@@ -536,23 +517,31 @@ impl WebAppView {
         });
     }
 
-    fn on_error(self: &Rc<Self>, message: &str, error: Option<&anyhow::Error>) {
-        if let Some(error) = error {
-            error!("{error:?}");
+    fn reset_form_fields(self: &Rc<Self>) {
+        for field in &self.form_fields {
+            field.reset(self.clone(), false);
         }
-        let toast = Toast::new(&format!("ERROR: {message}"));
-        toast.set_timeout(Self::TOAST_MESSAGE_TIMEOUT);
-        toast.set_priority(ToastPriority::High);
-        self.toast_overlay.dismiss_all();
-        self.toast_overlay.add_toast(toast);
+    }
+}
+
+impl WebAppViewShared for WebAppView {
+    fn is_new(&self) -> bool {
+        self.is_new()
     }
 
-    fn add_toast_message(&self, message: &str) {
-        let toast = Toast::builder()
-            .title(message)
-            .priority(ToastPriority::Normal)
-            .timeout(Self::TOAST_MESSAGE_TIMEOUT)
-            .build();
-        self.toast_overlay.add_toast(toast);
+    fn message(&self, message: &str) {
+        self.toasts.message(message);
+    }
+
+    fn discard_message(&self, message: &str) -> Toast {
+        self.toasts.discard_message(message)
+    }
+
+    fn error_message(&self, message: &str, error: Option<&anyhow::Error>) {
+        self.toasts.error(message, error);
+    }
+
+    fn reset(self: Rc<Self>) {
+        self.reset_form_fields();
     }
 }

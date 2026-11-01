@@ -1,5 +1,4 @@
-use std::{cell::RefCell, path::Path, rc::Rc};
-
+use super::{form::FormField, icon_picker::IconPicker};
 use common::desktop_file::DesktopFile;
 use gtk::{
     Button, Label, Orientation,
@@ -7,19 +6,19 @@ use gtk::{
     prelude::{BoxExt, ButtonExt, WidgetExt},
 };
 use libadwaita::ButtonContent;
+use std::{cell::RefCell, path::Path, rc::Rc};
 use tracing::debug;
-
-use super::{WebAppView, form::FormField};
 
 pub struct ChangeIconHeader {
     pub header: gtk::Box,
     pub change_icon_button: Button,
     desktop_file: Rc<RefCell<DesktopFile>>,
+    icon_picker: Rc<IconPicker>,
     validation_label: Label,
 }
 
 impl ChangeIconHeader {
-    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
+    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>, icon_picker: &Rc<IconPicker>) -> Rc<Self> {
         let button_content = ButtonContent::builder()
             .label(t!("web_apps.web_app_view.button.icon"))
             .icon_name("software-update-available-symbolic")
@@ -42,20 +41,22 @@ impl ChangeIconHeader {
         Rc::new(Self {
             header: header_box,
             desktop_file: desktop_file.clone(),
+            icon_picker: icon_picker.clone(),
             change_icon_button,
             validation_label,
         })
     }
 
-    pub fn init(self: &Rc<Self>, web_app_view: &Rc<WebAppView>) {
-        let web_app_view_clone = web_app_view.clone();
+    fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        let self_clone = self.clone();
+        let web_app_view = web_app_view.clone();
 
         self.change_icon_button
-            .connect_clicked(move |_button| Self::on_click(&web_app_view_clone));
+            .connect_clicked(move |_button| self_clone.on_click(&web_app_view));
     }
 
-    pub fn on_click(web_app_view: &Rc<WebAppView>) {
-        let undo_icon_path = web_app_view
+    fn on_click(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        let undo_icon_path = self
             .desktop_file
             .borrow()
             .get_icon_path()
@@ -64,29 +65,52 @@ impl ChangeIconHeader {
             .to_string();
         let undo_icon_path_fail = undo_icon_path.clone();
 
-        let web_app_view_self_clone_fail = web_app_view.clone();
+        let desktop_file = self.desktop_file.clone();
+        let web_app_view = web_app_view.clone();
 
-        web_app_view.icon_picker.show_dialog(
+        self.icon_picker.show_dialog(
             Some(move || {
                 // Success
             }),
             Some(move || {
                 // Fail
                 let undo_icon_path = undo_icon_path_fail.clone();
-                web_app_view_self_clone_fail
-                    .desktop_file
+                desktop_file
                     .borrow_mut()
                     .set_icon_path(Path::new(&undo_icon_path));
 
-                web_app_view_self_clone_fail.on_error("Failed to save icon", None);
+                web_app_view.error_message("Failed to save icon", None);
             }),
         );
+    }
+
+    fn on_reset(&self, do_dirty_check: bool) {
+        debug!("Resetting change icon");
+
+        if self.is_valid(do_dirty_check) {
+            self.change_icon_button.remove_css_class("error");
+            self.validation_label.set_visible(false);
+        } else {
+            self.change_icon_button.add_css_class("error");
+            self.validation_label.set_visible(true);
+        }
     }
 }
 
 impl FormField for ChangeIconHeader {
-    fn apply(self: Rc<Self>, _web_app_view: &Rc<WebAppView>) -> Option<JoinHandle<()>> {
+    fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init(&web_app_view);
+    }
+
+    fn apply(
+        self: Rc<Self>,
+        _web_app_view: Rc<dyn super::WebAppViewShared>,
+    ) -> Option<JoinHandle<()>> {
         None
+    }
+
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, do_dirty_check: bool) {
+        self.on_reset(do_dirty_check);
     }
 
     fn is_valid(&self, _do_dirty_check: bool) -> bool {
@@ -98,17 +122,5 @@ impl FormField for ChangeIconHeader {
 
     fn is_dirty(&self) -> bool {
         false
-    }
-
-    fn reset(&self, do_dirty_check: bool) {
-        debug!("Resetting change icon");
-
-        if self.is_valid(do_dirty_check) {
-            self.change_icon_button.remove_css_class("error");
-            self.validation_label.set_visible(false);
-        } else {
-            self.change_icon_button.add_css_class("error");
-            self.validation_label.set_visible(true);
-        }
     }
 }
