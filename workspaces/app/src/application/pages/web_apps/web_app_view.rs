@@ -192,6 +192,7 @@ impl WebAppView {
         self.desktop_file
             .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
                 self_clone.reset_form_fields();
+                self_clone.reset_reset_button();
             });
     }
 
