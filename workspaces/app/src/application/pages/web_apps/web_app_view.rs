@@ -25,15 +25,15 @@ use common::desktop_file::{DesktopFile, error::DesktopFileError};
 pub use entry_row_ext::EntryRowAppExt;
 use form::FormField;
 use gtk::{
-    Align, EventControllerFocus, EventControllerMotion,
+    Align, EventControllerFocus, EventControllerMotion, GestureClick, PropagationPhase,
+    gdk_pixbuf::Pixbuf,
     glib::{self},
-    prelude::GtkWindowExt,
+    prelude::{EventControllerExt, GtkWindowExt},
 };
 use icon_picker::IconPicker;
 use isolate_row::IsolateRow;
 use libadwaita::{
-    ActionRow, EntryRow, HeaderBar, NavigationPage, NavigationView, PreferencesGroup, Toast,
-    ToastOverlay, WrapBox,
+    ActionRow, EntryRow, NavigationPage, NavigationView, PreferencesGroup, ToastOverlay, WrapBox,
     gtk::{
         self, Button, Image, Orientation,
         prelude::{BoxExt, ButtonExt, EditableExt, WidgetExt},
@@ -45,13 +45,12 @@ use libadwaita::{
 use maximize_row::MaximizeRow;
 use name_row::NameRow;
 use std::{cell::RefCell, rc::Rc, time::Duration};
-use tracing::debug;
+use tracing::{debug, error};
 use url_row::UrlRow;
 
 pub trait WebAppViewShared {
     fn is_new(&self) -> bool;
     fn message(&self, message: &str);
-    fn discard_message(&self, message: &str) -> Toast;
     fn error_message(&self, message: &str, error: Option<&anyhow::Error>);
 }
 
@@ -60,13 +59,14 @@ pub struct WebAppView {
     nav_page: NavigationPage,
     nav_view: Rc<NavigationView>,
     app: Rc<App>,
-    header: HeaderBar,
     desktop_file: Rc<DesktopFile>,
     desktop_file_original: DesktopFile,
+    app_icon_original: RefCell<Option<Pixbuf>>,
+    nav_back_button: Button,
+    reset_button: Button,
     toasts: ToastOverlay,
     app_header: Rc<AppHeader>,
     change_icon_form_header: Rc<ChangeIconHeader>,
-    reset_button: Button,
     save_button: Button,
     delete_button: Button,
     url_row: Rc<UrlRow>,
@@ -90,6 +90,10 @@ impl WebAppView {
         is_new: bool,
     ) -> Rc<Self> {
         let desktop_file_original = desktop_file.as_ref().clone(); // Deep clone
+        let icon_original = desktop_file
+            .get_icon_path()
+            .and_then(|path| gtk::gdk_pixbuf::Pixbuf::from_file(path).ok());
+
         let title = desktop_file
             .get_name()
             .unwrap_or(t!("web_apps.web_app_view.new_app.title").to_string());
@@ -102,12 +106,17 @@ impl WebAppView {
             header,
             ..
         } = Self::build_nav_page(&title, icon).with_preference_page();
-        let icon_picker = IconPicker::new(app, desktop_file);
+
+        // Set custom nagination back
+        nav_page.set_can_pop(false);
+        let nav_back_button = Button::from_icon_name("go-previous-symbolic");
+        header.pack_start(&nav_back_button);
 
         let reset_button = Self::build_header_reset_button();
         let save_button = Self::build_save_button();
         let delete_button = Self::build_delete_button();
         let optional_row = Self::build_optional_row();
+        let icon_picker = IconPicker::new(app, desktop_file);
         let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
 
         header.pack_end(&reset_button);
@@ -153,13 +162,14 @@ impl WebAppView {
             nav_page,
             nav_view: nav_view.clone(),
             app: app.clone(),
-            header,
             desktop_file: desktop_file.clone(),
             desktop_file_original,
+            app_icon_original: RefCell::new(icon_original),
+            nav_back_button,
+            reset_button,
             toasts: toast_overlay,
             app_header,
             change_icon_form_header,
-            reset_button,
             save_button,
             delete_button,
             url_row,
@@ -173,11 +183,7 @@ impl WebAppView {
             field.clone().init(self.clone());
         }
 
-        let self_clone = self.clone();
-
-        self.reset_button
-            .connect_clicked(move |_| self_clone.reset_desktop_file());
-
+        self.connect_reset_button();
         self.connect_nav_pop();
         self.connect_optional_row();
         self.connect_save_button();
@@ -191,7 +197,6 @@ impl WebAppView {
         self.desktop_file
             .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
                 self_clone.reset_form_fields();
-                self_clone.reset_reset_button();
             });
     }
 
@@ -199,53 +204,58 @@ impl WebAppView {
         *self.is_new.borrow()
     }
 
-    fn connect_nav_pop(self: &Rc<Self>) {
-        self.nav_page.set_can_pop(false);
-        let back_button = Button::from_icon_name("go-previous-symbolic");
-        self.header.pack_start(&back_button);
-
+    fn connect_reset_button(self: &Rc<Self>) {
         let self_clone = self.clone();
-        back_button.connect_clicked(move |_button| {
-            self_clone
-                .app
-                .window
-                .adw_window
-                .set_focus(None::<&gtk::Widget>);
 
+        // This GestureClick forces the reset button to run before all other callbacks.
+        // Thanks GPT, this would have taking me ages.
+        let gesture = GestureClick::new();
+        gesture.set_propagation_phase(PropagationPhase::Capture);
+        gesture.connect_pressed(move |_, _, _, _| self_clone.reset_desktop_file());
+        self.reset_button.add_controller(gesture);
+    }
+
+    fn connect_nav_pop(self: &Rc<Self>) {
+        let self_clone = self.clone();
+
+        // This GestureClick forces the reset button to run before all other callbacks.
+        // Thanks GPT, this would have taking me ages.
+        let gesture = GestureClick::new();
+        gesture.set_propagation_phase(PropagationPhase::Capture);
+        gesture.connect_pressed(move |_, _, _, _| {
             if self_clone.url_row.is_fetching_icon() {
-                let toast = self_clone.discard_message(&t!("forms.fetching_icon"));
-
-                let self_clone = self_clone.clone();
-                toast.connect_button_clicked(move |_toast| {
-                    self_clone.nav_view.pop();
-                });
-
+                self_clone.message(&t!("forms.fetching_icon"));
                 return;
             }
 
-            if !self_clone.form_is_valid(true, true) {
-                let toast = self_clone.discard_message(&t!("forms.validation_error"));
-
-                let self_clone = self_clone.clone();
-                toast.connect_button_clicked(move |_toast| {
-                    self_clone.nav_view.pop();
-                });
-
-                return;
-            }
-
+            self_clone.reset_desktop_file();
             self_clone.nav_view.pop();
         });
+        self.nav_back_button.add_controller(gesture);
     }
 
     fn reset_desktop_file(self: &Rc<Self>) {
         debug!("Resetting desktop file");
 
+        if self.url_row.is_fetching_icon() {
+            self.message(&t!("forms.fetching_icon"));
+            return;
+        }
+
+        // Desktop file
+        let save_path = self.desktop_file.get_path();
+        self.desktop_file
+            .set_from_desktop_file(&self.desktop_file_original);
+        self.desktop_file.set_path(&save_path);
+
+        // Icon
+        let original_icon_borrow = self.app_icon_original.borrow();
+        if let Some(pixbuf) = &*original_icon_borrow
+            && let Some(icon_path) = self.desktop_file.get_icon_path()
         {
-            let save_path = self.desktop_file.get_path();
-            self.desktop_file
-                .set_from_desktop_file(&self.desktop_file_original);
-            self.desktop_file.set_path(&save_path);
+            let _ = pixbuf.savev(icon_path, "png", &[]).inspect_err(
+                |error| error!(%error, "Failed to save icon on resetting desktop file"),
+            );
         }
 
         self.reset_form_fields();
@@ -254,10 +264,7 @@ impl WebAppView {
     }
 
     fn build_header_reset_button() -> Button {
-        let reset_button = Button::with_label(&t!("web_apps.web_app_view.button.reset"));
-        reset_button.set_sensitive(false);
-
-        reset_button
+        Button::with_label(&t!("web_apps.web_app_view.button.reset"))
     }
 
     fn build_optional_row() -> ActionRow {
@@ -430,14 +437,6 @@ impl WebAppView {
         });
     }
 
-    fn reset_reset_button(&self) {
-        if self.desktop_file_original.to_string() == self.desktop_file.to_string() {
-            self.reset_button.set_sensitive(false);
-        } else {
-            self.reset_button.set_sensitive(true);
-        }
-    }
-
     fn form_is_valid(&self, do_dirty_check: bool, apply_to_fields: bool) -> bool {
         let mut form_is_valid = true;
 
@@ -491,9 +490,14 @@ impl WebAppView {
 
         *self.is_new.borrow_mut() = false;
         self.app_header.run_app_button.set_visible(true);
+
+        // Update data for reset action
         self.desktop_file_original
             .set_from_desktop_file(&self.desktop_file);
-        self.reset_reset_button();
+        *self.app_icon_original.borrow_mut() = self
+            .desktop_file
+            .get_icon_path()
+            .and_then(|path| gtk::gdk_pixbuf::Pixbuf::from_file(path).ok());
 
         if !self.is_new() {
             self.nav_view.pop();
@@ -508,10 +512,6 @@ impl WebAppViewShared for WebAppView {
 
     fn message(&self, message: &str) {
         self.toasts.message(message);
-    }
-
-    fn discard_message(&self, message: &str) -> Toast {
-        self.toasts.discard_message(message)
     }
 
     fn error_message(&self, message: &str, error: Option<&anyhow::Error>) {

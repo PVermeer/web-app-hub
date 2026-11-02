@@ -1,8 +1,8 @@
 use super::icon_picker::IconPicker;
 use common::desktop_file::DesktopFile;
 use gtk::{
-    Button, Label, Orientation,
-    prelude::{BoxExt, ButtonExt, WidgetExt},
+    Button, GestureClick, Label, Orientation, PropagationPhase,
+    prelude::{BoxExt, EventControllerExt, WidgetExt},
 };
 use libadwaita::ButtonContent;
 use std::{path::Path, rc::Rc};
@@ -49,8 +49,12 @@ impl ChangeIconHeader {
         let self_clone = self.clone();
         let web_app_view = web_app_view.clone();
 
-        self.change_icon_button
-            .connect_clicked(move |_button| self_clone.on_click(&web_app_view));
+        // This GestureClick forces the reset button to run before all other callbacks.
+        // Thanks GPT, this would have taking me ages.
+        let gesture = GestureClick::new();
+        gesture.set_propagation_phase(PropagationPhase::Capture);
+        gesture.connect_pressed(move |_, _, _, _| self_clone.on_click(&web_app_view));
+        self.change_icon_button.add_controller(gesture);
     }
 
     fn on_click(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {

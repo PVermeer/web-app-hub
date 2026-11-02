@@ -5,7 +5,7 @@ use super::{
 use common::desktop_file::{self, DesktopFile};
 use gtk::{
     EventControllerFocus, InputPurpose, Widget,
-    glib::{self, JoinHandle, object::Cast},
+    glib::{self, object::Cast},
     prelude::{EditableExt, WidgetExt},
 };
 use libadwaita::{
@@ -108,12 +108,9 @@ impl UrlRow {
         debug!(?validation, "Validate input: {}", self.entry_row.title());
     }
 
-    fn on_apply(
-        self: &Rc<Self>,
-        _web_app_view: &Rc<dyn WebAppViewShared>,
-    ) -> Option<JoinHandle<()>> {
+    fn on_apply(self: &Rc<Self>, _web_app_view: &Rc<dyn WebAppViewShared>) {
         if !self.is_valid(false, true) || !self.is_dirty() {
-            return None;
+            return;
         }
 
         self.change_icon_form_header.set_sensitive(false);
@@ -128,7 +125,7 @@ impl UrlRow {
 
         // Bug with clippy, make sure its dropped before await future
         #[allow(clippy::await_holding_refcell_ref)]
-        let join_handle = glib::spawn_future_local(async move {
+        glib::spawn_future_local(async move {
             *self_clone.is_fetching_icon.borrow_mut() = true;
             self_clone.entry_row.set_sensitive(false);
             self_clone.spinner.set_visible(true);
@@ -145,8 +142,6 @@ impl UrlRow {
             self_clone.entry_row.set_sensitive(true);
             *self_clone.is_fetching_icon.borrow_mut() = false;
         });
-
-        Some(join_handle)
     }
 
     fn on_reset(&self) {
