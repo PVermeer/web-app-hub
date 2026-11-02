@@ -130,6 +130,7 @@ impl UrlRow {
         #[allow(clippy::await_holding_refcell_ref)]
         let join_handle = glib::spawn_future_local(async move {
             *self_clone.is_fetching_icon.borrow_mut() = true;
+            self_clone.entry_row.set_sensitive(false);
             self_clone.spinner.set_visible(true);
 
             if let Err(error) = icon_picker.save_first_icon_found().await {
@@ -141,6 +142,7 @@ impl UrlRow {
             change_icon_form_header.set_sensitive(true);
 
             self_clone.spinner.set_visible(false);
+            self_clone.entry_row.set_sensitive(true);
             *self_clone.is_fetching_icon.borrow_mut() = false;
         });
 
