@@ -192,7 +192,6 @@ impl WebAppView {
         self.desktop_file
             .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
                 self_clone.reset_form_fields();
-                self_clone.reset_save_button();
             });
     }
 
@@ -291,7 +290,7 @@ impl WebAppView {
     fn build_save_button() -> Button {
         Button::builder()
             .label(t!("web_apps.web_app_view.button.save"))
-            .css_classes(["suggested-action", "pill", "dimmed"])
+            .css_classes(["suggested-action", "pill"])
             .build()
     }
 
@@ -459,14 +458,6 @@ impl WebAppView {
         }
     }
 
-    fn reset_save_button(&self) {
-        if self.form_is_valid(false, false) {
-            self.save_button.remove_css_class("dimmed");
-        } else {
-            self.save_button.add_css_class("dimmed");
-        }
-    }
-
     fn form_is_valid(&self, do_dirty_check: bool, apply_to_fields: bool) -> bool {
         let mut form_is_valid = true;
 
@@ -531,7 +522,6 @@ impl WebAppView {
         self.desktop_file_original
             .set_from_desktop_file(&self.desktop_file);
         self.reset_reset_button();
-        self.reset_save_button();
 
         if !self.is_new() {
             self.nav_view.pop();
