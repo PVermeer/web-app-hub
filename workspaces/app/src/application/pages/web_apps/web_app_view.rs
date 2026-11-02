@@ -532,6 +532,10 @@ impl WebAppView {
             .set_from_desktop_file(&self.desktop_file);
         self.reset_reset_button();
         self.reset_save_button();
+
+        if !self.is_new() {
+            self.nav_view.pop();
+        }
     }
 }
 
