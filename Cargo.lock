@@ -101,7 +101,6 @@ dependencies = [
  "anyhow",
  "common",
  "fs_extra",
- "futures",
  "gtk4",
  "libadwaita",
  "rust-i18n",

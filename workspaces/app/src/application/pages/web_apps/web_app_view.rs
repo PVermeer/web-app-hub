@@ -24,7 +24,6 @@ use change_icon_header::ChangeIconHeader;
 use common::desktop_file::{DesktopFile, error::DesktopFileError};
 pub use entry_row_ext::EntryRowAppExt;
 use form::FormField;
-use futures::future::join_all;
 use gtk::{
     Align, EventControllerFocus, EventControllerMotion,
     glib::{self},
@@ -207,21 +206,35 @@ impl WebAppView {
 
         let self_clone = self.clone();
         back_button.connect_clicked(move |_button| {
-            let self_clone = self_clone.clone();
+            self_clone
+                .app
+                .window
+                .adw_window
+                .set_focus(None::<&gtk::Widget>);
 
-            glib::spawn_future_local(async move {
-                self_clone
-                    .app
-                    .window
-                    .adw_window
-                    .set_focus(None::<&gtk::Widget>);
+            if self_clone.url_row.is_fetching_icon() {
+                let toast = self_clone.discard_message(&t!("forms.fetching_icon"));
 
-                if !self_clone.exit_validation(true, false).await {
-                    return;
-                }
+                let self_clone = self_clone.clone();
+                toast.connect_button_clicked(move |_toast| {
+                    self_clone.nav_view.pop();
+                });
 
-                self_clone.nav_view.pop();
-            });
+                return;
+            }
+
+            if !self_clone.form_is_valid(true, true) {
+                let toast = self_clone.discard_message(&t!("forms.validation_error"));
+
+                let self_clone = self_clone.clone();
+                toast.connect_button_clicked(move |_toast| {
+                    self_clone.nav_view.pop();
+                });
+
+                return;
+            }
+
+            self_clone.nav_view.pop();
         });
     }
 
@@ -330,40 +343,6 @@ impl WebAppView {
         // // Reset button
         // form_field.set_show_apply_button(false);
         // form_field.set_show_apply_button(true);
-    }
-
-    async fn apply_form(self: &Rc<Self>) {
-        let handles: Vec<_> = self
-            .form_fields
-            .iter()
-            .filter_map(|field| field.clone().apply(self.clone()))
-            .collect();
-
-        join_all(handles).await;
-    }
-
-    async fn exit_validation(self: &Rc<Self>, _show_discard: bool, auto_apply: bool) -> bool {
-        self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
-        if auto_apply && self.form_is_dirty() {
-            self.apply_form().await;
-        }
-
-        if self.url_row.is_fetching_icon() {
-            return false;
-        }
-
-        if !self.form_is_valid(true, true) {
-            let toast = self.discard_message(&t!("forms.validation_error"));
-            let nav_view_clone = self.nav_view.clone();
-
-            toast.connect_button_clicked(move |_toast| {
-                nav_view_clone.pop();
-            });
-
-            return false;
-        }
-
-        true
     }
 
     fn entry_row_apply_check(
@@ -476,14 +455,6 @@ impl WebAppView {
         debug!(form_is_valid, "Form valid validation");
 
         form_is_valid
-    }
-
-    fn form_is_dirty(self: &Rc<Self>) -> bool {
-        let form_is_dirty = self.form_fields.iter().any(|field| field.is_dirty());
-
-        debug!(form_is_dirty, "Form dirty validation");
-
-        form_is_dirty
     }
 
     fn reset_form_fields(self: &Rc<Self>) {
