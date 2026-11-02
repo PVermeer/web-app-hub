@@ -1,10 +1,6 @@
 use super::form::FormField;
 use common::desktop_file::DesktopFile;
-use gtk::{
-    Widget,
-    glib::{JoinHandle, object::Cast},
-    prelude::WidgetExt,
-};
+use gtk::{Widget, glib::object::Cast, prelude::WidgetExt};
 use libadwaita::SwitchRow;
 use std::{
     fs,
@@ -115,13 +111,6 @@ impl IsolateRow {
 impl FormField for IsolateRow {
     fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_init(&web_app_view);
-    }
-
-    fn apply(
-        self: Rc<Self>,
-        _web_app_view: Rc<dyn super::WebAppViewShared>,
-    ) -> Option<JoinHandle<()>> {
-        None
     }
 
     fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>) {

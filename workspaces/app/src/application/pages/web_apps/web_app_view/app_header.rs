@@ -2,7 +2,7 @@ use super::form::FormField;
 use common::{browsers::Base, desktop_file::DesktopFile, utils};
 use gtk::{
     Button, Image, Label, Orientation, Widget,
-    glib::{JoinHandle, object::Cast},
+    glib::object::Cast,
     prelude::{BoxExt, ButtonExt, WidgetExt},
 };
 use libadwaita::{PreferencesGroup, WrapBox, prelude::PreferencesGroupExt};
@@ -148,13 +148,6 @@ impl AppHeader {
 impl FormField for AppHeader {
     fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_init(&web_app_view);
-    }
-
-    fn apply(
-        self: Rc<Self>,
-        _web_app_view: Rc<dyn super::WebAppViewShared>,
-    ) -> Option<JoinHandle<()>> {
-        None
     }
 
     fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>) {

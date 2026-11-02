@@ -2,7 +2,7 @@ use super::{EntryRowAppExt, form::FormField};
 use common::desktop_file::{self, DesktopFile};
 use gtk::{
     EventControllerFocus, InputPurpose, Widget,
-    glib::{JoinHandle, object::Cast},
+    glib::object::Cast,
     prelude::{EditableExt, WidgetExt},
 };
 use libadwaita::{
@@ -88,14 +88,6 @@ impl NameRow {
 impl FormField for NameRow {
     fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_init(&web_app_view);
-    }
-
-    fn apply(
-        self: Rc<Self>,
-        web_app_view: Rc<dyn super::WebAppViewShared>,
-    ) -> Option<JoinHandle<()>> {
-        self.on_apply(&web_app_view);
-        None
     }
 
     fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {

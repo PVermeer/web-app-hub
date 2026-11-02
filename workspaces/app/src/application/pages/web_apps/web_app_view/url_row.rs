@@ -162,10 +162,6 @@ impl FormField for UrlRow {
         self.on_init(&web_app_view);
     }
 
-    fn apply(self: Rc<Self>, web_app_view: Rc<dyn WebAppViewShared>) -> Option<JoinHandle<()>> {
-        self.on_apply(&web_app_view)
-    }
-
     fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_reset();
     }

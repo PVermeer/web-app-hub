@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use common::{browsers::Browser, desktop_file::DesktopFile};
 use gtk::{
     Image, Label, ListItem, SignalListItemFactory, Widget, gio,
-    glib::{BoxedAnyObject, JoinHandle, object::Cast},
+    glib::{BoxedAnyObject, object::Cast},
     prelude::{BoxExt, ListItemExt, WidgetExt},
 };
 use libadwaita::{
@@ -172,13 +172,6 @@ impl BrowserRow {
 impl FormField for BrowserRow {
     fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_init(&web_app_view);
-    }
-
-    fn apply(
-        self: Rc<Self>,
-        _web_app_view: Rc<dyn super::WebAppViewShared>,
-    ) -> Option<JoinHandle<()>> {
-        None
     }
 
     fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>) {
