@@ -47,8 +47,8 @@ impl NameRow {
         let self_clone = self.clone();
 
         self.entry_row.connect_entry_activated(move |_| {
-            if self_clone.is_valid(false) {
-                self_clone.unfocus_widget();
+            if self_clone.is_valid(false, true) {
+                self_clone.unfocus_widget(); // Triggers the connect_leave
             }
         });
 
@@ -65,21 +65,19 @@ impl NameRow {
     }
 
     fn on_changes(&self) {
-        let validation = self.entry_row.validate(false);
+        let validation = self.entry_row.validate(false, true);
         debug!(?validation, "Validate input: {}", self.entry_row.title());
     }
 
-    fn on_apply(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
-        if !self.is_valid(false) || !self.is_dirty() {
+    fn on_apply(&self, _web_app_view: &Rc<dyn super::WebAppViewShared>) {
+        if !self.is_valid(false, true) || !self.is_dirty() {
             return;
         }
 
         self.desktop_file.set_name(&self.entry_row.text());
-
-        web_app_view.clone().reset();
     }
 
-    fn on_reset(&self, _do_dirty_check: bool) {
+    fn on_reset(&self) {
         debug!("Resetting name_row");
 
         self.entry_row
@@ -100,12 +98,12 @@ impl FormField for NameRow {
         None
     }
 
-    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, do_dirty_check: bool) {
-        self.on_reset(do_dirty_check);
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_reset();
     }
 
-    fn is_valid(&self, do_dirty_check: bool) -> bool {
-        self.entry_row.is_valid(do_dirty_check)
+    fn is_valid(&self, do_dirty_check: bool, apply_to_field: bool) -> bool {
+        self.entry_row.is_valid(do_dirty_check, apply_to_field)
     }
 
     fn is_dirty(&self) -> bool {

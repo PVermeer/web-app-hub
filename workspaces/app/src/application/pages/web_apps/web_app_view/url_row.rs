@@ -61,6 +61,8 @@ impl UrlRow {
     }
 
     pub fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn WebAppViewShared>) {
+        self.change_icon_form_header.init(web_app_view);
+
         // Text changes
         let self_clone = self.clone();
 
@@ -73,8 +75,8 @@ impl UrlRow {
         self.entry_row.connect_entry_activated(move |_| {
             let _ = self_clone.is_applied_once.set(());
 
-            if self_clone.is_valid(false) {
-                self_clone.unfocus_widget();
+            if self_clone.is_valid(false, true) {
+                self_clone.unfocus_widget(); // Triggers connect_leave
             }
         });
 
@@ -101,63 +103,51 @@ impl UrlRow {
             return;
         }
 
-        let validation = self.entry_row.validate(false);
+        let validation = self.entry_row.validate(false, true);
 
         debug!(?validation, "Validate input: {}", self.entry_row.title());
     }
 
     fn on_apply(
         self: &Rc<Self>,
-        web_app_view: &Rc<dyn WebAppViewShared>,
+        _web_app_view: &Rc<dyn WebAppViewShared>,
     ) -> Option<JoinHandle<()>> {
-        if !self.is_valid(false) || !self.is_dirty() {
+        if !self.is_valid(false, true) || !self.is_dirty() {
             return None;
         }
 
-        self.change_icon_form_header
-            .change_icon_button
-            .set_sensitive(true);
-
+        self.change_icon_form_header.set_sensitive(false);
         self.desktop_file.set_url(&self.entry_row.text());
-
         self.desktop_file.set_icon_path(Path::new(""));
 
-        web_app_view.clone().reset();
         self.icon_picker.reset();
 
         let self_clone = self.clone();
         let change_icon_form_header = self.change_icon_form_header.clone();
         let icon_picker = self.icon_picker.clone();
-        let web_app_view = web_app_view.clone();
 
         // Bug with clippy, make sure its dropped before await future
         #[allow(clippy::await_holding_refcell_ref)]
         let join_handle = glib::spawn_future_local(async move {
             *self_clone.is_fetching_icon.borrow_mut() = true;
             self_clone.spinner.set_visible(true);
-            change_icon_form_header
-                .change_icon_button
-                .set_sensitive(false);
 
             if let Err(error) = icon_picker.save_first_icon_found().await {
                 self_clone.desktop_file.set_icon_path(Path::new(""));
                 error!(?error);
             }
 
-            web_app_view.clone().reset();
+            change_icon_form_header.validate();
+            change_icon_form_header.set_sensitive(true);
 
-            change_icon_form_header
-                .change_icon_button
-                .set_sensitive(true);
             self_clone.spinner.set_visible(false);
-
             *self_clone.is_fetching_icon.borrow_mut() = false;
         });
 
         Some(join_handle)
     }
 
-    fn on_reset(&self, _do_dirty_check: bool) {
+    fn on_reset(&self) {
         debug!("Resetting url_row");
 
         self.entry_row
@@ -174,12 +164,12 @@ impl FormField for UrlRow {
         self.on_apply(&web_app_view)
     }
 
-    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, do_dirty_check: bool) {
-        self.on_reset(do_dirty_check);
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_reset();
     }
 
-    fn is_valid(&self, do_dirty_check: bool) -> bool {
-        self.entry_row.is_valid(do_dirty_check)
+    fn is_valid(&self, do_dirty_check: bool, apply_to_field: bool) -> bool {
+        self.entry_row.is_valid(do_dirty_check, apply_to_field)
     }
 
     fn is_dirty(&self) -> bool {

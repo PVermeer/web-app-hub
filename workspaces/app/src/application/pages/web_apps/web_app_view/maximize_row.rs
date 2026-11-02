@@ -85,11 +85,11 @@ impl FormField for MaximizeRow {
         None
     }
 
-    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
+    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_reset();
     }
 
-    fn is_valid(&self, _do_dirty_check: bool) -> bool {
+    fn is_valid(&self, _do_dirty_check: bool, _apply_to_field: bool) -> bool {
         true
     }
 

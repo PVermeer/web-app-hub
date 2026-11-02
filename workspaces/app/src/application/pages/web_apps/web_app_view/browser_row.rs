@@ -135,8 +135,6 @@ impl BrowserRow {
         let browser = item_state.item.borrow::<Rc<Browser>>();
 
         self.desktop_file.set_browser(&browser);
-
-        web_app_view.clone().reset();
     }
 
     fn set_from_desktop_file(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
@@ -183,11 +181,11 @@ impl FormField for BrowserRow {
         None
     }
 
-    fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>, _do_dirty_check: bool) {
+    fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_reset(&web_app_view);
     }
 
-    fn is_valid(&self, _do_dirty_check: bool) -> bool {
+    fn is_valid(&self, _do_dirty_check: bool, _apply_to_field: bool) -> bool {
         let Some(selected_item) = self.combo_row.selected_item() else {
             return false;
         };

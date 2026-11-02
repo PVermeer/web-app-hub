@@ -112,8 +112,8 @@ pub trait EntryRowAppExt {
     );
     fn saved_text(&self) -> Option<String>;
     fn default_title(&self) -> Option<String>;
-    fn validate(&self, do_dirty_check: bool) -> EntryRowValidation;
-    fn is_valid(&self, do_dirty_check: bool) -> bool;
+    fn validate(&self, do_dirty_check: bool, apply_to_field: bool) -> EntryRowValidation;
+    fn is_valid(&self, do_dirty_check: bool, apply_to_field: bool) -> bool;
     fn is_dirty(&self) -> bool;
 }
 
@@ -152,7 +152,7 @@ impl EntryRowAppExt for EntryRow {
         Some(default_title)
     }
 
-    fn validate(&self, do_dirty_check: bool) -> EntryRowValidation {
+    fn validate(&self, do_dirty_check: bool, apply_to_field: bool) -> EntryRowValidation {
         if let Some(default_title) = self.default_title() {
             let text = self.text();
             let current_text = text.trim();
@@ -169,25 +169,27 @@ impl EntryRowAppExt for EntryRow {
                 EntryRowValidation::Valid(self.clone())
             };
 
-            match validation {
-                EntryRowValidation::Empty(ref _entry_row) => {
-                    self.add_css_class("error");
-                    self.set_title(&t!("forms.validation.empty", field = &default_title));
-                }
+            if apply_to_field {
+                match validation {
+                    EntryRowValidation::Empty(ref _entry_row) => {
+                        self.add_css_class("error");
+                        self.set_title(&t!("forms.validation.empty", field = &default_title));
+                    }
 
-                EntryRowValidation::InvalidUrl(ref _entry_row) => {
-                    self.add_css_class("error");
-                    self.set_title(&t!("forms.validation.url", field = &default_title));
-                }
+                    EntryRowValidation::InvalidUrl(ref _entry_row) => {
+                        self.add_css_class("error");
+                        self.set_title(&t!("forms.validation.url", field = &default_title));
+                    }
 
-                EntryRowValidation::Dirty(ref _entry_row) => {
-                    self.add_css_class("error");
-                    self.set_title(&t!("forms.validation.dirty", field = &default_title));
-                }
+                    EntryRowValidation::Dirty(ref _entry_row) => {
+                        self.add_css_class("error");
+                        self.set_title(&t!("forms.validation.dirty", field = &default_title));
+                    }
 
-                EntryRowValidation::Valid(ref _entry_row) => {
-                    self.remove_css_class("error");
-                    self.set_title(&default_title);
+                    EntryRowValidation::Valid(ref _entry_row) => {
+                        self.remove_css_class("error");
+                        self.set_title(&default_title);
+                    }
                 }
             }
 
@@ -198,8 +200,11 @@ impl EntryRowAppExt for EntryRow {
         }
     }
 
-    fn is_valid(&self, do_dirty_check: bool) -> bool {
-        matches!(self.validate(do_dirty_check), EntryRowValidation::Valid(_))
+    fn is_valid(&self, do_dirty_check: bool, apply_to_field: bool) -> bool {
+        matches!(
+            self.validate(do_dirty_check, apply_to_field),
+            EntryRowValidation::Valid(_)
+        )
     }
 
     fn is_dirty(&self) -> bool {

@@ -42,7 +42,7 @@ pub struct DesktopFileEntries {
     profile_path: PathBuf,
 }
 
-type OnChangeCallbackFn = dyn Fn(&DesktopFile, &Key);
+type OnChangeCallbackFn = dyn Fn(&DesktopFile, &Key, &str, &str);
 
 #[derive(Clone)]
 pub struct DesktopFile {
@@ -119,14 +119,27 @@ impl DesktopFile {
     }
 
     pub fn get_by_key(&self, key: &Key) -> Option<String> {
-        match key {
-            Key::Url => self.get_url(),
-            Key::Name => self.get_name(),
-            _ => {
-                error!("Only url and name are implemented");
-                None
-            }
-        }
+        let borrow = self.desktop_entry.borrow();
+        borrow
+            .desktop_entry(&key.to_string())
+            .map(std::string::ToString::to_string)
+    }
+
+    fn set_value_on_desktop_file_and_run_callbacks(&self, key: &Key, new_value: &str) {
+        let previous_value = self.get_by_key(key).unwrap_or_default();
+
+        self.desktop_entry
+            .borrow_mut()
+            .add_desktop_entry(key.to_string(), new_value.to_string());
+
+        debug!(
+            new_value,
+            previous_value,
+            "Set '{}' on desktop file",
+            &key.to_string(),
+        );
+
+        self.run_on_change_callbacks(key, new_value, &previous_value);
     }
 
     pub fn get_path(&self) -> PathBuf {
@@ -171,21 +184,7 @@ impl DesktopFile {
     }
 
     pub fn set_name(&self, id: &str) {
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(Key::Name.to_string(), id.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Name.to_string(),
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&Key::Name.to_string())
-                .unwrap_or_default()
-        );
-
-        self.run_on_change_callbacks(&Key::Name);
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Name, id);
     }
 
     pub fn get_version(&self) -> Option<Version> {
@@ -249,21 +248,22 @@ impl DesktopFile {
     }
 
     pub fn set_url(&self, url: &str) {
+        let key = Key::Url;
+        let value = url;
+        let previous_value = self.get_by_key(&key).unwrap_or_default();
+
         self.desktop_entry
             .borrow_mut()
-            .add_desktop_entry(Key::Url.to_string(), url.to_string());
+            .add_desktop_entry(key.to_string(), value.to_string());
 
         debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Url.to_string(),
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&Key::Url.to_string())
-                .unwrap_or_default()
+            value,
+            previous_value,
+            "Set '{}' on desktop file",
+            &key.to_string(),
         );
 
-        self.run_on_change_callbacks(&Key::Url);
+        self.run_on_change_callbacks(&key, value, &previous_value);
     }
 
     pub fn get_browser_id(&self) -> Option<String> {
@@ -279,21 +279,7 @@ impl DesktopFile {
     }
 
     pub fn set_browser(&self, browser: &Rc<Browser>) {
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(Key::BrowserId.to_string(), browser.id.clone());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::BrowserId.to_string(),
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&Key::BrowserId.to_string())
-                .unwrap_or_default()
-        );
-
-        self.run_on_change_callbacks(&Key::BrowserId);
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::BrowserId, &browser.id);
     }
 
     pub fn get_isolated(&self) -> Option<bool> {
@@ -304,21 +290,7 @@ impl DesktopFile {
     }
 
     pub fn set_isolated(&self, is_isolated: bool) {
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(Key::Isolate.to_string(), is_isolated.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Isolate.to_string(),
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&Key::Isolate.to_string())
-                .unwrap_or_default()
-        );
-
-        self.run_on_change_callbacks(&Key::Isolate);
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Isolate, &is_isolated.to_string());
     }
 
     pub fn get_maximized(&self) -> Option<bool> {
@@ -329,23 +301,7 @@ impl DesktopFile {
     }
 
     pub fn set_maximized(&self, is_maximized: bool) {
-        let key = Key::Maximize.to_string();
-
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(key.clone(), is_maximized.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &key,
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&key)
-                .unwrap_or_default()
-        );
-
-        self.run_on_change_callbacks(&Key::Maximize);
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Maximize, &is_maximized.to_string());
     }
 
     pub fn get_icon(&self) -> Image {
@@ -369,21 +325,10 @@ impl DesktopFile {
     }
 
     pub fn set_icon_path(&self, path: &Path) {
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(Key::Icon.to_string(), path.to_string_lossy().to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Icon.to_string(),
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&Key::Icon.to_string())
-                .unwrap_or_default()
+        self.set_value_on_desktop_file_and_run_callbacks(
+            &Key::Icon,
+            path.to_string_lossy().as_ref(),
         );
-
-        self.run_on_change_callbacks(&Key::Icon);
     }
 
     pub fn get_profile_path(&self) -> Option<PathBuf> {
@@ -400,21 +345,10 @@ impl DesktopFile {
     }
 
     pub fn set_profile_path(&self, path: &Path) {
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(Key::Profile.to_string(), path.to_string_lossy().to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Profile.to_string(),
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&Key::Profile.to_string())
-                .unwrap_or_default()
+        self.set_value_on_desktop_file_and_run_callbacks(
+            &Key::Profile,
+            path.to_string_lossy().as_ref(),
         );
-
-        self.run_on_change_callbacks(&Key::Profile);
     }
 
     pub fn get_category(&self) -> Option<String> {
@@ -425,21 +359,7 @@ impl DesktopFile {
     }
 
     pub fn set_category(&self, category: &Category) {
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(Key::Categories.to_string(), category.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Categories.to_string(),
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&Key::Categories.to_string())
-                .unwrap_or_default()
-        );
-
-        self.run_on_change_callbacks(&Key::Categories);
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Categories, &category.to_string());
     }
 
     fn set_category_str(&self, category: &str) {
@@ -466,21 +386,7 @@ impl DesktopFile {
     }
 
     pub fn set_description(&self, description: &str) {
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(Key::Comment.to_string(), description.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Comment.to_string(),
-            &self
-                .desktop_entry
-                .borrow()
-                .desktop_entry(&Key::Comment.to_string())
-                .unwrap_or_default()
-        );
-
-        self.run_on_change_callbacks(&Key::Comment);
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Comment, description);
     }
 
     pub fn copy_profile_config_to_profile_path(&self, profile_path: &Path) -> Result<()> {
@@ -662,17 +568,26 @@ impl DesktopFile {
     /// Listen for changes on `DesktopFile`
     pub fn on_change<F>(&self, callback: F)
     where
-        F: Fn(&DesktopFile, &Key) + 'static,
+        F: Fn(&DesktopFile, &Key, &str, &str) + 'static,
     {
         self.on_change_callbacks
             .borrow_mut()
             .push(Rc::new(callback).clone());
     }
 
-    fn run_on_change_callbacks(&self, key: &Key) {
-        for callback in self.on_change_callbacks.borrow().iter() {
+    fn run_on_change_callbacks(&self, key: &Key, new_value: &str, previous_value: &str) {
+        let callbacks_borrow = self.on_change_callbacks.borrow();
+        if callbacks_borrow.is_empty() {
+            return;
+        }
+
+        if new_value == previous_value && !matches!(key, Key::Icon) {
+            return;
+        }
+
+        for callback in callbacks_borrow.iter() {
             debug!(%key, "Running on_change callback");
-            callback(self, key);
+            callback(self, key, new_value, previous_value);
         }
     }
 

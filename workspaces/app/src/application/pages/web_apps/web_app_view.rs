@@ -54,7 +54,6 @@ pub trait WebAppViewShared {
     fn message(&self, message: &str);
     fn discard_message(&self, message: &str) -> Toast;
     fn error_message(&self, message: &str, error: Option<&anyhow::Error>);
-    fn reset(self: Rc<Self>);
 }
 
 pub struct WebAppView {
@@ -67,6 +66,7 @@ pub struct WebAppView {
     desktop_file_original: DesktopFile,
     toasts: ToastOverlay,
     app_header: Rc<AppHeader>,
+    change_icon_form_header: Rc<ChangeIconHeader>,
     reset_button: Button,
     save_button: Button,
     delete_button: Button,
@@ -109,11 +109,11 @@ impl WebAppView {
         let save_button = Self::build_save_button();
         let delete_button = Self::build_delete_button();
         let optional_row = Self::build_optional_row();
+        let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
 
         header.pack_end(&reset_button);
 
         let app_header = AppHeader::new(desktop_file);
-        let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
         let name_row = NameRow::new(desktop_file);
         let url_row = UrlRow::new(desktop_file, &icon_picker, &change_icon_form_header);
         let isolate_row = IsolateRow::new(desktop_file);
@@ -122,7 +122,6 @@ impl WebAppView {
 
         let form_fields: Vec<Rc<dyn FormField>> = vec![
             app_header.clone(),
-            change_icon_form_header.clone(),
             name_row.clone(),
             url_row.clone(),
             isolate_row.clone(),
@@ -160,6 +159,7 @@ impl WebAppView {
             desktop_file_original,
             toasts: toast_overlay,
             app_header,
+            change_icon_form_header,
             reset_button,
             save_button,
             delete_button,
@@ -189,10 +189,11 @@ impl WebAppView {
 
         let self_clone = self.clone();
 
-        self.desktop_file.on_change(move |_desktop_file, key| {
-            debug!(%key, "Desktop file updated");
-            self_clone.form_is_valid(false);
-        });
+        self.desktop_file
+            .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
+                self_clone.reset_form_fields();
+                self_clone.reset_save_button();
+            });
     }
 
     pub fn is_new(&self) -> bool {
@@ -290,7 +291,7 @@ impl WebAppView {
     fn build_save_button() -> Button {
         Button::builder()
             .label(t!("web_apps.web_app_view.button.save"))
-            .css_classes(["suggested-action", "pill"])
+            .css_classes(["suggested-action", "pill", "dimmed"])
             .build()
     }
 
@@ -351,7 +352,7 @@ impl WebAppView {
             return false;
         }
 
-        if !self.form_is_valid(true) {
+        if !self.form_is_valid(true, true) {
             let toast = self.discard_message(&t!("forms.validation_error"));
             let nav_view_clone = self.nav_view.clone();
 
@@ -458,14 +459,26 @@ impl WebAppView {
         }
     }
 
-    fn form_is_valid(&self, do_dirty_check: bool) -> bool {
+    fn reset_save_button(&self) {
+        if self.form_is_valid(false, false) {
+            self.save_button.remove_css_class("dimmed");
+        } else {
+            self.save_button.add_css_class("dimmed");
+        }
+    }
+
+    fn form_is_valid(&self, do_dirty_check: bool, apply_to_fields: bool) -> bool {
         let mut form_is_valid = true;
 
         // Don't short circuit. Run validation on all fields to also set the errors.
         for field in &self.form_fields {
-            if !field.is_valid(do_dirty_check) {
+            if !field.is_valid(do_dirty_check, apply_to_fields) {
                 form_is_valid = false;
             }
+        }
+
+        if form_is_valid {
+            form_is_valid = self.change_icon_form_header.is_valid();
         }
 
         debug!(form_is_valid, "Form valid validation");
@@ -483,7 +496,7 @@ impl WebAppView {
 
     fn reset_form_fields(self: &Rc<Self>) {
         for field in &self.form_fields {
-            field.reset(self.clone(), false);
+            field.reset(self.clone());
         }
     }
 
@@ -495,7 +508,7 @@ impl WebAppView {
             return;
         }
 
-        if !self.form_is_valid(true) {
+        if !self.form_is_valid(true, true) {
             self.message(&t!("forms.validation_error"));
             return;
         }
@@ -509,6 +522,8 @@ impl WebAppView {
                     self.error_message(&t!("forms.save_error"), Some(&error));
                 }
             }
+
+            return;
         }
 
         *self.is_new.borrow_mut() = false;
@@ -516,6 +531,7 @@ impl WebAppView {
         self.desktop_file_original
             .set_from_desktop_file(&self.desktop_file);
         self.reset_reset_button();
+        self.reset_save_button();
     }
 }
 
@@ -534,9 +550,5 @@ impl WebAppViewShared for WebAppView {
 
     fn error_message(&self, message: &str, error: Option<&anyhow::Error>) {
         self.toasts.error(message, error);
-    }
-
-    fn reset(self: Rc<Self>) {
-        self.reset_form_fields();
     }
 }
