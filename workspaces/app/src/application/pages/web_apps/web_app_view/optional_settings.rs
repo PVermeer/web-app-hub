@@ -22,14 +22,14 @@ use tracing::error;
 pub struct OptionalSettings {
     init: OnceCell<bool>,
     app: Rc<App>,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
     pref_page: PreferencesPage,
     optional_pref_group: PreferencesGroup,
     description_row: EntryRow,
     category_row: ComboRow,
 }
 impl OptionalSettings {
-    pub fn new(app: &Rc<App>, desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
+    pub fn new(app: &Rc<App>, desktop_file: &Rc<DesktopFile>) -> Rc<Self> {
         let pref_page = PreferencesPage::new();
         let optional_pref_group = Self::build_optional_pref_group();
         let description_row = Self::build_description_row(desktop_file);
@@ -109,8 +109,8 @@ impl OptionalSettings {
             .build()
     }
 
-    fn build_description_row(desktop_file: &Rc<RefCell<DesktopFile>>) -> EntryRow {
-        let description = desktop_file.borrow().get_description().unwrap_or_default();
+    fn build_description_row(desktop_file: &Rc<DesktopFile>) -> EntryRow {
+        let description = desktop_file.get_description().unwrap_or_default();
 
         EntryRow::builder()
             .title(t!(
@@ -122,7 +122,7 @@ impl OptionalSettings {
             .build()
     }
 
-    fn build_category_row(desktop_file: &Rc<RefCell<DesktopFile>>) -> ComboRow {
+    fn build_category_row(desktop_file: &Rc<DesktopFile>) -> ComboRow {
         let all_categories = Category::get_all();
 
         // Some weird factory setup where the list calls factory methods...
@@ -168,7 +168,7 @@ impl OptionalSettings {
             .factory(&factory)
             .build();
 
-        if let Some(current_category) = desktop_file.borrow().get_category()
+        if let Some(current_category) = desktop_file.get_category()
             && let Some(index) = all_categories
                 .iter()
                 .position(|category| current_category == category.to_string())
@@ -248,10 +248,7 @@ impl OptionalSettings {
         // let web_app_view_clone = web_app_view.clone();
         let apply_icon = WebAppView::build_validate_icon();
         let applied_text = Rc::new(RefCell::new(
-            self.desktop_file
-                .borrow()
-                .get_description()
-                .unwrap_or_default(),
+            self.desktop_file.get_description().unwrap_or_default(),
         ));
 
         WebAppView::connect_entry_row_focus_controller_for_apply(
@@ -264,10 +261,7 @@ impl OptionalSettings {
         let applied_text_clone = applied_text.clone();
         let apply_icon_clone = apply_icon.clone();
         self.description_row.connect_apply(move |entry_row| {
-            self_clone
-                .desktop_file
-                .borrow_mut()
-                .set_description(&entry_row.text());
+            self_clone.desktop_file.set_description(&entry_row.text());
             // web_app_view_clone.on_desktop_file_change();
 
             *applied_text_clone.borrow_mut() = entry_row.text().to_string();
@@ -295,17 +289,13 @@ impl OptionalSettings {
                     return;
                 };
                 let category = category_item_boxed.borrow::<Category>();
-                desktop_file_clone.borrow_mut().set_category(&category);
+                desktop_file_clone.set_category(&category);
                 // web_app_view_clone.on_desktop_file_change();
             });
     }
 
     fn is_dirty(self: &Rc<Self>) -> bool {
-        let description_borrow = self
-            .desktop_file
-            .borrow()
-            .get_description()
-            .unwrap_or_default();
+        let description_borrow = self.desktop_file.get_description().unwrap_or_default();
         let current_description = self.description_row.text();
 
         description_borrow != current_description

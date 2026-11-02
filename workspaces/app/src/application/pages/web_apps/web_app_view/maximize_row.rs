@@ -6,16 +6,16 @@ use gtk::{
     prelude::WidgetExt,
 };
 use libadwaita::SwitchRow;
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 use tracing::debug;
 
 pub struct MaximizeRow {
     pub switch_row: SwitchRow,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
 }
 
 impl MaximizeRow {
-    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
+    pub fn new(desktop_file: &Rc<DesktopFile>) -> Rc<Self> {
         let switch_row = SwitchRow::builder()
             .title(t!("web_apps.web_app_view.maximize.title"))
             .subtitle(t!("web_apps.web_app_view.maximize.subtitle"))
@@ -40,9 +40,7 @@ impl MaximizeRow {
     }
 
     fn on_active(&self, _web_app_view: &Rc<dyn super::WebAppViewShared>) {
-        self.desktop_file
-            .borrow_mut()
-            .set_maximized(self.switch_row.is_active());
+        self.desktop_file.set_maximized(self.switch_row.is_active());
     }
 
     fn on_reset(&self) {
@@ -52,10 +50,10 @@ impl MaximizeRow {
     }
 
     fn set_from_desktop_file(&self) {
-        let mut desktop_file_borrow = self.desktop_file.borrow_mut();
-        let has_maximized = desktop_file_borrow.get_maximized();
+        let has_maximized = self.desktop_file.get_maximized();
         let is_maximized = has_maximized.unwrap_or(false);
-        let browser_can_maximize = desktop_file_borrow
+        let browser_can_maximize = self
+            .desktop_file
             .get_browser()
             .is_some_and(|browser| browser.can_start_maximized);
 
@@ -70,7 +68,7 @@ impl MaximizeRow {
 
         // SwitchRow has already a setting on load, so sync this if empty
         if has_maximized.is_none() {
-            desktop_file_borrow.set_maximized(self.switch_row.is_active());
+            self.desktop_file.set_maximized(self.switch_row.is_active());
         }
     }
 }

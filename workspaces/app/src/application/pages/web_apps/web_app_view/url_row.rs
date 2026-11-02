@@ -21,7 +21,7 @@ use tracing::{debug, error};
 
 pub struct UrlRow {
     pub entry_row: EntryRow,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
     icon_picker: Rc<IconPicker>,
     change_icon_form_header: Rc<ChangeIconHeader>,
     spinner: Spinner,
@@ -30,11 +30,11 @@ pub struct UrlRow {
 }
 impl UrlRow {
     pub fn new(
-        desktop_file: &Rc<RefCell<DesktopFile>>,
+        desktop_file: &Rc<DesktopFile>,
         icon_picker: &Rc<IconPicker>,
         change_icon_form_header: &Rc<ChangeIconHeader>,
     ) -> Rc<Self> {
-        let url = desktop_file.borrow().get_url().unwrap_or_default();
+        let url = desktop_file.get_url().unwrap_or_default();
         let title = t!("web_apps.web_app_view.url.title").to_string();
 
         let entry_row = EntryRow::builder()
@@ -118,11 +118,9 @@ impl UrlRow {
             .change_icon_button
             .set_sensitive(true);
 
-        self.desktop_file
-            .borrow_mut()
-            .set_url(&self.entry_row.text());
+        self.desktop_file.set_url(&self.entry_row.text());
 
-        self.desktop_file.borrow_mut().set_icon_path(Path::new(""));
+        self.desktop_file.set_icon_path(Path::new(""));
 
         web_app_view.clone().reset();
         self.icon_picker.reset();
@@ -142,10 +140,7 @@ impl UrlRow {
                 .set_sensitive(false);
 
             if let Err(error) = icon_picker.save_first_icon_found().await {
-                self_clone
-                    .desktop_file
-                    .borrow_mut()
-                    .set_icon_path(Path::new(""));
+                self_clone.desktop_file.set_icon_path(Path::new(""));
                 error!(?error);
             }
 
@@ -166,7 +161,7 @@ impl UrlRow {
         debug!("Resetting url_row");
 
         self.entry_row
-            .set_text(&self.desktop_file.borrow().get_url().unwrap_or_default());
+            .set_text(&self.desktop_file.get_url().unwrap_or_default());
     }
 }
 

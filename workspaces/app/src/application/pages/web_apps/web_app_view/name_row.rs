@@ -9,16 +9,16 @@ use libadwaita::{
     EntryRow,
     prelude::{EntryRowExt as _, PreferencesRowExt},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 use tracing::debug;
 
 pub struct NameRow {
     pub entry_row: EntryRow,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
 }
 impl NameRow {
-    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
-        let name = desktop_file.borrow().get_name().unwrap_or_default();
+    pub fn new(desktop_file: &Rc<DesktopFile>) -> Rc<Self> {
+        let name = desktop_file.get_name().unwrap_or_default();
         let title = t!("web_apps.web_app_view.name.title").to_string();
 
         let entry_row = EntryRow::builder()
@@ -74,9 +74,7 @@ impl NameRow {
             return;
         }
 
-        self.desktop_file
-            .borrow_mut()
-            .set_name(&self.entry_row.text());
+        self.desktop_file.set_name(&self.entry_row.text());
 
         web_app_view.clone().reset();
     }
@@ -85,7 +83,7 @@ impl NameRow {
         debug!("Resetting name_row");
 
         self.entry_row
-            .set_text(&self.desktop_file.borrow().get_name().unwrap_or_default());
+            .set_text(&self.desktop_file.get_name().unwrap_or_default());
     }
 }
 

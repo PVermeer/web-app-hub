@@ -63,8 +63,8 @@ pub struct WebAppView {
     nav_view: Rc<NavigationView>,
     app: Rc<App>,
     header: HeaderBar,
-    desktop_file: Rc<RefCell<DesktopFile>>,
-    desktop_file_original: RefCell<DesktopFile>,
+    desktop_file: Rc<DesktopFile>,
+    desktop_file_original: DesktopFile,
     toasts: ToastOverlay,
     app_header: Rc<AppHeader>,
     reset_button: Button,
@@ -87,15 +87,13 @@ impl WebAppView {
     pub fn new(
         app: &Rc<App>,
         nav_view: &Rc<NavigationView>,
-        desktop_file: &Rc<RefCell<DesktopFile>>,
+        desktop_file: &Rc<DesktopFile>,
         is_new: bool,
     ) -> Rc<Self> {
-        let desktop_file_borrow = desktop_file.borrow();
-        let desktop_file_original = desktop_file_borrow.clone(); // Deep clone
-        let title = desktop_file_borrow
+        let desktop_file_original = desktop_file.as_ref().clone(); // Deep clone
+        let title = desktop_file
             .get_name()
             .unwrap_or(t!("web_apps.web_app_view.new_app.title").to_string());
-        drop(desktop_file_borrow);
 
         let icon = "preferences-desktop-apps-symbolic";
         let PrefPage {
@@ -108,7 +106,7 @@ impl WebAppView {
         let icon_picker = IconPicker::new(app, desktop_file);
 
         let reset_button = Self::build_header_reset_button();
-        let save_button = Self::build_save_button(is_new);
+        let save_button = Self::build_save_button();
         let delete_button = Self::build_delete_button();
         let optional_row = Self::build_optional_row();
 
@@ -159,7 +157,7 @@ impl WebAppView {
             app: app.clone(),
             header,
             desktop_file: desktop_file.clone(),
-            desktop_file_original: RefCell::new(desktop_file_original),
+            desktop_file_original,
             toasts: toast_overlay,
             app_header,
             reset_button,
@@ -188,6 +186,13 @@ impl WebAppView {
 
         // Pick up some possible changes after init
         self.reset_form_fields();
+
+        let self_clone = self.clone();
+
+        self.desktop_file.on_change(move |_desktop_file, key| {
+            debug!(%key, "Desktop file updated");
+            self_clone.form_is_valid(false);
+        });
     }
 
     pub fn is_new(&self) -> bool {
@@ -223,10 +228,10 @@ impl WebAppView {
         debug!("Resetting desktop file");
 
         {
-            let mut desktop_file_borrow = self.desktop_file.borrow_mut();
-            let save_path = desktop_file_borrow.get_path();
-            *desktop_file_borrow = self.desktop_file_original.borrow().clone();
-            desktop_file_borrow.set_path(&save_path);
+            let save_path = self.desktop_file.get_path();
+            self.desktop_file
+                .set_from_desktop_file(&self.desktop_file_original);
+            self.desktop_file.set_path(&save_path);
         }
 
         self.reset_form_fields();
@@ -282,7 +287,7 @@ impl WebAppView {
         pref_group
     }
 
-    fn build_save_button(is_new: bool) -> Button {
+    fn build_save_button() -> Button {
         Button::builder()
             .label(t!("web_apps.web_app_view.button.save"))
             .css_classes(["suggested-action", "pill"])
@@ -423,14 +428,10 @@ impl WebAppView {
 
             debug!(
                 "Deleting web app: {}",
-                self_clone
-                    .desktop_file
-                    .borrow()
-                    .get_name()
-                    .unwrap_or_default()
+                self_clone.desktop_file.get_name().unwrap_or_default()
             );
 
-            if !*self_clone.is_new.borrow() && self_clone.desktop_file.borrow().delete().is_err() {
+            if !*self_clone.is_new.borrow() && self_clone.desktop_file.delete().is_err() {
                 self_clone.error_message("Failed to delete all files", None);
             }
 
@@ -450,8 +451,7 @@ impl WebAppView {
     }
 
     fn reset_reset_button(&self) {
-        if self.desktop_file_original.borrow().to_string() == self.desktop_file.borrow().to_string()
-        {
+        if self.desktop_file_original.to_string() == self.desktop_file.to_string() {
             self.reset_button.set_sensitive(false);
         } else {
             self.reset_button.set_sensitive(true);
@@ -500,7 +500,7 @@ impl WebAppView {
             return;
         }
 
-        if let Err(error) = self.desktop_file.borrow_mut().save() {
+        if let Err(error) = self.desktop_file.save() {
             match error {
                 DesktopFileError::ValidationError(error) => {
                     self.error_message(&error.to_string_ui(), Some(&anyhow!(error)));
@@ -513,7 +513,8 @@ impl WebAppView {
 
         *self.is_new.borrow_mut() = false;
         self.app_header.run_app_button.set_visible(true);
-        *self.desktop_file_original.borrow_mut() = self.desktop_file.borrow().clone();
+        self.desktop_file_original
+            .set_from_desktop_file(&self.desktop_file);
         self.reset_reset_button();
     }
 }

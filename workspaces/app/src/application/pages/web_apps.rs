@@ -84,10 +84,10 @@ impl WebAppsPage {
         let app_clone = app.clone();
 
         new_app_button.connect_clicked(move |_| {
-            let desktop_file = Rc::new(RefCell::new(DesktopFile::new(
+            let desktop_file = Rc::new(DesktopFile::new(
                 &app_clone.browser_configs,
                 &app_clone.dirs,
-            )));
+            ));
             let app_page = WebAppView::new(&app_clone, &self_clone.nav_view, &desktop_file, true);
             app_page.init();
 
@@ -95,7 +95,7 @@ impl WebAppsPage {
             let app_page_clone = app_page.clone();
             nav_page.connect_unrealize(move |_| {
                 if app_page_clone.is_new() {
-                    let _ = desktop_file.borrow().delete();
+                    let _ = desktop_file.delete();
                 }
             });
 
@@ -159,7 +159,7 @@ impl WebAppsPage {
 
         let app_clone = app.clone();
         let nav_view_clone = self.nav_view.clone();
-        let desktop_file_rc = Rc::new(RefCell::new(desktop_file));
+        let desktop_file_rc = Rc::new(desktop_file);
 
         app_row.connect_activated(move |_| {
             let app_page = WebAppView::new(&app_clone, &nav_view_clone, &desktop_file_rc, false);
@@ -198,7 +198,7 @@ impl WebAppsPage {
                 continue;
             }
 
-            let Ok(mut desktop_file) =
+            let Ok(desktop_file) =
                 DesktopFile::from_path(&file.path(), &app.browser_configs, &app.dirs)
             else {
                 error!(path = file_path_string, "Failed to read desktop file");

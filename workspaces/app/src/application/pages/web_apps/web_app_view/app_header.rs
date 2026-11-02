@@ -6,20 +6,20 @@ use gtk::{
     prelude::{BoxExt, ButtonExt, WidgetExt},
 };
 use libadwaita::{PreferencesGroup, WrapBox, prelude::PreferencesGroupExt};
-use std::{cell::RefCell, fmt::Write as _, rc::Rc};
+use std::{fmt::Write as _, rc::Rc};
 use tracing::{debug, error};
 
 pub struct AppHeader {
     pub pref_group: PreferencesGroup,
     pub run_app_button: Button,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
     app_name: Label,
     app_icon: Image,
     browser_name: Label,
 }
 
 impl AppHeader {
-    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
+    pub fn new(desktop_file: &Rc<DesktopFile>) -> Rc<Self> {
         let content_box = gtk::Box::new(Orientation::Vertical, 6);
 
         // Visual representation of the Web App
@@ -80,19 +80,20 @@ impl AppHeader {
     }
 
     fn set_from_desktop_file(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
-        let desktop_file_borrow = self.desktop_file.borrow();
         let is_new = web_app_view.is_new();
 
         // Get values
-        let app_name = desktop_file_borrow
+        let app_name = self
+            .desktop_file
             .get_name()
             .unwrap_or(t!("web_apps.web_app_view.new_app.header.name").to_string());
-        let app_image = desktop_file_borrow.get_icon();
-        let browser_name = desktop_file_borrow
+        let app_image = self.desktop_file.get_icon();
+        let browser_name = self
+            .desktop_file
             .get_browser()
             .map(|browser| browser.get_name_with_installation())
             .unwrap_or_default();
-        let has_exec = desktop_file_borrow.get_exec().is_some();
+        let has_exec = self.desktop_file.get_exec().is_some();
 
         // Update the app header
         if let Some(paintable) = app_image.paintable() {
@@ -118,13 +119,13 @@ impl AppHeader {
     }
 
     fn on_run_app_clicked(&self) {
-        let desktop_file_borrow = self.desktop_file.borrow();
-        let Some(mut executable) = desktop_file_borrow.get_exec() else {
+        let Some(mut executable) = self.desktop_file.get_exec() else {
             return;
         };
 
         if utils::env::is_devcontainer() {
-            if desktop_file_borrow
+            if self
+                .desktop_file
                 .get_browser()
                 .is_some_and(|browser| browser.base == Base::Chromium)
             {

@@ -7,7 +7,6 @@ use gtk::{
 };
 use libadwaita::SwitchRow;
 use std::{
-    cell::RefCell,
     fs,
     path::{Path, PathBuf},
     rc::Rc,
@@ -16,11 +15,11 @@ use tracing::debug;
 
 pub struct IsolateRow {
     pub switch_row: SwitchRow,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
 }
 
 impl IsolateRow {
-    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
+    pub fn new(desktop_file: &Rc<DesktopFile>) -> Rc<Self> {
         let switch_row = SwitchRow::builder()
             .title(t!("web_apps.web_app_view.isolate.title"))
             .subtitle(t!("web_apps.web_app_view.isolate.subtitle"))
@@ -45,25 +44,22 @@ impl IsolateRow {
     }
 
     fn on_active(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
-        self.desktop_file
-            .borrow_mut()
-            .set_isolated(self.switch_row.is_active());
+        self.desktop_file.set_isolated(self.switch_row.is_active());
 
         self.on_isolation_change(web_app_view);
     }
 
     fn on_isolation_change(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
-        let mut desktop_file_borrow = self.desktop_file.borrow_mut();
         let is_isolated = self.switch_row.is_active();
-        let old_profile_path = desktop_file_borrow.get_profile_path().unwrap_or_default();
-        let browser_can_isolate = desktop_file_borrow
+        let old_profile_path = self.desktop_file.get_profile_path().unwrap_or_default();
+        let browser_can_isolate = self
+            .desktop_file
             .get_browser()
             .is_some_and(|browser| browser.can_isolate);
 
         let new_profile_path = if is_isolated && browser_can_isolate {
-            match desktop_file_borrow.build_profile_path() {
+            match self.desktop_file.build_profile_path() {
                 Err(error) => {
-                    drop(desktop_file_borrow);
                     web_app_view.error_message("Could not set isolation", Some(&error));
                     return;
                 }
@@ -81,7 +77,7 @@ impl IsolateRow {
             let _ = fs::remove_dir_all(old_profile_path);
         }
 
-        desktop_file_borrow.set_profile_path(&new_profile_path);
+        self.desktop_file.set_profile_path(&new_profile_path);
     }
 
     fn on_reset(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
@@ -92,10 +88,9 @@ impl IsolateRow {
     }
 
     fn set_from_desktop_file(&self) {
-        let mut desktop_file_borrow = self.desktop_file.borrow_mut();
-        let browser = desktop_file_borrow.get_browser();
+        let browser = self.desktop_file.get_browser();
         let browser_can_isolate = browser.as_ref().is_some_and(|browser| browser.can_isolate);
-        let has_isolated = desktop_file_borrow.get_isolated();
+        let has_isolated = self.desktop_file.get_isolated();
         let is_isolated = has_isolated.unwrap_or(false);
 
         self.switch_row.set_active(is_isolated);
@@ -112,7 +107,7 @@ impl IsolateRow {
 
         // SwitchRow has already a setting on load, so sync this if empty
         if has_isolated.is_none() {
-            desktop_file_borrow.set_isolated(self.switch_row.is_active());
+            self.desktop_file.set_isolated(self.switch_row.is_active());
         }
     }
 }

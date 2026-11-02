@@ -34,7 +34,7 @@ pub struct IconPicker {
     fetched_icons_ts: RefCell<SystemTime>,
     prefs_page: PreferencesPage,
     app: Rc<App>,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
     icons: RefCell<HashMap<String, Rc<Icon>>>,
     icons_ordered: RefCell<Vec<(String, Rc<Icon>)>>,
     removed_icon: RefCell<Option<Rc<Icon>>>,
@@ -53,7 +53,7 @@ impl IconPicker {
     pub const CURRENT_ICON_SOURCE: &str = "current";
     pub const ICON_MAX_SIZE: i32 = 64;
 
-    pub fn new(app: &Rc<App>, desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
+    pub fn new(app: &Rc<App>, desktop_file: &Rc<DesktopFile>) -> Rc<Self> {
         let icons = RefCell::new(HashMap::new());
         let icons_ordered = RefCell::new(Vec::new());
         let content_box = gtk::Box::builder()
@@ -337,7 +337,7 @@ impl IconPicker {
 
         debug!("Fetching online icons");
 
-        let Some(url) = self.desktop_file.borrow().get_url() else {
+        let Some(url) = self.desktop_file.get_url() else {
             bail!("No url on desktop file")
         };
         let Ok(mut icon_fetcher) = IconFetcher::new(&self.app, &url) else {
@@ -361,7 +361,7 @@ impl IconPicker {
     }
 
     fn set_local_icon(self: &Rc<Self>) -> Result<()> {
-        let Some(current_icon_path) = self.desktop_file.borrow().get_icon_path() else {
+        let Some(current_icon_path) = self.desktop_file.get_icon_path() else {
             bail!("No icon saved")
         };
         let current_icon =
@@ -498,14 +498,14 @@ impl IconPicker {
     }
 
     fn save(self: &Rc<Self>, icon: &Rc<Icon>) -> Result<()> {
-        let mut desktop_file_borrow = self.desktop_file.borrow_mut();
-        if let Some(old_icon_path) = desktop_file_borrow.get_icon_path()
+        if let Some(old_icon_path) = self.desktop_file.get_icon_path()
             && old_icon_path.is_file()
         {
             fs::remove_file(old_icon_path).context("Failed to remove old icon")?;
         }
 
-        let app_id = desktop_file_borrow
+        let app_id = self
+            .desktop_file
             .get_id()
             .context("No file id on DesktopFile")?;
 
@@ -523,8 +523,7 @@ impl IconPicker {
             .savev(save_path.clone(), "png", &[])
             .context("Failed to save icon to fs")?;
 
-        desktop_file_borrow.set_icon_path(&save_path);
-        drop(desktop_file_borrow);
+        self.desktop_file.set_icon_path(&save_path);
 
         Ok(())
     }

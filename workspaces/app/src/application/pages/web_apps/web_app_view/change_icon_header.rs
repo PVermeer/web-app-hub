@@ -6,19 +6,19 @@ use gtk::{
     prelude::{BoxExt, ButtonExt, WidgetExt},
 };
 use libadwaita::ButtonContent;
-use std::{cell::RefCell, path::Path, rc::Rc};
+use std::{path::Path, rc::Rc};
 use tracing::debug;
 
 pub struct ChangeIconHeader {
     pub header: gtk::Box,
     pub change_icon_button: Button,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
     icon_picker: Rc<IconPicker>,
     validation_label: Label,
 }
 
 impl ChangeIconHeader {
-    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>, icon_picker: &Rc<IconPicker>) -> Rc<Self> {
+    pub fn new(desktop_file: &Rc<DesktopFile>, icon_picker: &Rc<IconPicker>) -> Rc<Self> {
         let button_content = ButtonContent::builder()
             .label(t!("web_apps.web_app_view.button.icon"))
             .icon_name("software-update-available-symbolic")
@@ -58,7 +58,6 @@ impl ChangeIconHeader {
     fn on_click(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         let undo_icon_path = self
             .desktop_file
-            .borrow()
             .get_icon_path()
             .unwrap_or_default()
             .to_string_lossy()
@@ -75,9 +74,7 @@ impl ChangeIconHeader {
             Some(move || {
                 // Fail
                 let undo_icon_path = undo_icon_path_fail.clone();
-                desktop_file
-                    .borrow_mut()
-                    .set_icon_path(Path::new(&undo_icon_path));
+                desktop_file.set_icon_path(Path::new(&undo_icon_path));
 
                 web_app_view.error_message("Failed to save icon", None);
             }),
@@ -116,13 +113,11 @@ impl FormField for ChangeIconHeader {
     fn is_valid(&self, _do_dirty_check: bool) -> bool {
         let has_icon = self
             .desktop_file
-            .borrow()
             .get_icon_path()
             .is_some_and(|icon_path| !icon_path.to_string_lossy().is_empty());
 
         let has_url = self
             .desktop_file
-            .borrow()
             .get_url()
             .is_some_and(|url| !url.is_empty());
 

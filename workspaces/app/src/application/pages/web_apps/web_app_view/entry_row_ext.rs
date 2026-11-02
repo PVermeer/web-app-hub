@@ -27,14 +27,14 @@ pub enum EntryRowValidation {
 }
 
 struct EntryRowExtEntry {
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
     key: desktop_file::Key,
     default_title: String,
 }
 
 struct EntryRowExtEntryWeak {
     entry_row: WeakRef<EntryRow>,
-    desktop_file: Weak<RefCell<DesktopFile>>,
+    desktop_file: Weak<DesktopFile>,
     key: desktop_file::Key,
     default_title: String,
 }
@@ -42,7 +42,7 @@ struct EntryRowExtEntryWeak {
 impl EntryRowExtEntryWeak {
     fn new(
         entry_row: &EntryRow,
-        desktop_file: &Rc<RefCell<DesktopFile>>,
+        desktop_file: &Rc<DesktopFile>,
         key: desktop_file::Key,
         default_title: &str,
     ) -> Self {
@@ -78,7 +78,7 @@ fn cleanup_desktop_files() {
 
 fn set_entry_row_ext(
     entry_row: &EntryRow,
-    desktop_file: &Rc<RefCell<DesktopFile>>,
+    desktop_file: &Rc<DesktopFile>,
     key: desktop_file::Key,
     default_title: &str,
 ) {
@@ -106,7 +106,7 @@ pub trait EntryRowAppExt {
     fn id(&self) -> usize;
     fn set_entry_row_ext(
         &self,
-        desktop_file: &Rc<RefCell<DesktopFile>>,
+        desktop_file: &Rc<DesktopFile>,
         key: desktop_file::Key,
         default_title: &str,
     );
@@ -124,7 +124,7 @@ impl EntryRowAppExt for EntryRow {
 
     fn set_entry_row_ext(
         &self,
-        desktop_file: &Rc<RefCell<DesktopFile>>,
+        desktop_file: &Rc<DesktopFile>,
         key: desktop_file::Key,
         default_title: &str,
     ) {
@@ -140,7 +140,7 @@ impl EntryRowAppExt for EntryRow {
             return None;
         };
 
-        Some(desktop_file.borrow().get_by_key(&key).unwrap_or_default())
+        Some(desktop_file.get_by_key(&key).unwrap_or_default())
     }
 
     fn default_title(&self) -> Option<String> {

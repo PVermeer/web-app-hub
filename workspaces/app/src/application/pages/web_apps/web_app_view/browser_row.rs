@@ -11,7 +11,7 @@ use libadwaita::{
     ComboRow,
     prelude::{ActionRowExt, ComboRowExt},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 use tracing::{debug, error};
 
 struct ComboRowStateObject {
@@ -22,14 +22,14 @@ struct ComboRowStateObject {
 pub struct BrowserRow {
     pub combo_row: ComboRow,
     app: Rc<App>,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
     list: gio::ListStore,
     no_browser_boxed: BoxedAnyObject,
     validate_icon: Image,
 }
 
 impl BrowserRow {
-    pub fn new(desktop_file: &Rc<RefCell<DesktopFile>>, app: &Rc<App>) -> Rc<Self> {
+    pub fn new(desktop_file: &Rc<DesktopFile>, app: &Rc<App>) -> Rc<Self> {
         let installed_browsers = app.browser_configs.get_installed_browsers();
         let no_browser = Rc::new(app.browser_configs.build_no_browser());
 
@@ -134,7 +134,7 @@ impl BrowserRow {
         let item_state = browser_item_boxed.borrow::<ComboRowStateObject>();
         let browser = item_state.item.borrow::<Rc<Browser>>();
 
-        self.desktop_file.borrow_mut().set_browser(&browser);
+        self.desktop_file.set_browser(&browser);
 
         web_app_view.clone().reset();
     }
@@ -144,7 +144,6 @@ impl BrowserRow {
 
         if let Some(browser_index) = self
             .desktop_file
-            .borrow()
             .get_browser()
             .and_then(|browser| browser.get_index())
             && let Ok(index) = browser_index.try_into()
@@ -154,7 +153,7 @@ impl BrowserRow {
             && let Some(browser) = installed_browsers.first()
         {
             // ComboRow has already selected the first item on load, so sync this if new.
-            self.desktop_file.borrow_mut().set_browser(browser);
+            self.desktop_file.set_browser(browser);
         } else {
             // Last should be no browser
             self.combo_row

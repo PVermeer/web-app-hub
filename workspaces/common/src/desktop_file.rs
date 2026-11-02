@@ -19,6 +19,7 @@ use rand::{RngExt, distr::Alphanumeric, rng};
 use regex::Regex;
 use semver::Version;
 use std::{
+    cell::RefCell,
     fs::{self},
     path::{Path, PathBuf},
     rc::Rc,
@@ -41,11 +42,14 @@ pub struct DesktopFileEntries {
     profile_path: PathBuf,
 }
 
+type OnChangeCallbackFn = dyn Fn(&DesktopFile, &Key);
+
 #[derive(Clone)]
 pub struct DesktopFile {
-    desktop_entry: DesktopEntry,
+    desktop_entry: RefCell<DesktopEntry>,
     browser_configs: Rc<BrowserConfigs>,
     app_dirs: Rc<AppDirs>,
+    on_change_callbacks: RefCell<Vec<Rc<OnChangeCallbackFn>>>,
 }
 impl DesktopFile {
     pub fn is_owned(desktop_file_path: &Path) -> Result<bool> {
@@ -72,9 +76,10 @@ impl DesktopFile {
         desktop_entry.add_desktop_entry(Key::Version.to_string(), version);
 
         Self {
-            desktop_entry,
+            desktop_entry: RefCell::new(desktop_entry),
             browser_configs: browser_configs.clone(),
             app_dirs: app_dirs.clone(),
+            on_change_callbacks: RefCell::new(Vec::new()),
         }
     }
 
@@ -86,9 +91,10 @@ impl DesktopFile {
         let desktop_entry = DesktopEntry::from_path(path, None::<&[String]>)?;
 
         Ok(Self {
-            desktop_entry,
+            desktop_entry: RefCell::new(desktop_entry),
             browser_configs: browser_configs.clone(),
             app_dirs: app_dirs.clone(),
+            on_change_callbacks: RefCell::new(Vec::new()),
         })
     }
 
@@ -101,10 +107,15 @@ impl DesktopFile {
         let desktop_entry = DesktopEntry::from_str(path, str, None::<&[String]>)?;
 
         Ok(Self {
-            desktop_entry,
+            desktop_entry: RefCell::new(desktop_entry),
             browser_configs: browser_configs.clone(),
             app_dirs: app_dirs.clone(),
+            on_change_callbacks: RefCell::new(Vec::new()),
         })
+    }
+
+    pub fn set_from_desktop_file(&self, desktop_entry: &DesktopFile) {
+        *self.desktop_entry.borrow_mut() = desktop_entry.desktop_entry.borrow().clone();
     }
 
     pub fn get_by_key(&self, key: &Key) -> Option<String> {
@@ -119,24 +130,26 @@ impl DesktopFile {
     }
 
     pub fn get_path(&self) -> PathBuf {
-        self.desktop_entry.path.clone()
+        self.desktop_entry.borrow().path.clone()
     }
 
-    pub fn set_path(&mut self, path: &Path) {
-        self.desktop_entry.path = path.to_path_buf();
+    pub fn set_path(&self, path: &Path) {
+        self.desktop_entry.borrow_mut().path = path.to_path_buf();
 
         debug!("Set a new 'path' for desktop file: {}", path.display());
     }
 
     pub fn get_is_owned_app(&self) -> bool {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Gwa.to_string())
             .and_then(map_to_bool_option)
             .is_some_and(|is_owned| is_owned)
     }
 
-    pub fn set_is_owned_app(&mut self) {
+    fn set_is_owned_app(&self) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Gwa.to_string(), true.to_string());
 
         debug!(
@@ -144,6 +157,7 @@ impl DesktopFile {
             &Key::Gwa.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Gwa.to_string())
                 .unwrap_or_default()
         );
@@ -151,12 +165,14 @@ impl DesktopFile {
 
     pub fn get_name(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Name.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_name(&mut self, id: &str) {
+    pub fn set_name(&self, id: &str) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Name.to_string(), id.to_string());
 
         debug!(
@@ -164,19 +180,24 @@ impl DesktopFile {
             &Key::Name.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Name.to_string())
                 .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::Name);
     }
 
     pub fn get_version(&self) -> Option<Version> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Version.to_string())
             .map(|result| Version::parse(result).unwrap_or(Version::new(0, 0, 0)))
     }
 
-    pub fn set_version(&mut self, version: &Version) {
+    fn set_version(&self, version: &Version) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Version.to_string(), version.to_string());
 
         debug!(
@@ -184,6 +205,7 @@ impl DesktopFile {
             &Key::Version.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Version.to_string())
                 .unwrap_or_default()
         );
@@ -191,18 +213,21 @@ impl DesktopFile {
 
     pub fn get_exec(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Exec.to_string())
             .and_then(map_to_string_option)
     }
 
     pub fn get_id(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Id.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_id(&mut self, id: &str) {
+    fn set_id(&self, id: &str) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Id.to_string(), id.to_string());
 
         debug!(
@@ -210,6 +235,7 @@ impl DesktopFile {
             &Key::Id.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Id.to_string())
                 .unwrap_or_default()
         );
@@ -217,12 +243,14 @@ impl DesktopFile {
 
     pub fn get_url(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Url.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_url(&mut self, url: &str) {
+    pub fn set_url(&self, url: &str) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Url.to_string(), url.to_string());
 
         debug!(
@@ -230,13 +258,17 @@ impl DesktopFile {
             &Key::Url.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Url.to_string())
                 .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::Url);
     }
 
     pub fn get_browser_id(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::BrowserId.to_string())
             .and_then(map_to_string_option)
     }
@@ -246,8 +278,9 @@ impl DesktopFile {
             .and_then(|browser_id| self.browser_configs.get_browser_by_id(&browser_id))
     }
 
-    pub fn set_browser(&mut self, browser: &Rc<Browser>) {
+    pub fn set_browser(&self, browser: &Rc<Browser>) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::BrowserId.to_string(), browser.id.clone());
 
         debug!(
@@ -255,19 +288,24 @@ impl DesktopFile {
             &Key::BrowserId.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::BrowserId.to_string())
                 .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::BrowserId);
     }
 
     pub fn get_isolated(&self) -> Option<bool> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Isolate.to_string())
             .and_then(map_to_bool_option)
     }
 
-    pub fn set_isolated(&mut self, is_isolated: bool) {
+    pub fn set_isolated(&self, is_isolated: bool) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Isolate.to_string(), is_isolated.to_string());
 
         debug!(
@@ -275,28 +313,39 @@ impl DesktopFile {
             &Key::Isolate.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Isolate.to_string())
                 .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::Isolate);
     }
 
     pub fn get_maximized(&self) -> Option<bool> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Maximize.to_string())
             .and_then(map_to_bool_option)
     }
 
-    pub fn set_maximized(&mut self, is_maximized: bool) {
+    pub fn set_maximized(&self, is_maximized: bool) {
         let key = Key::Maximize.to_string();
 
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(key.clone(), is_maximized.to_string());
 
         debug!(
             "Set '{}' on desktop file: {}",
             &key,
-            &self.desktop_entry.desktop_entry(&key).unwrap_or_default()
+            &self
+                .desktop_entry
+                .borrow()
+                .desktop_entry(&key)
+                .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::Maximize);
     }
 
     pub fn get_icon(&self) -> Image {
@@ -313,13 +362,15 @@ impl DesktopFile {
 
     pub fn get_icon_path(&self) -> Option<PathBuf> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Icon.to_string())
             .and_then(map_to_path_option)
             .and_then(|icon_path| icon_path.is_file().then_some(icon_path))
     }
 
-    pub fn set_icon_path(&mut self, path: &Path) {
+    pub fn set_icon_path(&self, path: &Path) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Icon.to_string(), path.to_string_lossy().to_string());
 
         debug!(
@@ -327,13 +378,17 @@ impl DesktopFile {
             &Key::Icon.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Icon.to_string())
                 .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::Icon);
     }
 
     pub fn get_profile_path(&self) -> Option<PathBuf> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Profile.to_string())
             .and_then(map_to_path_option)
             .and_then(|profile_path| {
@@ -344,8 +399,9 @@ impl DesktopFile {
             })
     }
 
-    pub fn set_profile_path(&mut self, path: &Path) {
+    pub fn set_profile_path(&self, path: &Path) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Profile.to_string(), path.to_string_lossy().to_string());
 
         debug!(
@@ -353,19 +409,24 @@ impl DesktopFile {
             &Key::Profile.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Profile.to_string())
                 .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::Profile);
     }
 
     pub fn get_category(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Categories.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_category(&mut self, category: &Category) {
+    pub fn set_category(&self, category: &Category) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Categories.to_string(), category.to_string());
 
         debug!(
@@ -373,13 +434,17 @@ impl DesktopFile {
             &Key::Categories.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Categories.to_string())
                 .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::Categories);
     }
 
-    fn set_category_str(&mut self, category: &str) {
+    fn set_category_str(&self, category: &str) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Categories.to_string(), category.to_string());
 
         debug!(
@@ -387,6 +452,7 @@ impl DesktopFile {
             &Key::Categories.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Categories.to_string())
                 .unwrap_or_default()
         );
@@ -394,12 +460,14 @@ impl DesktopFile {
 
     pub fn get_description(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Comment.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_description(&mut self, description: &str) {
+    pub fn set_description(&self, description: &str) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Comment.to_string(), description.to_string());
 
         debug!(
@@ -407,9 +475,12 @@ impl DesktopFile {
             &Key::Comment.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Comment.to_string())
                 .unwrap_or_default()
         );
+
+        self.run_on_change_callbacks(&Key::Comment);
     }
 
     pub fn copy_profile_config_to_profile_path(&self, profile_path: &Path) -> Result<()> {
@@ -514,11 +585,12 @@ impl DesktopFile {
         }
     }
 
-    pub fn save(&mut self) -> Result<(), DesktopFileError> {
+    pub fn save(&self) -> Result<(), DesktopFileError> {
         let new_desktop_file = self.to_new_from_browser()?;
+        let mut desktop_entry = self.desktop_entry.borrow_mut();
 
-        if self.desktop_entry.path.is_file() && !self.desktop_entry.path.is_symlink() {
-            match fs::remove_file(&self.desktop_entry.path) {
+        if desktop_entry.path.is_file() && !desktop_entry.path.is_symlink() {
+            match fs::remove_file(&desktop_entry.path) {
                 Ok(()) => {}
                 Err(error) => {
                     error!("Failed to remove desktop file before saving new: {error:?}");
@@ -526,12 +598,12 @@ impl DesktopFile {
             }
         }
 
-        let save_path = new_desktop_file.desktop_entry.path.clone();
+        let new_desktop_entry = new_desktop_file.desktop_entry.borrow();
+        let save_path = new_desktop_entry.path.clone();
 
         debug!("Saving desktop file to: {}", save_path.display());
-        fs::write(&save_path, new_desktop_file.desktop_entry.to_string())
-            .context("Saving desktop file")?;
-        self.desktop_entry = new_desktop_file.desktop_entry;
+        fs::write(&save_path, new_desktop_entry.to_string()).context("Saving desktop file")?;
+        *desktop_entry = new_desktop_entry.clone();
 
         Ok(())
     }
@@ -539,12 +611,15 @@ impl DesktopFile {
     pub fn delete(&self) -> Result<()> {
         let mut is_error = false;
 
-        if self.desktop_entry.path.is_file() {
-            match fs::remove_file(&self.desktop_entry.path) {
-                Ok(()) => {}
-                Err(error) => {
-                    error!("Failed to remove desktop file: {error:?}");
-                    is_error = true;
+        {
+            let desktop_entry = self.desktop_entry.borrow();
+            if desktop_entry.path.is_file() {
+                match fs::remove_file(&desktop_entry.path) {
+                    Ok(()) => {}
+                    Err(error) => {
+                        error!("Failed to remove desktop file: {error:?}");
+                        is_error = true;
+                    }
                 }
             }
         }
@@ -584,9 +659,26 @@ impl DesktopFile {
         Ok(())
     }
 
+    /// Listen for changes on `DesktopFile`
+    pub fn on_change<F>(&self, callback: F)
+    where
+        F: Fn(&DesktopFile, &Key) + 'static,
+    {
+        self.on_change_callbacks
+            .borrow_mut()
+            .push(Rc::new(callback).clone());
+    }
+
+    fn run_on_change_callbacks(&self, key: &Key) {
+        for callback in self.on_change_callbacks.borrow().iter() {
+            debug!(%key, "Running on_change callback");
+            callback(self, key);
+        }
+    }
+
     /// Run update actions when app has been updated, returns true if actions have been applied
     #[allow(clippy::collapsible_if)]
-    pub fn update(&mut self) -> Result<bool, DesktopFileError> {
+    pub fn update(&self) -> Result<bool, DesktopFileError> {
         let app_version =
             Version::parse(config::VERSION.get_value()).context("Failed to get app version")?;
         let desktop_file_version = match self.get_version() {
@@ -867,7 +959,7 @@ impl DesktopFile {
             )));
         }
 
-        let mut new_desktop_file =
+        let new_desktop_file =
             Self::from_string(&save_path, &d_str, &self.browser_configs, &self.app_dirs)?;
 
         new_desktop_file.set_is_owned_app();
@@ -893,7 +985,7 @@ impl DesktopFile {
 }
 impl std::fmt::Display for DesktopFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.desktop_entry.fmt(f)
+        self.desktop_entry.borrow().fmt(f)
     }
 }
 
