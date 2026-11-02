@@ -566,7 +566,7 @@ impl IconPicker {
 
     fn build_pref_row_icons_flow_box() -> FlowBox {
         FlowBox::builder()
-            .height_request(96)
+            .hexpand(true)
             .column_spacing(20)
             .row_spacing(10)
             .homogeneous(false)
