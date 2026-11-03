@@ -204,36 +204,6 @@ impl WebAppView {
         *self.is_new.borrow()
     }
 
-    fn connect_reset_button(self: &Rc<Self>) {
-        let self_clone = self.clone();
-
-        // This GestureClick forces the reset button to run before all other callbacks.
-        // Thanks GPT, this would have taking me ages.
-        let gesture = GestureClick::new();
-        gesture.set_propagation_phase(PropagationPhase::Capture);
-        gesture.connect_pressed(move |_, _, _, _| self_clone.reset_desktop_file());
-        self.reset_button.add_controller(gesture);
-    }
-
-    fn connect_nav_pop(self: &Rc<Self>) {
-        let self_clone = self.clone();
-
-        // This GestureClick forces the reset button to run before all other callbacks.
-        // Thanks GPT, this would have taking me ages.
-        let gesture = GestureClick::new();
-        gesture.set_propagation_phase(PropagationPhase::Capture);
-        gesture.connect_pressed(move |_, _, _, _| {
-            if self_clone.url_row.is_fetching_icon() {
-                self_clone.message(&t!("forms.fetching_icon"));
-                return;
-            }
-
-            self_clone.reset_desktop_file();
-            self_clone.nav_view.pop();
-        });
-        self.nav_back_button.add_controller(gesture);
-    }
-
     fn reset_desktop_file(self: &Rc<Self>) {
         debug!("Resetting desktop file");
 
@@ -372,6 +342,36 @@ impl WebAppView {
                 Self::send_apply_to_a_form_field(&entry_row_clone);
             });
         }
+    }
+
+    fn connect_reset_button(self: &Rc<Self>) {
+        let self_clone = self.clone();
+
+        // This GestureClick forces the reset button to run before all other callbacks.
+        // Thanks GPT, this would have taking me ages.
+        let gesture = GestureClick::new();
+        gesture.set_propagation_phase(PropagationPhase::Capture);
+        gesture.connect_pressed(move |_, _, _, _| self_clone.reset_desktop_file());
+        self.reset_button.add_controller(gesture);
+    }
+
+    fn connect_nav_pop(self: &Rc<Self>) {
+        let self_clone = self.clone();
+
+        // This GestureClick forces the reset button to run before all other callbacks.
+        // Thanks GPT, this would have taking me ages.
+        let gesture = GestureClick::new();
+        gesture.set_propagation_phase(PropagationPhase::Capture);
+        gesture.connect_pressed(move |_, _, _, _| {
+            if self_clone.url_row.is_fetching_icon() {
+                self_clone.message(&t!("forms.fetching_icon"));
+                return;
+            }
+
+            self_clone.reset_desktop_file();
+            self_clone.nav_view.pop();
+        });
+        self.nav_back_button.add_controller(gesture);
     }
 
     fn connect_entry_row_focus_controller_for_apply(
