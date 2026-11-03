@@ -87,9 +87,7 @@ impl ChangeIconHeader {
     }
 
     pub fn validate(&self) {
-        let is_valid = self.is_valid();
-
-        if is_valid {
+        if self.is_valid() {
             self.change_icon_button.remove_css_class("error");
             self.validation_label.set_visible(false);
         } else {
@@ -99,6 +97,9 @@ impl ChangeIconHeader {
     }
 
     pub fn is_valid(&self) -> bool {
+        if self.desktop_file.get_url().is_none() {
+            return true;
+        }
         self.desktop_file.get_icon_path().is_some()
     }
 

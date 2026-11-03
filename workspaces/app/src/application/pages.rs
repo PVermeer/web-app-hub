@@ -205,22 +205,6 @@ pub trait ToastOverlayAppExt {
         overlay.add_toast(toast);
     }
 
-    fn discard_message(&self, message: &str) -> Toast {
-        let overlay = self.toast_overlay();
-
-        let toast = Toast::builder()
-            .title(message)
-            .button_label(t!("forms.force_close"))
-            .priority(ToastPriority::High)
-            .timeout(Self::TOAST_MESSAGE_TIMEOUT)
-            .build();
-
-        overlay.dismiss_all();
-        overlay.add_toast(toast.clone());
-
-        toast
-    }
-
     fn error(&self, message: &str, error: Option<&anyhow::Error>) {
         let overlay = self.toast_overlay();
 

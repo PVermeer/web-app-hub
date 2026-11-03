@@ -4,19 +4,15 @@ use super::{
 };
 use common::desktop_file::{self, DesktopFile};
 use gtk::{
-    EventControllerFocus, InputPurpose, Widget,
-    glib::{self, object::Cast},
+    InputPurpose,
+    glib::{self},
     prelude::{EditableExt, WidgetExt},
 };
 use libadwaita::{
     EntryRow, Spinner,
-    prelude::{EntryRowExt as _, PreferencesRowExt},
+    prelude::{EntryRowExt, PreferencesRowExt},
 };
-use std::{
-    cell::{OnceCell, RefCell},
-    path::Path,
-    rc::Rc,
-};
+use std::{cell::RefCell, path::Path, rc::Rc};
 use tracing::{debug, error};
 
 pub struct UrlRow {
@@ -26,7 +22,6 @@ pub struct UrlRow {
     change_icon_form_header: Rc<ChangeIconHeader>,
     spinner: Spinner,
     is_fetching_icon: RefCell<bool>,
-    is_applied_once: OnceCell<()>,
 }
 impl UrlRow {
     pub fn new(
@@ -43,7 +38,7 @@ impl UrlRow {
             .input_purpose(InputPurpose::Url)
             .build();
 
-        entry_row.set_entry_row_ext(desktop_file, desktop_file::Key::Url, &entry_row.title());
+        entry_row.set_entry_row_ext(desktop_file, &desktop_file::Key::Url, &entry_row.title());
 
         let spinner = Spinner::new();
         spinner.set_visible(false);
@@ -56,60 +51,23 @@ impl UrlRow {
             change_icon_form_header: change_icon_form_header.clone(),
             spinner,
             is_fetching_icon: RefCell::new(false),
-            is_applied_once: OnceCell::new(),
         })
     }
 
     pub fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn WebAppViewShared>) {
         self.change_icon_form_header.init(web_app_view);
-
-        // Text changes
         let self_clone = self.clone();
 
         self.entry_row
-            .connect_changed(move |_| self_clone.on_changes());
-
-        // Apply
-        let self_clone = self.clone();
-
-        self.entry_row.connect_entry_activated(move |_| {
-            let _ = self_clone.is_applied_once.set(());
-
-            if self_clone.is_valid(false, true) {
-                self_clone.unfocus_widget(); // Triggers connect_leave
-            }
-        });
-
-        // Focus changes
-        let focus_controller = EventControllerFocus::new();
-        let self_clone = self.clone();
-        let web_app_view_clone = web_app_view.clone();
-
-        focus_controller.connect_leave(move |_| {
-            let _ = self_clone.is_applied_once.set(());
-
-            self_clone.on_apply(&web_app_view_clone);
-        });
-
-        self.entry_row.add_controller(focus_controller);
+            .connect_apply(move |_entry_row| self_clone.on_apply());
     }
 
     pub fn is_fetching_icon(&self) -> bool {
         *self.is_fetching_icon.borrow()
     }
 
-    fn on_changes(self: &Rc<Self>) {
-        if self.is_applied_once.get().is_none() {
-            return;
-        }
-
-        let validation = self.entry_row.validate(false, true);
-
-        debug!(?validation, "Validate input: {}", self.entry_row.title());
-    }
-
-    fn on_apply(self: &Rc<Self>, _web_app_view: &Rc<dyn WebAppViewShared>) {
-        if !self.is_valid(false, true) || !self.is_dirty() {
+    fn on_apply(self: &Rc<Self>) {
+        if !self.is_valid(false, false) || !self.is_dirty() {
             return;
         }
 
@@ -145,7 +103,7 @@ impl UrlRow {
     }
 
     fn on_reset(&self) {
-        debug!("Resetting url_row");
+        debug!("Resetting UrlRow");
 
         self.entry_row
             .set_text(&self.desktop_file.get_url().unwrap_or_default());
@@ -167,9 +125,5 @@ impl FormField for UrlRow {
 
     fn is_dirty(&self) -> bool {
         self.entry_row.is_dirty()
-    }
-
-    fn form_widget(&self) -> Widget {
-        self.entry_row.clone().upcast()
     }
 }

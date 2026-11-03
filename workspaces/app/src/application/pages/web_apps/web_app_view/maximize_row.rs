@@ -1,6 +1,6 @@
 use super::form::FormField;
 use common::desktop_file::DesktopFile;
-use gtk::{Widget, glib::object::Cast, prelude::WidgetExt};
+use gtk::prelude::WidgetExt;
 use libadwaita::SwitchRow;
 use std::rc::Rc;
 use tracing::debug;
@@ -84,9 +84,5 @@ impl FormField for MaximizeRow {
 
     fn is_dirty(&self) -> bool {
         false
-    }
-
-    fn form_widget(&self) -> Widget {
-        self.switch_row.clone().upcast()
     }
 }

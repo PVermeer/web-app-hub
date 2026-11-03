@@ -1,8 +1,7 @@
 use super::form::FormField;
 use common::{browsers::Base, desktop_file::DesktopFile, utils};
 use gtk::{
-    Button, Image, Label, Orientation, Widget,
-    glib::object::Cast,
+    Button, Image, Label, Orientation,
     prelude::{BoxExt, ButtonExt, WidgetExt},
 };
 use libadwaita::{PreferencesGroup, WrapBox, prelude::PreferencesGroupExt};
@@ -160,9 +159,5 @@ impl FormField for AppHeader {
 
     fn is_dirty(&self) -> bool {
         false
-    }
-
-    fn form_widget(&self) -> Widget {
-        self.run_app_button.clone().upcast()
     }
 }
