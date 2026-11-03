@@ -193,6 +193,19 @@ pub trait ToastOverlayAppExt {
 
     fn toast_overlay(&self) -> &ToastOverlay;
 
+    fn urgent_message(&self, message: &str) {
+        let overlay = self.toast_overlay();
+
+        let toast = Toast::builder()
+            .title(message)
+            .priority(ToastPriority::High)
+            .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+            .build();
+
+        overlay.dismiss_all();
+        overlay.add_toast(toast);
+    }
+
     fn message(&self, message: &str) {
         let overlay = self.toast_overlay();
 

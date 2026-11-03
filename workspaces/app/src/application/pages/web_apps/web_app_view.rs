@@ -33,7 +33,7 @@ use gtk::{
 use icon_picker::IconPicker;
 use isolate_row::IsolateRow;
 use libadwaita::{
-    ActionRow, EntryRow, NavigationPage, NavigationView, PreferencesGroup, ToastOverlay, WrapBox,
+    ActionRow, EntryRow, NavigationPage, NavigationView, PreferencesGroup, ToastOverlay,
     gtk::{
         self, Button, Image, Orientation,
         prelude::{BoxExt, ButtonExt, EditableExt, WidgetExt},
@@ -51,6 +51,7 @@ use url_row::UrlRow;
 pub trait WebAppViewShared {
     fn is_new(&self) -> bool;
     fn message(&self, message: &str);
+    fn urgent_message(&self, message: &str);
     fn error_message(&self, message: &str, error: Option<&anyhow::Error>);
 }
 
@@ -251,26 +252,17 @@ impl WebAppView {
     }
 
     fn build_button_footer(buttons: &[&Button; 2]) -> PreferencesGroup {
-        fn button_wrap_box(button: &Button) -> WrapBox {
-            let wrapbox = WrapBox::builder()
-                .align(0.5)
-                .margin_start(12)
-                .margin_end(12)
-                .build();
-            wrapbox.append(button);
-            wrapbox
-        }
-
         let pref_group = PreferencesGroup::new();
         let content_box = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
             .halign(Align::Center)
+            .spacing(24)
             .margin_top(12)
             .margin_bottom(12)
             .build();
 
-        for button in buttons {
-            content_box.append(&button_wrap_box(button));
+        for button in *buttons {
+            content_box.append(button);
         }
 
         pref_group.add(&content_box);
@@ -282,6 +274,7 @@ impl WebAppView {
         Button::builder()
             .label(t!("web_apps.web_app_view.button.save"))
             .css_classes(["suggested-action", "pill"])
+            .visible(false)
             .build()
     }
 
@@ -358,20 +351,18 @@ impl WebAppView {
     fn connect_nav_pop(self: &Rc<Self>) {
         let self_clone = self.clone();
 
-        // This GestureClick forces the reset button to run before all other callbacks.
-        // Thanks GPT, this would have taking me ages.
-        let gesture = GestureClick::new();
-        gesture.set_propagation_phase(PropagationPhase::Capture);
-        gesture.connect_pressed(move |_, _, _, _| {
+        self.nav_back_button.connect_clicked(move |_button| {
+            if !self_clone.is_new() && !self_clone.save() {
+                return;
+            }
+
             if self_clone.url_row.is_fetching_icon() {
                 self_clone.message(&t!("forms.fetching_icon"));
                 return;
             }
 
-            self_clone.reset_desktop_file();
             self_clone.nav_view.pop();
         });
-        self.nav_back_button.add_controller(gesture);
     }
 
     fn connect_entry_row_focus_controller_for_apply(
@@ -399,6 +390,10 @@ impl WebAppView {
 
     fn connect_save_button(self: &Rc<Self>) {
         let self_clone = self.clone();
+
+        if self.is_new() {
+            self.save_button.set_visible(true);
+        }
 
         self.save_button.connect_clicked(move |_| {
             self_clone.save();
@@ -462,17 +457,17 @@ impl WebAppView {
         }
     }
 
-    fn save(&self) {
+    fn save(&self) -> bool {
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
 
         if self.url_row.is_fetching_icon() {
-            self.message(&t!("forms.fetching_icon"));
-            return;
+            self.urgent_message(&t!("forms.fetching_icon"));
+            return false;
         }
 
         if !self.form_is_valid(true, true) {
-            self.message(&t!("forms.validation_error"));
-            return;
+            self.urgent_message(&t!("forms.validation_error"));
+            return false;
         }
 
         if let Err(error) = self.desktop_file.save() {
@@ -485,23 +480,24 @@ impl WebAppView {
                 }
             }
 
-            return;
+            return false;
         }
 
-        *self.is_new.borrow_mut() = false;
-        self.app_header.run_app_button.set_visible(true);
+        if self.is_new() {
+            *self.is_new.borrow_mut() = false;
+            self.app_header.run_app_button.set_visible(true);
+            self.save_button.set_visible(false);
 
-        // Update data for reset action
-        self.desktop_file_original
-            .set_from_desktop_file(&self.desktop_file);
-        *self.app_icon_original.borrow_mut() = self
-            .desktop_file
-            .get_icon_path()
-            .and_then(|path| gtk::gdk_pixbuf::Pixbuf::from_file(path).ok());
-
-        if !self.is_new() {
-            self.nav_view.pop();
+            // Update data for reset action
+            self.desktop_file_original
+                .set_from_desktop_file(&self.desktop_file);
+            *self.app_icon_original.borrow_mut() = self
+                .desktop_file
+                .get_icon_path()
+                .and_then(|path| gtk::gdk_pixbuf::Pixbuf::from_file(path).ok());
         }
+
+        true
     }
 }
 
@@ -512,6 +508,10 @@ impl WebAppViewShared for WebAppView {
 
     fn message(&self, message: &str) {
         self.toasts.message(message);
+    }
+
+    fn urgent_message(&self, message: &str) {
+        self.toasts.urgent_message(message);
     }
 
     fn error_message(&self, message: &str, error: Option<&anyhow::Error>) {
