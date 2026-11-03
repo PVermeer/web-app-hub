@@ -3,13 +3,13 @@ use crate::application::App;
 use anyhow::anyhow;
 use common::{browsers::Browser, desktop_file::DesktopFile};
 use gtk::{
-    Image, Label, ListItem, SignalListItemFactory, gio,
+    Label, ListItem, SignalListItemFactory, gio,
     glib::{BoxedAnyObject, object::Cast},
     prelude::{BoxExt, ListItemExt, WidgetExt},
 };
 use libadwaita::{
     ComboRow,
-    prelude::{ActionRowExt, ComboRowExt},
+    prelude::{ComboRowExt, PreferencesRowExt},
 };
 use std::rc::Rc;
 use tracing::{debug, error};
@@ -21,15 +21,16 @@ struct ComboRowStateObject {
 
 pub struct BrowserRow {
     pub combo_row: ComboRow,
+    title: String,
     app: Rc<App>,
     desktop_file: Rc<DesktopFile>,
     list: gio::ListStore,
     no_browser_boxed: BoxedAnyObject,
-    validate_icon: Image,
 }
 
 impl BrowserRow {
     pub fn new(desktop_file: &Rc<DesktopFile>, app: &Rc<App>) -> Rc<Self> {
+        let title = t!("web_apps.web_app_view.browser.title").to_string();
         let installed_browsers = app.browser_configs.get_installed_browsers();
         let no_browser = Rc::new(app.browser_configs.build_no_browser());
 
@@ -89,22 +90,19 @@ impl BrowserRow {
         });
 
         let combo_row = ComboRow::builder()
-            .title(t!("web_apps.web_app_view.browser.title"))
+            .title(title.clone())
             .subtitle(t!("web_apps.web_app_view.browser.subtitle"))
             .model(&list)
             .factory(&factory)
             .build();
 
-        let validate_icon = Image::from_icon_name("dialog-warning-symbolic");
-        combo_row.add_suffix(&validate_icon);
-
         Rc::new(Self {
-            app: app.clone(),
             combo_row,
+            title,
+            app: app.clone(),
             desktop_file: desktop_file.clone(),
             list: list.clone(),
             no_browser_boxed: no_browser_boxed.clone(),
-            validate_icon,
         })
     }
 
@@ -157,9 +155,6 @@ impl BrowserRow {
             self.combo_row
                 .set_selected(self.list.find(&self.no_browser_boxed).unwrap_or_default());
         }
-
-        self.validate_icon.set_visible(false);
-        self.validate_icon.set_css_classes(&["error"]);
     }
 
     fn on_reset(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
@@ -172,6 +167,10 @@ impl BrowserRow {
 impl FormField for BrowserRow {
     fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_init(&web_app_view);
+    }
+
+    fn apply(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_select(&web_app_view);
     }
 
     fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>) {
@@ -189,12 +188,14 @@ impl FormField for BrowserRow {
         let item_state = item_boxed.borrow::<ComboRowStateObject>();
 
         if item_state.is_selectable {
-            self.validate_icon.set_tooltip_text(None);
-            self.validate_icon.set_visible(false);
+            self.combo_row.remove_css_class("error");
+            self.combo_row.set_title(&self.title);
         } else {
-            self.validate_icon
-                .set_tooltip_text(Some(&t!("forms.select_option")));
-            self.validate_icon.set_visible(true);
+            self.combo_row.add_css_class("error");
+            self.combo_row
+                .set_title(&t!("forms.validation.empty", field = &self.title));
+
+            return false;
         }
 
         true

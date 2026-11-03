@@ -57,6 +57,10 @@ impl FormField for NameRow {
         self.on_init(&web_app_view);
     }
 
+    fn apply(self: Rc<Self>, _web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_apply();
+    }
+
     fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_reset();
     }

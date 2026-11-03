@@ -77,6 +77,7 @@ impl UrlRow {
         self.desktop_file.set_icon_path(Path::new(""));
 
         self.icon_picker.reset();
+        *self.is_fetching_icon.borrow_mut() = true;
 
         let self_clone = self.clone();
         let change_icon_form_header = self.change_icon_form_header.clone();
@@ -86,7 +87,6 @@ impl UrlRow {
         // Bug with clippy, make sure its dropped before await future
         #[allow(clippy::await_holding_refcell_ref)]
         glib::spawn_future_local(async move {
-            *self_clone.is_fetching_icon.borrow_mut() = true;
             self_clone.entry_row.set_sensitive(false);
             self_clone.spinner.set_visible(true);
 
@@ -116,6 +116,10 @@ impl UrlRow {
 impl FormField for UrlRow {
     fn init(self: Rc<Self>, web_app_view: Rc<dyn WebAppViewShared>) {
         self.on_init(&web_app_view);
+    }
+
+    fn apply(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_apply(&web_app_view);
     }
 
     fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {

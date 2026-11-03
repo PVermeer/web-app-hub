@@ -33,7 +33,7 @@ use gtk::{
 use icon_picker::IconPicker;
 use isolate_row::IsolateRow;
 use libadwaita::{
-    ActionRow, EntryRow, NavigationPage, NavigationView, PreferencesGroup, ToastOverlay,
+    ActionRow, EntryRow, NavigationPage, NavigationView, PreferencesGroup, Toast, ToastOverlay,
     gtk::{
         self, Button, Image, Orientation,
         prelude::{BoxExt, ButtonExt, EditableExt, WidgetExt},
@@ -52,6 +52,7 @@ pub trait WebAppViewShared {
     fn is_new(&self) -> bool;
     fn message(&self, message: &str);
     fn urgent_message(&self, message: &str);
+    fn discard_message(&self, message: &str) -> Toast;
     fn error_message(&self, message: &str, error: Option<&anyhow::Error>);
 }
 
@@ -74,15 +75,7 @@ pub struct WebAppView {
     optional_row: ActionRow,
     form_fields: Vec<Rc<dyn FormField>>,
 }
-impl NavPage for WebAppView {
-    fn get_navpage(&self) -> &NavigationPage {
-        &self.nav_page
-    }
 
-    fn get_nav_row(&self) -> Option<&ActionRow> {
-        None
-    }
-}
 impl WebAppView {
     pub fn new(
         app: &Rc<App>,
@@ -191,13 +184,13 @@ impl WebAppView {
         self.connect_delete_button();
 
         // Pick up some possible changes after init
-        self.reset_form_fields();
+        self.reset_form();
 
         let self_clone = self.clone();
 
         self.desktop_file
             .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
-                self_clone.reset_form_fields();
+                self_clone.reset_form();
             });
     }
 
@@ -229,7 +222,7 @@ impl WebAppView {
             );
         }
 
-        self.reset_form_fields();
+        self.reset_form();
 
         self.message(&t!("web_apps.web_app_view.toast.reset"));
     }
@@ -351,18 +344,41 @@ impl WebAppView {
     fn connect_nav_pop(self: &Rc<Self>) {
         let self_clone = self.clone();
 
-        self.nav_back_button.connect_clicked(move |_button| {
-            if !self_clone.is_new() && !self_clone.save() {
+        // This GestureClick forces the reset button to run before all other callbacks.
+        // This used to reset the DesktopFile so no other action runs after pop().
+        // Thanks GPT, this would have taking me ages.
+        let gesture = GestureClick::new();
+        gesture.set_propagation_phase(PropagationPhase::Capture);
+        gesture.connect_pressed(move |_, _, _, _| {
+            // Before dirty state
+            if self_clone.is_new() {
+                self_clone.reset_desktop_file();
+                self_clone.nav_view.pop();
                 return;
             }
 
-            if self_clone.url_row.is_fetching_icon() {
-                self_clone.message(&t!("forms.fetching_icon"));
+            // Now apply dirty state
+            self_clone.apply_form();
+
+            if !self_clone.save() {
+                // Special case, user has to wait it and try again
+                if self_clone.url_row.is_fetching_icon() {
+                    return;
+                }
+
+                let toast = self_clone.discard_message(&t!("forms.validation_error"));
+                let self_clone = self_clone.clone();
+
+                toast.connect_button_clicked(move |_toast| {
+                    self_clone.nav_view.pop();
+                });
                 return;
             }
 
             self_clone.nav_view.pop();
         });
+
+        self.nav_back_button.add_controller(gesture);
     }
 
     fn connect_entry_row_focus_controller_for_apply(
@@ -451,7 +467,13 @@ impl WebAppView {
         form_is_valid
     }
 
-    fn reset_form_fields(self: &Rc<Self>) {
+    fn apply_form(self: &Rc<Self>) {
+        for field in &self.form_fields {
+            field.clone().apply(self.clone());
+        }
+    }
+
+    fn reset_form(self: &Rc<Self>) {
         for field in &self.form_fields {
             field.reset(self.clone());
         }
@@ -514,7 +536,21 @@ impl WebAppViewShared for WebAppView {
         self.toasts.urgent_message(message);
     }
 
+    fn discard_message(&self, message: &str) -> Toast {
+        self.toasts.discard_message(message)
+    }
+
     fn error_message(&self, message: &str, error: Option<&anyhow::Error>) {
         self.toasts.error(message, error);
+    }
+}
+
+impl NavPage for WebAppView {
+    fn get_navpage(&self) -> &NavigationPage {
+        &self.nav_page
+    }
+
+    fn get_nav_row(&self) -> Option<&ActionRow> {
+        None
     }
 }

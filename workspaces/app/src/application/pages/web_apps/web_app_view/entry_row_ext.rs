@@ -9,7 +9,7 @@ use gtk::{
 };
 use libadwaita::{
     EntryRow,
-    prelude::{EntryRowExt as _, PreferencesRowExt},
+    prelude::{EntryRowExt, PreferencesRowExt},
 };
 use std::{
     cell::RefCell,

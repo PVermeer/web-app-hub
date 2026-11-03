@@ -24,18 +24,17 @@ impl MaximizeRow {
         })
     }
 
-    fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn super::WebAppViewShared>) {
+    fn on_init(self: &Rc<Self>) {
         self.set_from_desktop_file();
 
         let self_clone = self.clone();
-        let web_app_view = web_app_view.clone();
 
         self.switch_row.connect_active_notify(move |_| {
-            self_clone.on_active(&web_app_view);
+            self_clone.on_active();
         });
     }
 
-    fn on_active(&self, _web_app_view: &Rc<dyn super::WebAppViewShared>) {
+    fn on_active(&self) {
         self.desktop_file.set_maximized(self.switch_row.is_active());
     }
 
@@ -70,8 +69,12 @@ impl MaximizeRow {
 }
 
 impl FormField for MaximizeRow {
-    fn init(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
-        self.on_init(&web_app_view);
+    fn init(self: Rc<Self>, _web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_init();
+    }
+
+    fn apply(self: Rc<Self>, _web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_active();
     }
 
     fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {

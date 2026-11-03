@@ -193,6 +193,18 @@ pub trait ToastOverlayAppExt {
 
     fn toast_overlay(&self) -> &ToastOverlay;
 
+    fn message(&self, message: &str) {
+        let overlay = self.toast_overlay();
+
+        let toast = Toast::builder()
+            .title(message)
+            .priority(ToastPriority::Normal)
+            .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+            .build();
+
+        overlay.add_toast(toast);
+    }
+
     fn urgent_message(&self, message: &str) {
         let overlay = self.toast_overlay();
 
@@ -206,16 +218,20 @@ pub trait ToastOverlayAppExt {
         overlay.add_toast(toast);
     }
 
-    fn message(&self, message: &str) {
+    fn discard_message(&self, message: &str) -> Toast {
         let overlay = self.toast_overlay();
 
         let toast = Toast::builder()
             .title(message)
-            .priority(ToastPriority::Normal)
+            .button_label(t!("forms.force_close"))
+            .priority(ToastPriority::High)
             .timeout(Self::TOAST_MESSAGE_TIMEOUT)
             .build();
 
-        overlay.add_toast(toast);
+        overlay.dismiss_all();
+        overlay.add_toast(toast.clone());
+
+        toast
     }
 
     fn error(&self, message: &str, error: Option<&anyhow::Error>) {

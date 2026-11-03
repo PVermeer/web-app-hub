@@ -113,6 +113,10 @@ impl FormField for IsolateRow {
         self.on_init(&web_app_view);
     }
 
+    fn apply(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+        self.on_active(&web_app_view);
+    }
+
     fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_reset(&web_app_view);
     }
