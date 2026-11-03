@@ -25,26 +25,23 @@ use common::desktop_file::{DesktopFile, error::DesktopFileError};
 pub use entry_row_ext::EntryRowAppExt;
 use form::FormField;
 use gtk::{
-    Align, EventControllerFocus, EventControllerMotion, GestureClick, PropagationPhase,
+    Align, EventControllerMotion, GestureClick, PropagationPhase,
     gdk_pixbuf::Pixbuf,
-    glib::{self},
     prelude::{EventControllerExt, GtkWindowExt},
 };
 use icon_picker::IconPicker;
 use isolate_row::IsolateRow;
 use libadwaita::{
-    ActionRow, EntryRow, NavigationPage, NavigationView, PreferencesGroup, Toast, ToastOverlay,
+    ActionRow, NavigationPage, NavigationView, PreferencesGroup, Toast, ToastOverlay,
     gtk::{
-        self, Button, Image, Orientation,
-        prelude::{BoxExt, ButtonExt, EditableExt, WidgetExt},
+        self, Button, Orientation,
+        prelude::{BoxExt, ButtonExt, WidgetExt},
     },
-    prelude::{
-        ActionRowExt, EntryRowExt, NavigationPageExt, PreferencesGroupExt, PreferencesPageExt,
-    },
+    prelude::{NavigationPageExt, PreferencesGroupExt, PreferencesPageExt},
 };
 use maximize_row::MaximizeRow;
 use name_row::NameRow;
-use std::{cell::RefCell, rc::Rc, time::Duration};
+use std::{cell::RefCell, rc::Rc};
 use tracing::{debug, error};
 use url_row::UrlRow;
 
@@ -72,7 +69,6 @@ pub struct WebAppView {
     save_button: Button,
     delete_button: Button,
     url_row: Rc<UrlRow>,
-    optional_row: ActionRow,
     form_fields: Vec<Rc<dyn FormField>>,
 }
 
@@ -109,7 +105,7 @@ impl WebAppView {
         let reset_button = Self::build_header_reset_button();
         let save_button = Self::build_save_button();
         let delete_button = Self::build_delete_button();
-        let optional_row = Self::build_optional_row();
+        let optional_row = OptionalSettings::new(app, desktop_file);
         let icon_picker = IconPicker::new(app, desktop_file);
         let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
 
@@ -129,6 +125,7 @@ impl WebAppView {
             isolate_row.clone(),
             maximize_row.clone(),
             browser_row.clone(),
+            optional_row.clone(),
         ];
 
         // Order of the form rows in the UI
@@ -142,7 +139,7 @@ impl WebAppView {
         form_pref_group.add(&browser_row.combo_row);
 
         let bottom_pref_group = PreferencesGroup::builder().build();
-        bottom_pref_group.add(&optional_row);
+        bottom_pref_group.add(&optional_row.action_row);
 
         let button_footer_pref_group = Self::build_button_footer(&[&save_button, &delete_button]);
 
@@ -167,7 +164,6 @@ impl WebAppView {
             save_button,
             delete_button,
             url_row,
-            optional_row,
             form_fields,
         })
     }
@@ -179,7 +175,6 @@ impl WebAppView {
 
         self.connect_reset_button();
         self.connect_nav_pop();
-        self.connect_optional_row();
         self.connect_save_button();
         self.connect_delete_button();
 
@@ -231,19 +226,6 @@ impl WebAppView {
         Button::with_label(&t!("web_apps.web_app_view.button.reset"))
     }
 
-    fn build_optional_row() -> ActionRow {
-        let row = ActionRow::builder()
-            .title(t!("web_apps.web_app_view.optional.title"))
-            .subtitle(t!("web_apps.web_app_view.optional.subtitle"))
-            .activatable(true)
-            .build();
-
-        let suffix = Image::from_icon_name("go-next-symbolic");
-        row.add_suffix(&suffix);
-
-        row
-    }
-
     fn build_button_footer(buttons: &[&Button; 2]) -> PreferencesGroup {
         let pref_group = PreferencesGroup::new();
         let content_box = gtk::Box::builder()
@@ -290,44 +272,6 @@ impl WebAppView {
         button.add_controller(controller);
 
         button
-    }
-
-    fn build_validate_icon() -> Image {
-        let validate_icon = Image::from_icon_name("dialog-warning-symbolic");
-        validate_icon.set_visible(false);
-        validate_icon.set_css_classes(&["error"]);
-
-        validate_icon
-    }
-
-    fn send_apply_to_a_form_field(_form_field: &EntryRow) {
-        // form_field.emit_by_name::<()>("apply", &[]);
-
-        // // Reset button
-        // form_field.set_show_apply_button(false);
-        // form_field.set_show_apply_button(true);
-    }
-
-    fn entry_row_apply_check(
-        entry_row: &EntryRow,
-        applied_text: &Rc<RefCell<String>>,
-        apply_icon: &Image,
-    ) {
-        let is_applied = entry_row.text().is_empty() || *applied_text.borrow() == entry_row.text();
-
-        if is_applied || !entry_row.shows_apply_button() {
-            apply_icon.set_tooltip_text(None);
-            apply_icon.set_visible(false);
-        } else {
-            apply_icon.set_tooltip_text(Some(&t!("forms.apply_changes")));
-            apply_icon.set_visible(true);
-
-            let entry_row_clone = entry_row.clone();
-
-            glib::timeout_add_local_once(Duration::ZERO, move || {
-                Self::send_apply_to_a_form_field(&entry_row_clone);
-            });
-        }
     }
 
     fn connect_reset_button(self: &Rc<Self>) {
@@ -381,29 +325,6 @@ impl WebAppView {
         self.nav_back_button.add_controller(gesture);
     }
 
-    fn connect_entry_row_focus_controller_for_apply(
-        entry_row: &EntryRow,
-        applied_text: &Rc<RefCell<String>>,
-        apply_icon: &Image,
-        is_new: Option<bool>,
-    ) {
-        let focus_controller = EventControllerFocus::new();
-        let entry_row_clone = entry_row.clone();
-        let applied_text_clone = applied_text.clone();
-        let apply_icon_clone = apply_icon.clone();
-
-        entry_row.add_suffix(apply_icon);
-
-        focus_controller.connect_leave(move |_| {
-            Self::entry_row_apply_check(&entry_row_clone, &applied_text_clone, &apply_icon_clone);
-        });
-        entry_row.add_controller(focus_controller);
-
-        if is_new.is_some_and(|is_new| is_new) {
-            Self::entry_row_apply_check(entry_row, applied_text, apply_icon);
-        }
-    }
-
     fn connect_save_button(self: &Rc<Self>) {
         let self_clone = self.clone();
 
@@ -434,17 +355,6 @@ impl WebAppView {
             }
 
             self_clone.nav_view.pop();
-        });
-    }
-
-    fn connect_optional_row(self: &Rc<Self>) {
-        let app_clone = self.app.clone();
-        let desktop_file_clone = self.desktop_file.clone();
-        let self_clone = self.clone();
-
-        self.optional_row.connect_activated(move |_| {
-            let optional_dialog = OptionalSettings::new(&app_clone, &desktop_file_clone);
-            optional_dialog.show_dialog(&self_clone);
         });
     }
 

@@ -37,11 +37,12 @@ impl Display for EntryRowValidation {
     }
 }
 
-struct EntryRowExtEntry {
+pub struct EntryRowExtEntry {
     entry_row: EntryRow,
     desktop_file: Rc<DesktopFile>,
     key: desktop_file::Key,
     default_title: String,
+    allow_empty: bool,
     is_applied_once: bool,
 }
 
@@ -50,6 +51,7 @@ struct EntryRowExtEntryWeak {
     desktop_file: Weak<DesktopFile>,
     key: desktop_file::Key,
     default_title: String,
+    allow_empty: bool,
     is_applied_once: bool,
 }
 
@@ -59,6 +61,7 @@ impl EntryRowExtEntryWeak {
         desktop_file: &Rc<DesktopFile>,
         key: &desktop_file::Key,
         default_title: &str,
+        allow_empty: bool,
         is_applied_once: bool,
     ) -> Self {
         Self {
@@ -66,6 +69,7 @@ impl EntryRowExtEntryWeak {
             desktop_file: Rc::downgrade(desktop_file),
             key: key.clone(),
             default_title: default_title.to_string(),
+            allow_empty,
             is_applied_once,
         }
     }
@@ -76,6 +80,7 @@ impl EntryRowExtEntryWeak {
             desktop_file: self.desktop_file.upgrade()?,
             key: self.key.clone(),
             default_title: self.default_title.clone(),
+            allow_empty: self.allow_empty,
             is_applied_once: self.is_applied_once,
         })
     }
@@ -99,6 +104,7 @@ fn set_entry_row_ext(
     desktop_file: &Rc<DesktopFile>,
     key: &desktop_file::Key,
     default_title: &str,
+    allow_empty: bool,
     is_applied_once: bool,
 ) {
     cleanup_desktop_files();
@@ -106,7 +112,14 @@ fn set_entry_row_ext(
     DESKTOP_FILES.with(|map| {
         map.borrow_mut().insert(
             entry_row.id(),
-            EntryRowExtEntryWeak::new(entry_row, desktop_file, key, default_title, is_applied_once),
+            EntryRowExtEntryWeak::new(
+                entry_row,
+                desktop_file,
+                key,
+                default_title,
+                allow_empty,
+                is_applied_once,
+            ),
         );
     });
 }
@@ -129,6 +142,7 @@ fn update_entry_row_ext(entry_row_ext: &EntryRowExtEntry) {
         desktop_file,
         key,
         default_title,
+        allow_empty,
         is_applied_once,
     } = entry_row_ext;
 
@@ -137,6 +151,7 @@ fn update_entry_row_ext(entry_row_ext: &EntryRowExtEntry) {
         desktop_file,
         key,
         default_title,
+        *allow_empty,
         *is_applied_once,
     );
 }
@@ -149,11 +164,12 @@ pub trait EntryRowAppExt {
         desktop_file: &Rc<DesktopFile>,
         key: &desktop_file::Key,
         default_title: &str,
+        allow_empty: bool,
     );
     fn on_changes(&self);
     fn on_apply(&self);
     fn saved_text(&self) -> Option<String>;
-    fn default_title(&self) -> Option<String>;
+    fn entry_row_ext(&self) -> Option<EntryRowExtEntry>;
     fn validate(&self, do_dirty_check: bool, apply_to_field: bool) -> EntryRowValidation;
     fn is_valid(&self, do_dirty_check: bool, apply_to_field: bool) -> bool;
     fn is_dirty(&self) -> bool;
@@ -170,8 +186,9 @@ impl EntryRowAppExt for EntryRow {
         desktop_file: &Rc<DesktopFile>,
         key: &desktop_file::Key,
         default_title: &str,
+        allow_empty: bool,
     ) {
-        set_entry_row_ext(self, desktop_file, key, default_title, false);
+        set_entry_row_ext(self, desktop_file, key, default_title, allow_empty, false);
         self.set_show_apply_button(true);
         let entry_row = self.clone();
         let focus_controller = EventControllerFocus::new();
@@ -185,14 +202,17 @@ impl EntryRowAppExt for EntryRow {
     }
 
     fn on_changes(&self) {
-        if get_entry_row_ext(self).is_some_and(|entry_row_ext| !entry_row_ext.is_applied_once) {
+        if self
+            .entry_row_ext()
+            .is_some_and(|entry_row_ext| !entry_row_ext.is_applied_once)
+        {
             return;
         }
         self.validate(false, true);
     }
 
     fn on_apply(&self) {
-        let Some(mut entry_row_ext) = get_entry_row_ext(self) else {
+        let Some(mut entry_row_ext) = self.entry_row_ext() else {
             return;
         };
 
@@ -218,17 +238,22 @@ impl EntryRowAppExt for EntryRow {
         Some(desktop_file.get_by_key(&key).unwrap_or_default())
     }
 
-    fn default_title(&self) -> Option<String> {
-        let Some(EntryRowExtEntry { default_title, .. }) = get_entry_row_ext(self) else {
-            error!("default_title Called on EntryRow before set_entry_row_ext is set");
+    fn entry_row_ext(&self) -> Option<EntryRowExtEntry> {
+        let Some(entry_row_ext) = get_entry_row_ext(self) else {
+            error!("get_entry_row_ext Called on EntryRow before set_entry_row_ext is set");
             return None;
         };
 
-        Some(default_title)
+        Some(entry_row_ext)
     }
 
     fn validate(&self, do_dirty_check: bool, apply_to_field: bool) -> EntryRowValidation {
-        let Some(default_title) = self.default_title() else {
+        let Some(EntryRowExtEntry {
+            default_title,
+            allow_empty,
+            ..
+        }) = self.entry_row_ext()
+        else {
             error!("Validate ran on EntryRow before set_entry_row_ext is set");
             return EntryRowValidation::Valid(self.clone());
         };
@@ -236,7 +261,7 @@ impl EntryRowAppExt for EntryRow {
         let text = self.text();
         let current_text = text.trim();
 
-        let validation = if current_text.is_empty() {
+        let validation = if !allow_empty && current_text.is_empty() {
             EntryRowValidation::Empty(self.clone())
         } else if matches!(self.input_purpose(), InputPurpose::Url)
             && DesktopFile::validate_url(current_text).is_err()

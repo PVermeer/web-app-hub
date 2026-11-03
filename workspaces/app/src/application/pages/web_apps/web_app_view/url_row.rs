@@ -38,7 +38,12 @@ impl UrlRow {
             .input_purpose(InputPurpose::Url)
             .build();
 
-        entry_row.set_entry_row_ext(desktop_file, &desktop_file::Key::Url, &entry_row.title());
+        entry_row.set_entry_row_ext(
+            desktop_file,
+            &desktop_file::Key::Url,
+            &entry_row.title(),
+            false,
+        );
 
         let spinner = Spinner::new();
         spinner.set_visible(false);
@@ -118,11 +123,11 @@ impl FormField for UrlRow {
         self.on_init(&web_app_view);
     }
 
-    fn apply(self: Rc<Self>, web_app_view: Rc<dyn super::WebAppViewShared>) {
+    fn apply(self: Rc<Self>, web_app_view: Rc<dyn WebAppViewShared>) {
         self.on_apply(&web_app_view);
     }
 
-    fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {
+    fn reset(&self, _web_app_view: Rc<dyn WebAppViewShared>) {
         self.on_reset();
     }
 

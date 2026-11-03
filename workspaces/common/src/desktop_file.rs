@@ -378,15 +378,15 @@ impl DesktopFile {
         );
     }
 
-    pub fn get_description(&self) -> Option<String> {
+    pub fn get_comment(&self) -> Option<String> {
         self.desktop_entry
             .borrow()
             .desktop_entry(&Key::Comment.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_description(&self, description: &str) {
-        self.set_value_on_desktop_file_and_run_callbacks(&Key::Comment, description);
+    pub fn set_comment(&self, comment: &str) {
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Comment, comment);
     }
 
     pub fn copy_profile_config_to_profile_path(&self, profile_path: &Path) -> Result<()> {
@@ -886,8 +886,8 @@ impl DesktopFile {
         new_desktop_file.set_maximized(entries.maximize);
         new_desktop_file.set_profile_path(&entries.profile_path);
 
-        if let Some(description) = self.get_description() {
-            new_desktop_file.set_description(&description);
+        if let Some(comment) = self.get_comment() {
+            new_desktop_file.set_comment(&comment);
         }
         if let Some(category) = self.get_category() {
             new_desktop_file.set_category_str(&category);

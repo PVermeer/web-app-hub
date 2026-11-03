@@ -90,7 +90,7 @@ impl BrowserRow {
         });
 
         let combo_row = ComboRow::builder()
-            .title(title.clone())
+            .title(&title)
             .subtitle(t!("web_apps.web_app_view.browser.subtitle"))
             .model(&list)
             .factory(&factory)
