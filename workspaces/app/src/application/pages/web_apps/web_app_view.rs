@@ -7,14 +7,13 @@ mod icon_picker;
 mod isolate_row;
 mod maximize_row;
 mod name_row;
-mod optional_settings;
+mod optional_row;
 mod url_row;
 
 use crate::application::{
     App,
     pages::{
-        NavPage, PrefPage, ToastOverlayAppExt,
-        web_apps::web_app_view::optional_settings::OptionalSettings,
+        NavPage, PrefPage, ToastOverlayAppExt, web_apps::web_app_view::optional_row::OptionalRow,
     },
 };
 use anyhow::anyhow;
@@ -105,7 +104,7 @@ impl WebAppView {
         let reset_button = Self::build_header_reset_button();
         let save_button = Self::build_save_button();
         let delete_button = Self::build_delete_button();
-        let optional_row = OptionalSettings::new(app, desktop_file);
+        let optional_row = OptionalRow::new(app, desktop_file);
         let icon_picker = IconPicker::new(app, desktop_file);
         let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
 

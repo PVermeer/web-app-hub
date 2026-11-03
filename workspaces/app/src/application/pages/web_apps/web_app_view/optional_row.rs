@@ -15,13 +15,14 @@ use libadwaita::{
 };
 use std::rc::Rc;
 
-pub struct OptionalSettings {
+pub struct OptionalRow {
     pub action_row: ActionRow,
     app: Rc<App>,
     pref_page: PreferencesPage,
     form_fields: Vec<Rc<dyn FormField>>,
 }
-impl OptionalSettings {
+
+impl OptionalRow {
     pub fn new(app: &Rc<App>, desktop_file: &Rc<DesktopFile>) -> Rc<Self> {
         let action_row = ActionRow::builder()
             .title(t!("web_apps.web_app_view.optional.title"))
@@ -106,7 +107,7 @@ impl OptionalSettings {
     }
 }
 
-impl FormField for OptionalSettings {
+impl FormField for OptionalRow {
     fn init(self: Rc<Self>, web_app_view: Rc<dyn WebAppViewShared>) {
         self.on_init(&web_app_view);
 
