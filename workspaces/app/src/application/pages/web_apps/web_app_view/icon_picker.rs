@@ -27,7 +27,7 @@ use std::{
     rc::Rc,
     time::{Duration, SystemTime},
 };
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
 pub struct IconPicker {
     init: RefCell<bool>,
@@ -128,11 +128,17 @@ impl IconPicker {
         self: &Rc<Self>,
         success_cb: Option<Success>,
         fail_cb: Option<Fail>,
-    ) -> AlertDialog
+    ) -> Result<AlertDialog>
     where
         Success: Fn() + 'static,
         Fail: Fn() + 'static,
     {
+        if self.content_box.parent().is_some() {
+            let message = "Dialog already open";
+            warn!(message);
+            bail!(message);
+        }
+
         self.init();
 
         let dialog = AlertDialog::builder()
@@ -182,15 +188,22 @@ impl IconPicker {
         });
 
         dialog.present(Some(&self.app.window.adw_window));
-        dialog
+
+        Ok(dialog)
     }
 
     pub async fn save_first_icon_found(self: &Rc<Self>) -> Result<()> {
+        if self.content_box.parent().is_some() {
+            return Ok(());
+        }
+
         self.set_online_icons(false).await?;
         self.set_icons_ordered();
         let icons_ordered_borrow = self.icons_ordered.borrow();
 
         let Some((_source, icon)) = icons_ordered_borrow.first() else {
+            let message = "Dialog already open";
+            warn!(message);
             bail!("No icons found")
         };
 
