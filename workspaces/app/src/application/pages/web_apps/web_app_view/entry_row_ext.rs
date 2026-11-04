@@ -1,11 +1,11 @@
 use common::desktop_file::{self, DesktopFile};
 use gtk::{
-    EventControllerFocus, InputPurpose,
+    Button, EventControllerFocus, InputPurpose, Widget,
     glib::{
         WeakRef,
-        object::{ObjectExt, ObjectType},
+        object::{Cast, IsA, ObjectExt, ObjectType},
     },
-    prelude::{EditableExt, WidgetExt},
+    prelude::{BuildableExt, EditableExt, WidgetExt},
 };
 use libadwaita::{
     EntryRow,
@@ -156,6 +156,28 @@ fn update_entry_row_ext(entry_row_ext: &EntryRowExtEntry) {
     );
 }
 
+fn find_apply_button(widget: &impl IsA<Widget>) -> Option<Button> {
+    let widget: &Widget = widget.as_ref();
+
+    if widget.buildable_id().is_some_and(|id| id == "apply_button")
+        && let Ok(button) = widget.clone().downcast::<Button>()
+    {
+        return Some(button);
+    }
+
+    let mut child = widget.first_child();
+
+    while let Some(current) = child {
+        if let Some(button) = find_apply_button(&current) {
+            return Some(button);
+        }
+
+        child = current.next_sibling();
+    }
+
+    None
+}
+
 /// Add validation and the apply button to ``EntryRow``.
 pub trait EntryRowAppExt {
     fn id(&self) -> usize;
@@ -190,6 +212,12 @@ impl EntryRowAppExt for EntryRow {
     ) {
         set_entry_row_ext(self, desktop_file, key, default_title, allow_empty, false);
         self.set_show_apply_button(true);
+        if let Some(apply_button) = find_apply_button(self) {
+            // Disable focus so pressing "tab" will go to the next form field instead of the apply button.
+            // The apply button already responds with pressing "enter" and the leave event.
+            apply_button.set_focusable(false);
+        }
+
         let entry_row = self.clone();
         let focus_controller = EventControllerFocus::new();
 
@@ -219,9 +247,9 @@ impl EntryRowAppExt for EntryRow {
         entry_row_ext.is_applied_once = true;
         update_entry_row_ext(&entry_row_ext);
 
-        // This is a bit sketchy, would think this would recurse
-        // with the focus_controller but gtk seems to handle it.
-        if self.is_valid(false, false) {
+        if self.is_valid(false, true) {
+            // This is a bit sketchy, would think this would recurse
+            // with the focus_controller but gtk seems to handle it.
             self.unfocus();
         }
     }
