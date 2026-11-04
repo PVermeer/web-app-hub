@@ -115,6 +115,10 @@ impl DesktopFile {
     }
 
     pub fn set_from_desktop_file(&self, desktop_entry: &DesktopFile) {
+        // Run path methods to ensure paths are valid
+        self.set_icon_path(&desktop_entry.get_icon_path().unwrap_or_default());
+        self.set_profile_path(&desktop_entry.get_profile_path().unwrap_or_default());
+
         *self.desktop_entry.borrow_mut() = desktop_entry.desktop_entry.borrow().clone();
     }
 
@@ -325,6 +329,18 @@ impl DesktopFile {
     }
 
     pub fn set_icon_path(&self, path: &Path) {
+        if let Some(old_icon_path) = self.get_icon_path()
+            && old_icon_path != path
+            && old_icon_path.is_file()
+        {
+            match fs::remove_file(&old_icon_path) {
+                Ok(()) => {}
+                Err(error) => {
+                    error!(%error, old_icon_path = %old_icon_path.display(), "Failed to remove old icon file when setting a new path");
+                }
+            }
+        }
+
         self.set_value_on_desktop_file_and_run_callbacks(
             &Key::Icon,
             path.to_string_lossy().as_ref(),
@@ -345,6 +361,18 @@ impl DesktopFile {
     }
 
     pub fn set_profile_path(&self, path: &Path) {
+        if let Some(old_profile_path) = self.get_profile_path()
+            && old_profile_path != path
+            && old_profile_path.is_dir()
+        {
+            match fs::remove_dir_all(&old_profile_path) {
+                Ok(()) => {}
+                Err(error) => {
+                    error!(%error, old_icon_path = %old_profile_path.display(), "Failed to remove old profile dir when setting a new dir");
+                }
+            }
+        }
+
         self.set_value_on_desktop_file_and_run_callbacks(
             &Key::Profile,
             path.to_string_lossy().as_ref(),
@@ -560,7 +588,10 @@ impl DesktopFile {
 
         info!(
             "Succesfully removed web app: {}",
-            self.get_name().unwrap_or_default()
+            self.get_name().unwrap_or(
+                self.get_id()
+                    .unwrap_or("Failed to get name or id".to_string())
+            )
         );
         Ok(())
     }
