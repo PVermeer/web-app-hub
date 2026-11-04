@@ -197,12 +197,12 @@ impl WebAppView {
         *self.is_new.borrow()
     }
 
-    fn reset_desktop_file(self: &Rc<Self>) {
+    fn reset_desktop_file(self: &Rc<Self>) -> bool {
         debug!("Resetting desktop file");
 
         if self.url_row.is_fetching_icon() {
             self.message(&t!("forms.fetching_icon"));
-            return;
+            return false;
         }
 
         // Desktop file
@@ -224,6 +224,7 @@ impl WebAppView {
         self.reset_form();
 
         self.message(&t!("web_apps.web_app_view.toast.reset"));
+        true
     }
 
     fn build_header_reset_button() -> Button {
@@ -285,7 +286,9 @@ impl WebAppView {
         // Thanks GPT, this would have taking me ages.
         let gesture = GestureClick::new();
         gesture.set_propagation_phase(PropagationPhase::Capture);
-        gesture.connect_pressed(move |_, _, _, _| self_clone.reset_desktop_file());
+        gesture.connect_pressed(move |_, _, _, _| {
+            self_clone.reset_desktop_file();
+        });
         self.reset_button.add_controller(gesture);
     }
 
@@ -310,7 +313,9 @@ impl WebAppView {
         gesture.connect_pressed(move |_, _, _, _| {
             // Before dirty state
             if self_clone.is_new() {
-                self_clone.reset_desktop_file();
+                if !self_clone.reset_desktop_file() {
+                    return;
+                }
                 self_clone.nav_view.pop();
                 return;
             }
@@ -326,7 +331,6 @@ impl WebAppView {
 
                 let toast = self_clone.discard_message(&t!("forms.validation_error"));
                 let self_clone = self_clone.clone();
-
                 toast.connect_button_clicked(move |_toast| {
                     self_clone.nav_view.pop();
                 });
