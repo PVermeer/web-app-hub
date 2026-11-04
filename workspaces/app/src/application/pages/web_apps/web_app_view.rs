@@ -1,5 +1,6 @@
 mod app_header;
 mod browser_row;
+mod button_ext;
 mod change_icon_header;
 mod entry_row_ext;
 mod form;
@@ -19,15 +20,12 @@ use crate::application::{
 use anyhow::anyhow;
 use app_header::AppHeader;
 use browser_row::BrowserRow;
+use button_ext::ButtonAppExt;
 use change_icon_header::ChangeIconHeader;
 use common::desktop_file::{DesktopFile, error::DesktopFileError};
 pub use entry_row_ext::EntryRowAppExt;
 use form::FormField;
-use gtk::{
-    Align, EventControllerMotion, GestureClick, PropagationPhase,
-    gdk_pixbuf::Pixbuf,
-    prelude::{EventControllerExt, GtkWindowExt},
-};
+use gtk::{Align, EventControllerMotion, gdk_pixbuf::Pixbuf, prelude::GtkWindowExt};
 use icon_picker::IconPicker;
 use isolate_row::IsolateRow;
 use libadwaita::{
@@ -282,14 +280,9 @@ impl WebAppView {
     fn connect_reset_button(self: &Rc<Self>) {
         let self_clone = self.clone();
 
-        // This GestureClick forces the reset button to run before all other callbacks.
-        // Thanks GPT, this would have taking me ages.
-        let gesture = GestureClick::new();
-        gesture.set_propagation_phase(PropagationPhase::Capture);
-        gesture.connect_pressed(move |_, _, _, _| {
+        self.reset_button.connect_pressed_early(move |_button| {
             self_clone.reset_desktop_file();
         });
-        self.reset_button.add_controller(gesture);
     }
 
     fn connect_nav_page(self: &Rc<Self>) {
@@ -305,12 +298,7 @@ impl WebAppView {
     fn connect_nav_pop(self: &Rc<Self>) {
         let self_clone = self.clone();
 
-        // This GestureClick forces the reset button to run before all other callbacks.
-        // This used to reset the DesktopFile so no other action runs after pop().
-        // Thanks GPT, this would have taking me ages.
-        let gesture = GestureClick::new();
-        gesture.set_propagation_phase(PropagationPhase::Capture);
-        gesture.connect_pressed(move |_, _, _, _| {
+        self.nav_back_button.connect_pressed_early(move |_button| {
             // Before dirty state
             if self_clone.is_new() {
                 if !self_clone.reset_desktop_file() {
@@ -339,8 +327,6 @@ impl WebAppView {
 
             self_clone.nav_view.pop();
         });
-
-        self.nav_back_button.add_controller(gesture);
     }
 
     fn connect_save_button(self: &Rc<Self>) {
