@@ -21,6 +21,7 @@ pub enum Key {
     Categories,
     Comment,
 }
+
 impl Key {
     pub fn to_ui_string(&self) -> &str {
         match self {
@@ -41,6 +42,7 @@ impl Key {
         }
     }
 }
+
 impl Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let identifier = config::APP_NAME_SHORT.get_value().to_uppercase();

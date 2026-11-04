@@ -173,7 +173,7 @@ impl CategoryRow {
     }
 
     fn on_reset(&self) {
-        debug!("Resetting category_row");
+        debug!("Resetting CategoryRow");
 
         self.set_from_desktop_file();
     }
