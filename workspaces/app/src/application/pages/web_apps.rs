@@ -26,6 +26,7 @@ pub struct WebAppsPage {
     prefs_page: PreferencesPage,
     app_section: RefCell<PreferencesGroup>,
 }
+
 impl NavPage for WebAppsPage {
     fn get_navpage(&self) -> &NavigationPage {
         &self.nav_page
@@ -35,6 +36,7 @@ impl NavPage for WebAppsPage {
         Some(&self.nav_row)
     }
 }
+
 impl WebAppsPage {
     pub fn new() -> Rc<Self> {
         let title = t!("web_apps.title");
@@ -89,17 +91,8 @@ impl WebAppsPage {
                 &app_clone.dirs,
             ));
             let app_page = WebAppView::new(&app_clone, &self_clone.nav_view, &desktop_file, true);
-            app_page.init();
 
-            let nav_page = app_page.get_navpage();
-            let app_page_clone = app_page.clone();
-            nav_page.connect_unrealize(move |_| {
-                if app_page_clone.is_new() {
-                    let _ = desktop_file.delete();
-                }
-            });
-
-            self_clone.nav_view.push(nav_page);
+            self_clone.nav_view.push(app_page.get_navpage());
         });
 
         let pref_group = PreferencesGroup::builder()
@@ -163,7 +156,6 @@ impl WebAppsPage {
 
         app_row.connect_activated(move |_| {
             let app_page = WebAppView::new(&app_clone, &nav_view_clone, &desktop_file_rc, false);
-            app_page.init();
             self.nav_view.push(app_page.get_navpage());
         });
 

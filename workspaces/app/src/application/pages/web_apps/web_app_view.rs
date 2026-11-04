@@ -165,9 +165,12 @@ impl WebAppView {
             url_row,
             form_fields,
         })
+        .init()
     }
 
-    pub fn init(self: &Rc<Self>) {
+    fn init(self: &Rc<Self>) -> Rc<Self> {
+        self.connect_nav_page();
+
         for field in &self.form_fields {
             field.clone().init(self.clone());
         }
@@ -186,6 +189,8 @@ impl WebAppView {
             .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
                 self_clone.reset_form();
             });
+
+        self.clone()
     }
 
     pub fn is_new(&self) -> bool {
@@ -282,6 +287,16 @@ impl WebAppView {
         gesture.set_propagation_phase(PropagationPhase::Capture);
         gesture.connect_pressed(move |_, _, _, _| self_clone.reset_desktop_file());
         self.reset_button.add_controller(gesture);
+    }
+
+    fn connect_nav_page(self: &Rc<Self>) {
+        let self_clone = self.clone();
+
+        self.nav_page.connect_unrealize(move |_| {
+            if self_clone.is_new() {
+                let _ = self_clone.desktop_file.delete();
+            }
+        });
     }
 
     fn connect_nav_pop(self: &Rc<Self>) {
