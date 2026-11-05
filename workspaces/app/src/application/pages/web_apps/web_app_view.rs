@@ -161,36 +161,23 @@ impl WebAppView {
         .init()
     }
 
-    fn init(self: &Rc<Self>) -> Rc<Self> {
-        self.connect_nav_page();
-
+    fn init(self: Rc<Self>) -> Rc<Self> {
         for field in &self.form_fields {
             field.clone().init(self.clone());
         }
 
+        self.connect_nav_page();
         self.connect_reset_button();
         self.connect_nav_pop();
         self.connect_save_button();
         self.connect_delete_button();
+        self.connect_desktop_file();
+        self.connect_icon_picker();
 
         // Pick up some possible changes after init
         self.reset_form();
 
-        let self_clone = self.clone();
-
-        self.desktop_file
-            .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
-                self_clone.reset_form();
-            });
-
-        let self_clone = self.clone();
-
-        self.icon_picker.connect_changed(move |_icon_picker, icon| {
-            self_clone.update_app_icon(icon);
-            self_clone.validate_form(false, true);
-        });
-
-        self.clone()
+        self
     }
 
     pub fn is_new(&self) -> bool {
@@ -230,12 +217,16 @@ impl WebAppView {
         self.reset_form();
         self.validate_form(false, true);
         self.message(&t!("web_apps.web_app_view.toast.reset"));
+        self.reset_button.set_sensitive(false);
 
         true
     }
 
     fn build_header_reset_button() -> Button {
-        Button::with_label(&t!("web_apps.web_app_view.button.reset"))
+        Button::builder()
+            .label(t!("web_apps.web_app_view.button.reset"))
+            .sensitive(false)
+            .build()
     }
 
     fn build_button_footer(buttons: &[&Button; 2]) -> PreferencesGroup {
@@ -260,7 +251,7 @@ impl WebAppView {
     fn build_save_button() -> Button {
         Button::builder()
             .label(t!("web_apps.web_app_view.button.save"))
-            .css_classes(["suggested-action", "pill"])
+            .css_classes(["suggested-action", "pill", "dimmed"])
             .visible(false)
             .build()
     }
@@ -371,6 +362,34 @@ impl WebAppView {
         });
     }
 
+    fn connect_desktop_file(self: &Rc<Self>) {
+        let self_clone = self.clone();
+
+        self.desktop_file
+            .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
+                self_clone.reset_form();
+
+                self_clone
+                    .reset_button
+                    .set_sensitive(self_clone.app_has_changed());
+
+                if self_clone.validate_form(false, false) {
+                    self_clone.save_button.remove_css_class("dimmed");
+                } else {
+                    self_clone.save_button.add_css_class("dimmed");
+                }
+            });
+    }
+
+    fn connect_icon_picker(self: &Rc<Self>) {
+        let self_clone = self.clone();
+
+        self.icon_picker.connect_changed(move |_icon_picker, icon| {
+            self_clone.update_app_icon(icon);
+            self_clone.validate_form(false, true);
+        });
+    }
+
     fn validate_form(&self, do_dirty_check: bool, apply_to_fields: bool) -> bool {
         let mut form_is_valid = true;
 
@@ -392,6 +411,18 @@ impl WebAppView {
         debug!(has_changed, "Icon change check");
 
         has_changed
+    }
+
+    fn app_has_changed(&self) -> bool {
+        if self.desktop_file.to_string() != self.desktop_file_original.to_string() {
+            return true;
+        }
+
+        if self.app_icon_has_changed() {
+            return true;
+        }
+
+        false
     }
 
     fn apply_form(self: &Rc<Self>) {
@@ -446,7 +477,8 @@ impl WebAppView {
                 .set_from_desktop_file(&self.desktop_file);
             self.app_icon_original
                 .borrow_mut()
-                .clone_from(&self.app_icon_original.borrow());
+                .clone_from(&self.app_icon.borrow());
+            self.reset_button.set_sensitive(false);
         }
 
         true

@@ -92,7 +92,6 @@ impl AppHeader {
             .get_browser()
             .map(|browser| browser.get_name_with_installation())
             .unwrap_or_default();
-        let has_exec = self.desktop_file.get_exec().is_some();
 
         // Update the app header
         if let Some(paintable) = app_image.paintable() {
@@ -108,7 +107,6 @@ impl AppHeader {
         self.app_name.set_label(&app_name);
         self.browser_name.set_label(&browser_name);
         self.run_app_button.set_visible(!is_new);
-        self.run_app_button.set_sensitive(has_exec);
     }
 
     fn on_reset(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
