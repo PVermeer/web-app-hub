@@ -160,7 +160,7 @@ app_menu:
       cancel: Cancel
       text: |
         This will reset the config files (e.g.: browser configs).
-        It will not remove your create web apps.
+        It will not remove your created web apps.
 
 forms:
   apply_changes: Apply changes
