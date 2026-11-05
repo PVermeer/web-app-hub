@@ -325,7 +325,6 @@ impl DesktopFile {
             .borrow()
             .desktop_entry(&Key::Icon.to_string())
             .and_then(map_to_path_option)
-            .and_then(|icon_path| icon_path.is_file().then_some(icon_path))
     }
 
     pub fn set_icon_path(&self, path: &Path) {
