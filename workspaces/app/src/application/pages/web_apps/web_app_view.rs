@@ -17,7 +17,7 @@ use crate::application::{
         NavPage, PrefPage, ToastOverlayAppExt, web_apps::web_app_view::optional_row::OptionalRow,
     },
 };
-use anyhow::anyhow;
+use anyhow::{Error, anyhow};
 use app_header::AppHeader;
 use browser_row::BrowserRow;
 use button_ext::ButtonAppExt;
@@ -39,7 +39,7 @@ use libadwaita::{
 use maximize_row::MaximizeRow;
 use name_row::NameRow;
 use std::{cell::RefCell, rc::Rc};
-use tracing::{debug, error};
+use tracing::debug;
 use url_row::UrlRow;
 
 pub struct WebAppView {
@@ -51,11 +51,11 @@ pub struct WebAppView {
     desktop_file_original: DesktopFile,
     app_icon: RefCell<Option<Rc<Icon>>>,
     app_icon_original: RefCell<Option<Rc<Icon>>>,
+    icon_picker: Rc<IconPicker>,
     nav_back_button: Button,
     reset_button: Button,
     toasts: ToastOverlay,
     app_header: Rc<AppHeader>,
-    change_icon_form_header: Rc<ChangeIconHeader>,
     save_button: Button,
     delete_button: Button,
     url_row: Rc<UrlRow>,
@@ -110,6 +110,7 @@ impl WebAppView {
 
         let form_fields: Vec<Rc<dyn FormField>> = vec![
             app_header.clone(),
+            change_icon_form_header.clone(),
             name_row.clone(),
             url_row.clone(),
             isolate_row.clone(),
@@ -147,11 +148,11 @@ impl WebAppView {
             desktop_file_original,
             app_icon: RefCell::new(icon_original.clone()),
             app_icon_original: RefCell::new(icon_original),
+            icon_picker,
             nav_back_button,
             reset_button,
             toasts: toast_overlay,
             app_header,
-            change_icon_form_header,
             save_button,
             delete_button,
             url_row,
@@ -182,6 +183,13 @@ impl WebAppView {
                 self_clone.reset_form();
             });
 
+        let self_clone = self.clone();
+
+        self.icon_picker.connect_changed(move |_icon_picker, icon| {
+            self_clone.update_app_icon(icon);
+            self_clone.validate_form(false, true);
+        });
+
         self.clone()
     }
 
@@ -197,26 +205,30 @@ impl WebAppView {
             return false;
         }
 
+        // Update Icon
+        if self.app_icon_has_changed() {
+            let app_icon_original = &*self.app_icon_original.borrow();
+            let original_save_path = self.desktop_file_original.get_icon_path();
+
+            if let Some(app_icon_original) = app_icon_original
+                && let Some(original_save_path) = original_save_path
+            {
+                if let Err(error) = app_icon_original.save(&original_save_path) {
+                    self.error_message("Failed to save original icon", Some(&error));
+                    return false;
+                }
+                self.update_app_icon(Some(app_icon_original));
+            }
+        }
+
         // Desktop file
         let save_path = self.desktop_file.get_path();
         self.desktop_file
             .set_from_desktop_file(&self.desktop_file_original);
         self.desktop_file.set_path(&save_path);
 
-        // Update Icon
-        if self.app_icon_has_changed()
-            && let Some(original_app_icon) = &*self.app_icon_original.borrow()
-        {
-            self.update_app_icon(original_app_icon);
-            if let Some(app_icon) = &*self.app_icon.borrow()
-                && let Some(icon_save_path) = self.desktop_file_original.get_icon_path()
-                && let Err(error) = app_icon.save(&icon_save_path)
-            {
-                error!(%error, "Failed to save icon on resetting desktop file");
-            }
-        }
-
         self.reset_form();
+        self.validate_form(false, true);
         self.message(&t!("web_apps.web_app_view.toast.reset"));
 
         true
@@ -359,7 +371,7 @@ impl WebAppView {
         });
     }
 
-    fn form_is_valid(&self, do_dirty_check: bool, apply_to_fields: bool) -> bool {
+    fn validate_form(&self, do_dirty_check: bool, apply_to_fields: bool) -> bool {
         let mut form_is_valid = true;
 
         // Don't short circuit. Run validation on all fields to also set the errors.
@@ -369,28 +381,13 @@ impl WebAppView {
             }
         }
 
-        if form_is_valid {
-            form_is_valid = self.change_icon_form_header.is_valid();
-        }
-
         debug!(form_is_valid, "Form valid validation");
 
         form_is_valid
     }
 
     fn app_icon_has_changed(&self) -> bool {
-        let app_icon = self.app_icon.borrow();
-        let original_app_icon = self.app_icon_original.borrow();
-        let mut has_changed = false;
-
-        if app_icon.is_some() && original_app_icon.is_none() {
-            has_changed = true;
-        } else if let Some(app_icon) = &*app_icon
-            && let Some(original_app_icon) = &*original_app_icon
-            && app_icon != original_app_icon
-        {
-            has_changed = true;
-        }
+        let has_changed = *self.app_icon.borrow() != *self.app_icon_original.borrow();
 
         debug!(has_changed, "Icon change check");
 
@@ -409,6 +406,10 @@ impl WebAppView {
         }
     }
 
+    fn update_app_icon(&self, icon: Option<&Rc<Icon>>) {
+        *self.app_icon.borrow_mut() = icon.cloned();
+    }
+
     fn save(&self) -> bool {
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
 
@@ -417,7 +418,7 @@ impl WebAppView {
             return false;
         }
 
-        if !self.form_is_valid(true, true) {
+        if !self.validate_form(true, true) {
             self.urgent_message(&t!("forms.validation_error"));
             return false;
         }
@@ -454,27 +455,15 @@ impl WebAppView {
 
 pub trait WebAppViewShared {
     fn is_new(&self) -> bool;
-    fn update_app_icon(&self, icon: &Rc<Icon>);
-
     fn message(&self, message: &str);
     fn urgent_message(&self, message: &str);
     fn discard_message(&self, message: &str) -> Toast;
-    fn error_message(&self, message: &str, error: Option<&anyhow::Error>);
+    fn error_message(&self, message: &str, error: Option<&Error>);
 }
 
 impl WebAppViewShared for WebAppView {
     fn is_new(&self) -> bool {
         self.is_new()
-    }
-
-    fn update_app_icon(&self, icon: &Rc<Icon>) {
-        if let Some(app_icon) = &*self.app_icon.borrow()
-            && *app_icon == *icon
-        {
-            return;
-        }
-
-        *self.app_icon.borrow_mut() = Some(icon.clone());
     }
 
     fn message(&self, message: &str) {
@@ -489,7 +478,7 @@ impl WebAppViewShared for WebAppView {
         self.toasts.discard_message(message)
     }
 
-    fn error_message(&self, message: &str, error: Option<&anyhow::Error>) {
+    fn error_message(&self, message: &str, error: Option<&Error>) {
         self.toasts.error(message, error);
     }
 }

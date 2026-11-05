@@ -12,8 +12,8 @@ use libadwaita::{
     EntryRow, Spinner,
     prelude::{EntryRowExt, PreferencesRowExt},
 };
-use std::{cell::RefCell, path::Path, rc::Rc};
-use tracing::{debug, error};
+use std::{cell::RefCell, rc::Rc};
+use tracing::debug;
 
 pub struct UrlRow {
     pub entry_row: EntryRow,
@@ -59,27 +59,24 @@ impl UrlRow {
         })
     }
 
-    pub fn on_init(self: &Rc<Self>, web_app_view: &Rc<dyn WebAppViewShared>) {
-        self.change_icon_form_header.init(web_app_view);
+    fn on_init(self: &Rc<Self>) {
         let self_clone = self.clone();
-        let web_app_view = web_app_view.clone();
 
         self.entry_row
-            .connect_apply(move |_entry_row| self_clone.on_apply(&web_app_view));
+            .connect_apply(move |_entry_row| self_clone.on_apply());
     }
 
     pub fn is_fetching_icon(&self) -> bool {
         *self.is_fetching_icon.borrow()
     }
 
-    fn on_apply(self: &Rc<Self>, web_app_view: &Rc<dyn WebAppViewShared>) {
+    fn on_apply(self: &Rc<Self>) {
         if !self.is_valid(false, false) || !self.is_dirty() {
             return;
         }
 
         self.change_icon_form_header.set_sensitive(false);
         self.desktop_file.set_url(&self.entry_row.text());
-        self.desktop_file.set_icon_path(Path::new(""));
 
         self.icon_picker.reset();
         *self.is_fetching_icon.borrow_mut() = true;
@@ -87,7 +84,6 @@ impl UrlRow {
         let self_clone = self.clone();
         let change_icon_form_header = self.change_icon_form_header.clone();
         let icon_picker = self.icon_picker.clone();
-        let web_app_view = web_app_view.clone();
 
         // Bug with clippy, make sure its dropped before await future
         #[allow(clippy::await_holding_refcell_ref)]
@@ -95,21 +91,9 @@ impl UrlRow {
             self_clone.entry_row.set_sensitive(false);
             self_clone.spinner.set_visible(true);
 
-            match icon_picker.save_first_icon_found().await {
-                Err(error) => {
-                    self_clone.desktop_file.set_icon_path(Path::new(""));
-                    error!(?error);
-                    web_app_view.message(&t!("web_apps.web_app_view.icon.validate"));
-                }
+            icon_picker.save_first_icon_found().await;
 
-                Ok(icon) => {
-                    web_app_view.update_app_icon(&icon);
-                }
-            }
-
-            change_icon_form_header.validate();
             change_icon_form_header.set_sensitive(true);
-
             self_clone.spinner.set_visible(false);
             self_clone.entry_row.set_sensitive(true);
             *self_clone.is_fetching_icon.borrow_mut() = false;
@@ -125,12 +109,12 @@ impl UrlRow {
 }
 
 impl FormField for UrlRow {
-    fn init(self: Rc<Self>, web_app_view: Rc<dyn WebAppViewShared>) {
-        self.on_init(&web_app_view);
+    fn init(self: Rc<Self>, _web_app_view: Rc<dyn WebAppViewShared>) {
+        self.on_init();
     }
 
-    fn apply(self: Rc<Self>, web_app_view: Rc<dyn WebAppViewShared>) {
-        self.on_apply(&web_app_view);
+    fn apply(self: Rc<Self>, _web_app_view: Rc<dyn WebAppViewShared>) {
+        self.on_apply();
     }
 
     fn reset(&self, _web_app_view: Rc<dyn WebAppViewShared>) {

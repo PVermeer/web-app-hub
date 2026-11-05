@@ -1,11 +1,11 @@
-use super::{WebAppViewShared, button_ext::ButtonAppExt, icon_picker::IconPicker};
+use super::{WebAppViewShared, button_ext::ButtonAppExt, form::FormField, icon_picker::IconPicker};
 use common::desktop_file::DesktopFile;
 use gtk::{
     Button, Label, Orientation,
     prelude::{BoxExt, WidgetExt},
 };
 use libadwaita::ButtonContent;
-use std::{path::Path, rc::Rc};
+use std::rc::Rc;
 
 pub struct ChangeIconHeader {
     pub header: gtk::Box,
@@ -45,56 +45,34 @@ impl ChangeIconHeader {
         })
     }
 
-    pub fn init(self: &Rc<Self>, web_app_view: &Rc<dyn WebAppViewShared>) {
+    fn on_init(self: Rc<Self>) {
         let self_clone = self.clone();
-        let web_app_view_clone = web_app_view.clone();
 
         self.change_icon_button
-            .connect_pressed_early(move |_button| self_clone.on_click(&web_app_view_clone));
+            .connect_pressed_early(move |_button| self_clone.on_click());
     }
 
-    fn on_click(self: &Rc<Self>, web_app_view: &Rc<dyn WebAppViewShared>) {
-        let undo_icon_path = self
-            .desktop_file
-            .get_icon_path()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
-        let undo_icon_path_fail = undo_icon_path.clone();
-
-        let desktop_file = self.desktop_file.clone();
-        let web_app_view = web_app_view.clone();
-        let web_app_view2 = web_app_view.clone();
-        let self_clone = self.clone();
-        let self_clone2 = self.clone();
-
-        let _ = self.icon_picker.show_dialog(
-            Some(move |icon| {
-                // Success
-                web_app_view.update_app_icon(&icon);
-                self_clone.validate();
-            }),
-            Some(move || {
-                // Fail
-                let undo_icon_path = undo_icon_path_fail.clone();
-                desktop_file.set_icon_path(Path::new(&undo_icon_path));
-                self_clone2.validate();
-                web_app_view2.error_message("Failed to save icon", None);
-            }),
-        );
+    fn on_click(self: &Rc<Self>) {
+        self.icon_picker.show_dialog();
     }
 
-    pub fn validate(&self) {
-        if self.is_valid() {
-            self.change_icon_button.remove_css_class("error");
-            self.validation_label.set_visible(false);
-        } else {
-            self.change_icon_button.add_css_class("error");
-            self.validation_label.set_visible(true);
+    fn validate(&self, apply_to_fields: bool) -> bool {
+        let is_valid = self.is_valid();
+
+        if apply_to_fields {
+            if is_valid {
+                self.change_icon_button.remove_css_class("error");
+                self.validation_label.set_visible(false);
+            } else {
+                self.change_icon_button.add_css_class("error");
+                self.validation_label.set_visible(true);
+            }
         }
+
+        is_valid
     }
 
-    pub fn is_valid(&self) -> bool {
+    fn is_valid(&self) -> bool {
         if self.desktop_file.get_url().is_none() {
             return true;
         }
@@ -103,5 +81,23 @@ impl ChangeIconHeader {
 
     pub fn set_sensitive(&self, can_click: bool) {
         self.change_icon_button.set_sensitive(can_click);
+    }
+}
+
+impl FormField for ChangeIconHeader {
+    fn init(self: Rc<Self>, _web_app_view: Rc<dyn WebAppViewShared>) {
+        self.on_init();
+    }
+
+    fn apply(self: Rc<Self>, _web_app_view: Rc<dyn WebAppViewShared>) {}
+
+    fn reset(&self, _web_app_view: Rc<dyn WebAppViewShared>) {}
+
+    fn is_valid(&self, _do_dirty_check: bool, apply_to_field: bool) -> bool {
+        self.validate(apply_to_field)
+    }
+
+    fn is_dirty(&self) -> bool {
+        false
     }
 }

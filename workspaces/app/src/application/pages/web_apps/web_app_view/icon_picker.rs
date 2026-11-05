@@ -23,18 +23,20 @@ use libadwaita::{
 use std::{
     cell::RefCell,
     collections::HashMap,
-    fs,
+    path::PathBuf,
     rc::Rc,
     time::{Duration, SystemTime},
 };
 use tracing::{debug, error, warn};
 
+type OnChangeCallbackFn = dyn Fn(&IconPicker, Option<&Rc<Icon>>) + 'static;
+
 pub struct IconPicker {
-    init: RefCell<bool>,
     fetched_icons_ts: RefCell<SystemTime>,
     prefs_page: PreferencesPage,
     app: Rc<App>,
     desktop_file: Rc<DesktopFile>,
+    callbacks: RefCell<Vec<Rc<OnChangeCallbackFn>>>,
     icons: RefCell<HashMap<String, Rc<Icon>>>,
     icons_ordered: RefCell<Vec<(String, Rc<Icon>)>>,
     removed_icon: RefCell<Option<Rc<Icon>>>,
@@ -83,11 +85,11 @@ impl IconPicker {
         );
 
         Rc::new(Self {
-            init: RefCell::new(false),
             fetched_icons_ts,
             prefs_page,
             app: app.clone(),
             desktop_file: desktop_file.clone(),
+            callbacks: RefCell::new(Vec::new()),
             icons,
             icons_ordered,
             removed_icon: RefCell::new(None),
@@ -99,16 +101,10 @@ impl IconPicker {
             content_box,
             spinner,
         })
+        .init()
     }
 
-    pub fn init(self: &Rc<Self>) {
-        let mut is_init = self.init.borrow_mut();
-        self.load_icons(false);
-
-        if *is_init {
-            return;
-        }
-
+    fn init(self: Rc<Self>) -> Rc<Self> {
         let self_clone = self.clone();
         self.pref_group_icons_reset_button
             .connect_clicked(move |_| {
@@ -121,25 +117,23 @@ impl IconPicker {
                 self_clone.load_icon_file_picker();
             });
 
-        *is_init = true;
+        self
     }
 
-    pub fn show_dialog<Success, Fail>(
+    pub fn connect_changed<F: Fn(&Self, Option<&Rc<Icon>>) + 'static>(
         self: &Rc<Self>,
-        success_cb: Option<Success>,
-        fail_cb: Option<Fail>,
-    ) -> Result<AlertDialog>
-    where
-        Success: Fn(Rc<Icon>) + 'static,
-        Fail: Fn() + 'static,
-    {
-        if self.content_box.parent().is_some() {
-            let message = "Dialog already open";
-            warn!(message);
-            bail!(message);
+        callback: F,
+    ) {
+        let callback = Rc::new(callback);
+        self.callbacks.borrow_mut().push(callback);
+    }
+
+    pub fn show_dialog(self: &Rc<Self>) {
+        if self.dialog_is_open() {
+            return;
         }
 
-        self.init();
+        self.load_icons(false);
 
         let dialog = AlertDialog::builder()
             .heading(t!("web_apps.web_app_view.icon.dialog.title"))
@@ -162,24 +156,10 @@ impl IconPicker {
         dialog.set_close_response(Self::DIALOG_CANCEL);
 
         let self_clone = self.clone();
+
         dialog.connect_response(Some(Self::DIALOG_SAVE), move |_, _| {
-            match (|| -> Result<Rc<Icon>> {
-                let icon = self_clone.get_selected_icon()?;
-                self_clone.save(&icon)?;
-                Ok(icon.clone())
-            })() {
-                Ok(icon) => {
-                    if let Some(success_cb) = &success_cb {
-                        success_cb(icon);
-                    }
-                }
-                Err(error) => {
-                    error!("Error saving icon: {error:?}");
-                    if let Some(fail_cb) = &fail_cb {
-                        fail_cb();
-                    }
-                }
-            }
+            let icon = self_clone.get_selected_icon().ok();
+            self_clone.save(icon.as_ref());
         });
 
         dialog.connect_closed(|dialog| {
@@ -187,27 +167,25 @@ impl IconPicker {
         });
 
         dialog.present(Some(&self.app.window.adw_window));
-
-        Ok(dialog)
     }
 
-    pub async fn save_first_icon_found(self: &Rc<Self>) -> Result<Rc<Icon>> {
-        if self.content_box.parent().is_some() {
-            let message = "Dialog already open";
-            warn!(message);
-            bail!(message);
+    pub async fn save_first_icon_found(self: &Rc<Self>) {
+        if self.dialog_is_open() {
+            return;
         }
 
-        self.set_online_icons(false).await?;
+        let _ = self.set_online_icons(false).await;
         self.set_icons_ordered();
         let icons_ordered_borrow = self.icons_ordered.borrow();
 
-        let Some((_source, icon)) = icons_ordered_borrow.first() else {
-            bail!("No icons found")
-        };
+        let first_icon = icons_ordered_borrow.first().map(|(_source, icon)| icon);
+        self.save(first_icon);
+    }
 
-        self.save(icon)?;
-        Ok(icon.clone())
+    fn run_callbacks(self: &Rc<Self>, icon: Option<&Rc<Icon>>) {
+        for callback in &*self.callbacks.borrow() {
+            callback(self, icon);
+        }
     }
 
     fn get_selected_icon(self: &Rc<Self>) -> Result<Rc<Icon>> {
@@ -506,28 +484,37 @@ impl IconPicker {
         );
     }
 
-    fn save(self: &Rc<Self>, icon: &Rc<Icon>) -> Result<()> {
-        if let Some(old_icon_path) = self.desktop_file.get_icon_path()
-            && old_icon_path.is_file()
-        {
-            fs::remove_file(old_icon_path).context("Failed to remove old icon")?;
-        }
+    fn save(self: &Rc<Self>, icon: Option<&Rc<Icon>>) {
+        let Some(icon) = icon else {
+            debug!("No icon found");
+            self.desktop_file.set_icon_path(&PathBuf::default());
+            self.run_callbacks(None);
 
-        let app_id = self
-            .desktop_file
-            .get_id()
-            .context("No file id on DesktopFile")?;
+            return;
+        };
+
+        let Some(app_id) = self.desktop_file.get_id() else {
+            error!("No id on desktopfile????");
+            self.desktop_file.set_icon_path(&PathBuf::default());
+            self.run_callbacks(None);
+
+            return;
+        };
 
         let icon_dir = &self.app.dirs.app_data_icons;
         let file_name = sanitize_filename::sanitize(format!("{app_id}.png"));
         let save_path = icon_dir.join(&file_name);
 
-        icon.save(&save_path)
-            .context("Failed to save icon from IconPicker")?;
+        if let Err(error) = icon.save(&save_path) {
+            error!(%error, "Failed to save icon from IconPicker");
+            self.desktop_file.set_icon_path(&PathBuf::default());
+            self.run_callbacks(None);
+
+            return;
+        }
 
         self.desktop_file.set_icon_path(&save_path);
-
-        Ok(())
+        self.run_callbacks(Some(icon));
     }
 
     fn build_spinner() -> Spinner {
@@ -588,6 +575,18 @@ impl IconPicker {
             .build();
 
         PreferencesRow::builder().child(&status_page).build()
+    }
+
+    fn dialog_is_open(&self) -> bool {
+        let is_open = self.content_box.parent().is_some();
+        if is_open {
+            let message = "Dialog already open";
+            warn!(message);
+
+            return true;
+        }
+
+        false
     }
 
     pub fn reset(&self) {
