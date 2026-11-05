@@ -1,4 +1,4 @@
-mod icon;
+pub mod icon;
 mod icon_fetcher;
 
 use crate::application::App;
@@ -130,7 +130,7 @@ impl IconPicker {
         fail_cb: Option<Fail>,
     ) -> Result<AlertDialog>
     where
-        Success: Fn() + 'static,
+        Success: Fn(Rc<Icon>) + 'static,
         Fail: Fn() + 'static,
     {
         if self.content_box.parent().is_some() {
@@ -162,16 +162,15 @@ impl IconPicker {
         dialog.set_close_response(Self::DIALOG_CANCEL);
 
         let self_clone = self.clone();
-        dialog.connect_response(
-            Some(Self::DIALOG_SAVE),
-            move |_, _| match (|| -> Result<()> {
+        dialog.connect_response(Some(Self::DIALOG_SAVE), move |_, _| {
+            match (|| -> Result<Rc<Icon>> {
                 let icon = self_clone.get_selected_icon()?;
                 self_clone.save(&icon)?;
-                Ok(())
+                Ok(icon.clone())
             })() {
-                Ok(()) => {
+                Ok(icon) => {
                     if let Some(success_cb) = &success_cb {
-                        success_cb();
+                        success_cb(icon);
                     }
                 }
                 Err(error) => {
@@ -180,8 +179,8 @@ impl IconPicker {
                         fail_cb();
                     }
                 }
-            },
-        );
+            }
+        });
 
         dialog.connect_closed(|dialog| {
             dialog.set_extra_child(None::<&gtk::Widget>);
@@ -192,9 +191,11 @@ impl IconPicker {
         Ok(dialog)
     }
 
-    pub async fn save_first_icon_found(self: &Rc<Self>) -> Result<()> {
+    pub async fn save_first_icon_found(self: &Rc<Self>) -> Result<Rc<Icon>> {
         if self.content_box.parent().is_some() {
-            return Ok(());
+            let message = "Dialog already open";
+            warn!(message);
+            bail!(message);
         }
 
         self.set_online_icons(false).await?;
@@ -202,13 +203,11 @@ impl IconPicker {
         let icons_ordered_borrow = self.icons_ordered.borrow();
 
         let Some((_source, icon)) = icons_ordered_borrow.first() else {
-            let message = "Dialog already open";
-            warn!(message);
             bail!("No icons found")
         };
 
         self.save(icon)?;
-        Ok(())
+        Ok(icon.clone())
     }
 
     fn get_selected_icon(self: &Rc<Self>) -> Result<Rc<Icon>> {
@@ -378,7 +377,7 @@ impl IconPicker {
             bail!("No icon saved")
         };
         let current_icon =
-            Rc::new(Icon::from_path(&current_icon_path).context("Could not load current image")?);
+            Icon::from_path(&current_icon_path).context("Could not load current image")?;
 
         let mut icons_borrow = self.icons.borrow_mut();
         let mut removed_icon_borrow = self.removed_icon.borrow_mut();
@@ -498,10 +497,7 @@ impl IconPicker {
                     }
                 };
 
-                self_clone
-                    .icons
-                    .borrow_mut()
-                    .insert(filename.clone(), Rc::new(icon));
+                self_clone.icons.borrow_mut().insert(filename.clone(), icon);
 
                 self_clone.set_icons_ordered();
                 self_clone.reload_icon_flowbox();
@@ -526,15 +522,8 @@ impl IconPicker {
         let file_name = sanitize_filename::sanitize(format!("{app_id}.png"));
         let save_path = icon_dir.join(&file_name);
 
-        debug!(
-            "Saving icon '{}' to fs: {}",
-            &file_name,
-            save_path.display()
-        );
-
-        icon.pixbuf
-            .savev(save_path.clone(), "png", &[])
-            .context("Failed to save icon to fs")?;
+        icon.save(&save_path)
+            .context("Failed to save icon from IconPicker")?;
 
         self.desktop_file.set_icon_path(&save_path);
 

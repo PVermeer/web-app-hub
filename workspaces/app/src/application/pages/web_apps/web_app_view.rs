@@ -25,8 +25,8 @@ use change_icon_header::ChangeIconHeader;
 use common::desktop_file::{DesktopFile, error::DesktopFileError};
 pub use entry_row_ext::EntryRowAppExt;
 use form::FormField;
-use gtk::{Align, EventControllerMotion, gdk_pixbuf::Pixbuf, prelude::GtkWindowExt};
-use icon_picker::IconPicker;
+use gtk::{Align, EventControllerMotion, prelude::GtkWindowExt};
+use icon_picker::{IconPicker, icon::Icon};
 use isolate_row::IsolateRow;
 use libadwaita::{
     ActionRow, NavigationPage, NavigationView, PreferencesGroup, Toast, ToastOverlay,
@@ -42,14 +42,6 @@ use std::{cell::RefCell, rc::Rc};
 use tracing::{debug, error};
 use url_row::UrlRow;
 
-pub trait WebAppViewShared {
-    fn is_new(&self) -> bool;
-    fn message(&self, message: &str);
-    fn urgent_message(&self, message: &str);
-    fn discard_message(&self, message: &str) -> Toast;
-    fn error_message(&self, message: &str, error: Option<&anyhow::Error>);
-}
-
 pub struct WebAppView {
     is_new: RefCell<bool>,
     nav_page: NavigationPage,
@@ -57,7 +49,8 @@ pub struct WebAppView {
     app: Rc<App>,
     desktop_file: Rc<DesktopFile>,
     desktop_file_original: DesktopFile,
-    app_icon_original: RefCell<Option<Pixbuf>>,
+    app_icon: RefCell<Option<Rc<Icon>>>,
+    app_icon_original: RefCell<Option<Rc<Icon>>>,
     nav_back_button: Button,
     reset_button: Button,
     toasts: ToastOverlay,
@@ -79,7 +72,7 @@ impl WebAppView {
         let desktop_file_original = desktop_file.as_ref().clone(); // Deep clone
         let icon_original = desktop_file
             .get_icon_path()
-            .and_then(|path| gtk::gdk_pixbuf::Pixbuf::from_file(path).ok());
+            .and_then(|path| Icon::from_path(&path).ok());
 
         let title = desktop_file
             .get_name()
@@ -152,6 +145,7 @@ impl WebAppView {
             app: app.clone(),
             desktop_file: desktop_file.clone(),
             desktop_file_original,
+            app_icon: RefCell::new(icon_original.clone()),
             app_icon_original: RefCell::new(icon_original),
             nav_back_button,
             reset_button,
@@ -209,19 +203,22 @@ impl WebAppView {
             .set_from_desktop_file(&self.desktop_file_original);
         self.desktop_file.set_path(&save_path);
 
-        // Icon
-        let original_icon_borrow = self.app_icon_original.borrow();
-        if let Some(pixbuf) = &*original_icon_borrow
-            && let Some(icon_path) = self.desktop_file.get_icon_path()
+        // Update Icon
+        if self.app_icon_has_changed()
+            && let Some(original_app_icon) = &*self.app_icon_original.borrow()
         {
-            let _ = pixbuf.savev(icon_path, "png", &[]).inspect_err(
-                |error| error!(%error, "Failed to save icon on resetting desktop file"),
-            );
+            self.update_app_icon(original_app_icon);
+            if let Some(app_icon) = &*self.app_icon.borrow()
+                && let Some(icon_save_path) = self.desktop_file_original.get_icon_path()
+                && let Err(error) = app_icon.save(&icon_save_path)
+            {
+                error!(%error, "Failed to save icon on resetting desktop file");
+            }
         }
 
         self.reset_form();
-
         self.message(&t!("web_apps.web_app_view.toast.reset"));
+
         true
     }
 
@@ -381,6 +378,25 @@ impl WebAppView {
         form_is_valid
     }
 
+    fn app_icon_has_changed(&self) -> bool {
+        let app_icon = self.app_icon.borrow();
+        let original_app_icon = self.app_icon_original.borrow();
+        let mut has_changed = false;
+
+        if app_icon.is_some() && original_app_icon.is_none() {
+            has_changed = true;
+        } else if let Some(app_icon) = &*app_icon
+            && let Some(original_app_icon) = &*original_app_icon
+            && app_icon != original_app_icon
+        {
+            has_changed = true;
+        }
+
+        debug!(has_changed, "Icon change check");
+
+        has_changed
+    }
+
     fn apply_form(self: &Rc<Self>) {
         for field in &self.form_fields {
             field.clone().apply(self.clone());
@@ -427,19 +443,38 @@ impl WebAppView {
             // Update data for reset action
             self.desktop_file_original
                 .set_from_desktop_file(&self.desktop_file);
-            *self.app_icon_original.borrow_mut() = self
-                .desktop_file
-                .get_icon_path()
-                .and_then(|path| gtk::gdk_pixbuf::Pixbuf::from_file(path).ok());
+            self.app_icon_original
+                .borrow_mut()
+                .clone_from(&self.app_icon_original.borrow());
         }
 
         true
     }
 }
 
+pub trait WebAppViewShared {
+    fn is_new(&self) -> bool;
+    fn update_app_icon(&self, icon: &Rc<Icon>);
+
+    fn message(&self, message: &str);
+    fn urgent_message(&self, message: &str);
+    fn discard_message(&self, message: &str) -> Toast;
+    fn error_message(&self, message: &str, error: Option<&anyhow::Error>);
+}
+
 impl WebAppViewShared for WebAppView {
     fn is_new(&self) -> bool {
         self.is_new()
+    }
+
+    fn update_app_icon(&self, icon: &Rc<Icon>) {
+        if let Some(app_icon) = &*self.app_icon.borrow()
+            && *app_icon == *icon
+        {
+            return;
+        }
+
+        *self.app_icon.borrow_mut() = Some(icon.clone());
     }
 
     fn message(&self, message: &str) {

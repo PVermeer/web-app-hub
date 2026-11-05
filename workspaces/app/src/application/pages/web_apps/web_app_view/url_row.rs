@@ -95,10 +95,16 @@ impl UrlRow {
             self_clone.entry_row.set_sensitive(false);
             self_clone.spinner.set_visible(true);
 
-            if let Err(error) = icon_picker.save_first_icon_found().await {
-                self_clone.desktop_file.set_icon_path(Path::new(""));
-                error!(?error);
-                web_app_view.message(&t!("web_apps.web_app_view.icon.validate"));
+            match icon_picker.save_first_icon_found().await {
+                Err(error) => {
+                    self_clone.desktop_file.set_icon_path(Path::new(""));
+                    error!(?error);
+                    web_app_view.message(&t!("web_apps.web_app_view.icon.validate"));
+                }
+
+                Ok(icon) => {
+                    web_app_view.update_app_icon(&icon);
+                }
             }
 
             change_icon_form_header.validate();

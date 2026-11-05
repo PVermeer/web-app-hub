@@ -64,12 +64,14 @@ impl ChangeIconHeader {
 
         let desktop_file = self.desktop_file.clone();
         let web_app_view = web_app_view.clone();
+        let web_app_view2 = web_app_view.clone();
         let self_clone = self.clone();
         let self_clone2 = self.clone();
 
         let _ = self.icon_picker.show_dialog(
-            Some(move || {
+            Some(move |icon| {
                 // Success
+                web_app_view.update_app_icon(&icon);
                 self_clone.validate();
             }),
             Some(move || {
@@ -77,7 +79,7 @@ impl ChangeIconHeader {
                 let undo_icon_path = undo_icon_path_fail.clone();
                 desktop_file.set_icon_path(Path::new(&undo_icon_path));
                 self_clone2.validate();
-                web_app_view.error_message("Failed to save icon", None);
+                web_app_view2.error_message("Failed to save icon", None);
             }),
         );
     }
