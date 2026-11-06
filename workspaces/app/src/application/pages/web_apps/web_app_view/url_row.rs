@@ -105,6 +105,8 @@ impl UrlRow {
 
         self.entry_row
             .set_text(&self.desktop_file.get_url().unwrap_or_default());
+
+        self.entry_row.reset_touched();
     }
 }
 
