@@ -129,12 +129,29 @@ impl DesktopFile {
             .map(std::string::ToString::to_string)
     }
 
+    /// For some reason this method does exist in the desktop-entry library
+    fn remove_key(&self, key: &Key) {
+        if let Some(keymap) = self
+            .desktop_entry
+            .borrow_mut()
+            .groups
+            .0
+            .get_mut("Desktop Entry")
+        {
+            keymap.0.remove(&key.to_string());
+        }
+    }
+
     fn set_value_on_desktop_file_and_run_callbacks(&self, key: &Key, new_value: &str) {
         let previous_value = self.get_by_key(key).unwrap_or_default();
 
-        self.desktop_entry
-            .borrow_mut()
-            .add_desktop_entry(key.to_string(), new_value.to_string());
+        if new_value.is_empty() {
+            self.remove_key(key);
+        } else {
+            self.desktop_entry
+                .borrow_mut()
+                .add_desktop_entry(key.to_string(), new_value.to_string());
+        }
 
         debug!(
             new_value,
