@@ -48,7 +48,7 @@ pub struct WebAppView {
     nav_view: Rc<NavigationView>,
     app: Rc<App>,
     desktop_file: Rc<DesktopFile>,
-    desktop_file_original: DesktopFile,
+    desktop_file_original: RefCell<Option<DesktopFile>>,
     app_icon: RefCell<Option<Rc<Icon>>>,
     app_icon_original: RefCell<Option<Rc<Icon>>>,
     icon_picker: Rc<IconPicker>,
@@ -69,8 +69,7 @@ impl WebAppView {
         desktop_file: &Rc<DesktopFile>,
         is_new: bool,
     ) -> Rc<Self> {
-        let desktop_file_original = desktop_file.as_ref().clone(); // Deep clone
-        let icon_original = desktop_file
+        let app_icon = desktop_file
             .get_icon_path()
             .and_then(|path| Icon::from_path(&path).ok());
 
@@ -97,11 +96,11 @@ impl WebAppView {
         let delete_button = Self::build_delete_button();
         let optional_row = OptionalRow::new(app, desktop_file);
         let icon_picker = IconPicker::new(app, desktop_file);
-        let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
 
         header.pack_end(&reset_button);
 
         let app_header = AppHeader::new(desktop_file);
+        let change_icon_form_header = ChangeIconHeader::new(desktop_file, &icon_picker);
         let name_row = NameRow::new(desktop_file);
         let url_row = UrlRow::new(desktop_file, &icon_picker, &change_icon_form_header);
         let isolate_row = IsolateRow::new(desktop_file);
@@ -145,9 +144,9 @@ impl WebAppView {
             nav_view: nav_view.clone(),
             app: app.clone(),
             desktop_file: desktop_file.clone(),
-            desktop_file_original,
-            app_icon: RefCell::new(icon_original.clone()),
-            app_icon_original: RefCell::new(icon_original),
+            desktop_file_original: RefCell::new(None),
+            app_icon: RefCell::new(app_icon),
+            app_icon_original: RefCell::new(None),
             icon_picker,
             nav_back_button,
             reset_button,
@@ -176,50 +175,9 @@ impl WebAppView {
 
         // Pick up some possible changes after init
         self.reset_form();
+        self.set_original_for_reset();
 
         self
-    }
-
-    pub fn is_new(&self) -> bool {
-        *self.is_new.borrow()
-    }
-
-    fn reset_desktop_file(self: &Rc<Self>) -> bool {
-        debug!("Resetting desktop file");
-
-        if self.url_row.is_fetching_icon() {
-            self.message(&t!("forms.fetching_icon"));
-            return false;
-        }
-
-        // Update Icon
-        if self.app_icon_has_changed() {
-            let app_icon_original = &*self.app_icon_original.borrow();
-            let original_save_path = self.desktop_file_original.get_icon_path();
-
-            if let Some(app_icon_original) = app_icon_original
-                && let Some(original_save_path) = original_save_path
-            {
-                if let Err(error) = app_icon_original.save(&original_save_path) {
-                    self.error_message("Failed to save original icon", Some(&error));
-                    return false;
-                }
-                self.update_app_icon(Some(app_icon_original));
-            }
-        }
-
-        // Desktop file
-        let save_path = self.desktop_file.get_path();
-        self.desktop_file
-            .set_from_desktop_file(&self.desktop_file_original);
-        self.desktop_file.set_path(&save_path);
-
-        self.reset_form();
-        self.validate_form(false, true);
-        self.message(&t!("web_apps.web_app_view.toast.reset"));
-        self.reset_button.set_sensitive(false);
-
-        true
     }
 
     fn build_header_reset_button() -> Button {
@@ -367,17 +325,7 @@ impl WebAppView {
 
         self.desktop_file
             .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
-                self_clone.reset_form();
-
-                self_clone
-                    .reset_button
-                    .set_sensitive(self_clone.app_has_changed());
-
-                if self_clone.validate_form(false, false) {
-                    self_clone.save_button.remove_css_class("dimmed");
-                } else {
-                    self_clone.save_button.add_css_class("dimmed");
-                }
+                self_clone.validate(false, false);
             });
     }
 
@@ -386,8 +334,109 @@ impl WebAppView {
 
         self.icon_picker.connect_changed(move |_icon_picker, icon| {
             self_clone.update_app_icon(icon);
-            self_clone.validate_form(false, true);
+            self_clone.validate(false, false);
         });
+    }
+
+    fn is_new(&self) -> bool {
+        *self.is_new.borrow()
+    }
+
+    fn set_original_for_reset(self: &Rc<Self>) {
+        *self.desktop_file_original.borrow_mut() = Some(self.desktop_file.as_ref().clone()); // Deep clone
+        (*self.app_icon_original.borrow_mut()).clone_from(&self.app_icon.borrow()); // Rc clone
+    }
+
+    fn reset_desktop_file(self: &Rc<Self>) -> bool {
+        debug!("Resetting desktop file");
+
+        if self.url_row.is_fetching_icon() {
+            self.message(&t!("forms.fetching_icon"));
+            return false;
+        }
+
+        let Some(desktop_file_original) = &*self.desktop_file_original.borrow() else {
+            let message = "Failed to get original desktop file for reset. This cannot be None!!!";
+            self.error_message(message, Some(&anyhow!(message)));
+            return false;
+        };
+
+        // Update Icon
+        if self.app_icon_has_changed() {
+            let app_icon_original = &*self.app_icon_original.borrow();
+            let original_save_path = desktop_file_original.get_icon_path();
+
+            if let Some(app_icon_original) = app_icon_original
+                && let Some(original_save_path) = original_save_path
+            {
+                if let Err(error) = app_icon_original.save(&original_save_path) {
+                    self.error_message("Failed to save original icon", Some(&error));
+                    return false;
+                }
+                self.update_app_icon(Some(app_icon_original));
+            }
+        }
+
+        // Desktop file
+        let save_path = self.desktop_file.get_path();
+        self.desktop_file
+            .set_from_desktop_file(desktop_file_original);
+        self.desktop_file.set_path(&save_path);
+
+        // Reset state
+        self.reset_form();
+        self.validate(true, false);
+        self.message(&t!("web_apps.web_app_view.toast.reset"));
+
+        true
+    }
+
+    fn app_icon_has_changed(&self) -> bool {
+        let has_changed = *self.app_icon.borrow() != *self.app_icon_original.borrow();
+
+        debug!(has_changed, "Icon change check");
+
+        has_changed
+    }
+
+    fn app_has_changed(&self) -> bool {
+        let mut has_changed = false;
+
+        if self.desktop_file.to_string()
+            != self
+                .desktop_file_original
+                .borrow()
+                .as_ref()
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default()
+        {
+            has_changed = true;
+        }
+
+        if self.app_icon_has_changed() {
+            has_changed = true;
+        }
+
+        debug!(has_changed, "App has changed check");
+
+        has_changed
+    }
+
+    fn apply_form(self: &Rc<Self>) {
+        for field in &self.form_fields {
+            field.clone().apply(self.clone());
+        }
+    }
+
+    fn reset_form(self: &Rc<Self>) {
+        for field in &self.form_fields {
+            field.reset(self.clone());
+        }
+    }
+
+    fn update_app_icon(self: &Rc<Self>, icon: Option<&Rc<Icon>>) {
+        *self.app_icon.borrow_mut() = icon.cloned();
+        self.app_header.reset(self.clone());
     }
 
     fn validate_form(&self, do_dirty_check: bool, apply_to_fields: bool) -> bool {
@@ -405,43 +454,21 @@ impl WebAppView {
         form_is_valid
     }
 
-    fn app_icon_has_changed(&self) -> bool {
-        let has_changed = *self.app_icon.borrow() != *self.app_icon_original.borrow();
+    fn validate(self: &Rc<Self>, do_dirty_check: bool, apply_to_fields: bool) -> bool {
+        let form_is_valid = self.validate_form(do_dirty_check, apply_to_fields);
 
-        debug!(has_changed, "Icon change check");
-
-        has_changed
-    }
-
-    fn app_has_changed(&self) -> bool {
-        if self.desktop_file.to_string() != self.desktop_file_original.to_string() {
-            return true;
+        if form_is_valid {
+            self.save_button.remove_css_class("dimmed");
+        } else {
+            self.save_button.add_css_class("dimmed");
         }
 
-        if self.app_icon_has_changed() {
-            return true;
-        }
+        self.reset_button.set_sensitive(self.app_has_changed());
 
-        false
+        form_is_valid
     }
 
-    fn apply_form(self: &Rc<Self>) {
-        for field in &self.form_fields {
-            field.clone().apply(self.clone());
-        }
-    }
-
-    fn reset_form(self: &Rc<Self>) {
-        for field in &self.form_fields {
-            field.reset(self.clone());
-        }
-    }
-
-    fn update_app_icon(&self, icon: Option<&Rc<Icon>>) {
-        *self.app_icon.borrow_mut() = icon.cloned();
-    }
-
-    fn save(&self) -> bool {
+    fn save(self: &Rc<Self>) -> bool {
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
 
         if self.url_row.is_fetching_icon() {
@@ -467,19 +494,16 @@ impl WebAppView {
             return false;
         }
 
-        if self.is_new() {
-            *self.is_new.borrow_mut() = false;
-            self.app_header.run_app_button.set_visible(true);
-            self.save_button.set_visible(false);
-
-            // Update data for reset action
-            self.desktop_file_original
-                .set_from_desktop_file(&self.desktop_file);
-            self.app_icon_original
-                .borrow_mut()
-                .clone_from(&self.app_icon.borrow());
-            self.reset_button.set_sensitive(false);
+        if !self.is_new() {
+            return true;
         }
+
+        *self.is_new.borrow_mut() = false;
+        self.app_header.run_app_button.set_visible(true);
+        self.save_button.set_visible(false);
+
+        self.set_original_for_reset();
+        self.validate(false, false);
 
         true
     }
