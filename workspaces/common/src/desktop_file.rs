@@ -350,7 +350,9 @@ impl DesktopFile {
             && old_icon_path.is_file()
         {
             match fs::remove_file(&old_icon_path) {
-                Ok(()) => {}
+                Ok(()) => {
+                    debug!( old_icon_path = %old_icon_path.display(), "Removed old icon");
+                }
                 Err(error) => {
                     error!(%error, old_icon_path = %old_icon_path.display(), "Failed to remove old icon file when setting a new path");
                 }
@@ -382,7 +384,9 @@ impl DesktopFile {
             && old_profile_path.is_dir()
         {
             match fs::remove_dir_all(&old_profile_path) {
-                Ok(()) => {}
+                Ok(()) => {
+                    debug!( old_profile_path = %old_profile_path.display(), "Removed old browser profile");
+                }
                 Err(error) => {
                     error!(%error, old_icon_path = %old_profile_path.display(), "Failed to remove old profile dir when setting a new dir");
                 }
@@ -526,12 +530,16 @@ impl DesktopFile {
     }
 
     pub fn validate(&self) -> Result<(), DesktopFileError> {
-        match self.to_new_from_browser() {
-            Err(error) => {
-                error!(validation_error = error.to_string(), "Invalid DesktopFile");
-                Err(error)
-            }
-            Ok(_) => Ok(()),
+        if let Err(error) = self.get_validated_entries() {
+            error!(
+                path = %self.get_save_path().unwrap_or_default().display(),
+                validation_error = error.to_string(),
+                "Invalid DesktopFile"
+            );
+            Err(error)
+        } else {
+            debug!(path = %self.get_save_path().unwrap_or_default().display(), "Desktop file is valid");
+            Ok(())
         }
     }
 
@@ -706,7 +714,7 @@ impl DesktopFile {
             })
     }
 
-    fn get_entries(&self) -> Result<DesktopFileEntries, DesktopFileError> {
+    fn get_validated_entries(&self) -> Result<DesktopFileEntries, DesktopFileError> {
         let name = self.get_name().ok_or(ValidationError {
             field: Key::Name,
             message: "Missing".to_string(),
@@ -856,7 +864,7 @@ impl DesktopFile {
     }
 
     fn to_new_from_browser(&self) -> Result<DesktopFile, DesktopFileError> {
-        let entries = &self.get_entries()?;
+        let entries = &self.get_validated_entries()?;
         let save_path = self.get_save_path()?;
         let app_name_short = config::APP_NAME_SHORT.get_value();
         let app_id = format!("{}-{}", app_name_short, entries.app_id);

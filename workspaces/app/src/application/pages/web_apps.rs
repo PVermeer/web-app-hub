@@ -231,11 +231,8 @@ impl WebAppsPage {
             if is_updated {
                 info!(file_name = &file_name, "Updated DesktopFile");
                 app_has_updated = true;
-            } else {
-                info!(file_name = &file_name, "Validating DesktopFile");
-                if desktop_file.validate().is_err() {
-                    has_error = true;
-                }
+            } else if desktop_file.validate().is_err() {
+                has_error = true;
             }
 
             owned_desktop_files.push((desktop_file, has_error));
