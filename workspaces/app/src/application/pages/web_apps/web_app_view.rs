@@ -56,6 +56,7 @@ pub struct WebAppView {
     reset_button: Button,
     toasts: ToastOverlay,
     app_header: Rc<AppHeader>,
+    change_icon_form_header: Rc<ChangeIconHeader>,
     save_button: Button,
     delete_button: Button,
     url_row: Rc<UrlRow>,
@@ -152,6 +153,7 @@ impl WebAppView {
             reset_button,
             toasts: toast_overlay,
             app_header,
+            change_icon_form_header,
             save_button,
             delete_button,
             url_row,
@@ -335,6 +337,8 @@ impl WebAppView {
         self.icon_picker.connect_changed(move |_icon_picker, icon| {
             self_clone.update_app_icon(icon);
             self_clone.validate(false, false);
+            self_clone.app_header.reset(self_clone.clone());
+            self_clone.change_icon_form_header.is_valid(false, true);
         });
     }
 
@@ -368,13 +372,12 @@ impl WebAppView {
 
             if let Some(app_icon_original) = app_icon_original
                 && let Some(original_save_path) = original_save_path
+                && let Err(error) = app_icon_original.save(&original_save_path)
             {
-                if let Err(error) = app_icon_original.save(&original_save_path) {
-                    self.error_message("Failed to save original icon", Some(&error));
-                    return false;
-                }
-                self.update_app_icon(Some(app_icon_original));
+                self.error_message("Failed to save original icon", Some(&error));
+                return false;
             }
+            self.update_app_icon(app_icon_original.as_ref());
         }
 
         // Desktop file
@@ -386,6 +389,7 @@ impl WebAppView {
         // Reset state
         self.reset_form();
         self.validate(true, false);
+        self.change_icon_form_header.is_valid(false, true);
         self.message(&t!("web_apps.web_app_view.toast.reset"));
 
         true
@@ -436,7 +440,6 @@ impl WebAppView {
 
     fn update_app_icon(self: &Rc<Self>, icon: Option<&Rc<Icon>>) {
         *self.app_icon.borrow_mut() = icon.cloned();
-        self.app_header.reset(self.clone());
     }
 
     fn validate_form(&self, do_dirty_check: bool, apply_to_fields: bool) -> bool {
