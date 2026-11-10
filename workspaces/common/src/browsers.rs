@@ -209,7 +209,7 @@ impl Browser {
         Image::from_icon_name(Self::FALLBACK_IMAGE)
     }
 
-    pub fn get_profile_path(&self) -> Result<PathBuf> {
+    pub fn get_profile_dir_path(&self) -> Result<PathBuf> {
         if !self.can_isolate {
             bail!("Browser cannot isolate")
         }
@@ -614,6 +614,10 @@ impl BrowserConfigs {
                 uninstalled_browsers.push(browser);
             }
         }
+
+        // Debug no browser
+        // let _ = self.installed_browsers.set(Vec::new());
+        // let _ = self.uninstalled_browsers.set(Vec::new());
 
         let _ = self.installed_browsers.set(installed_browsers.clone());
         let _ = self.uninstalled_browsers.set(uninstalled_browsers.clone());

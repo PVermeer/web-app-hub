@@ -36,10 +36,9 @@ pub struct DesktopFileEntries {
     url: String,
     url_path: String,
     domain: String,
-    isolate: bool,
     maximize: bool,
     icon_path: PathBuf,
-    profile_path: PathBuf,
+    profile_path: Option<PathBuf>,
 }
 
 type OnChangeCallbackFn = dyn Fn(&DesktopFile, &Key, &str, &str);
@@ -117,7 +116,7 @@ impl DesktopFile {
     pub fn set_from_desktop_file(&self, desktop_entry: &DesktopFile) {
         // Run path methods to ensure paths are valid
         self.set_icon_path(&desktop_entry.get_icon_path().unwrap_or_default());
-        self.set_profile_path(&desktop_entry.get_profile_path().unwrap_or_default());
+        self.set_profile_path(desktop_entry.get_profile_path().as_deref());
 
         *self.desktop_entry.borrow_mut() = desktop_entry.desktop_entry.borrow().clone();
     }
@@ -154,6 +153,7 @@ impl DesktopFile {
         }
 
         debug!(
+            id = self.get_id(),
             new_value,
             previous_value,
             "Set '{}' on desktop file",
@@ -300,18 +300,13 @@ impl DesktopFile {
     }
 
     pub fn set_browser(&self, browser: &Rc<Browser>) {
+        if !browser.can_isolate {
+            self.set_profile_path(None);
+        } else if self.get_profile_path().is_some() {
+            self.set_profile_path(self.build_profile_path(browser).ok().as_deref());
+        }
+
         self.set_value_on_desktop_file_and_run_callbacks(&Key::BrowserId, &browser.id);
-    }
-
-    pub fn get_isolated(&self) -> Option<bool> {
-        self.desktop_entry
-            .borrow()
-            .desktop_entry(&Key::Isolate.to_string())
-            .and_then(map_to_bool_option)
-    }
-
-    pub fn set_isolated(&self, is_isolated: bool) {
-        self.set_value_on_desktop_file_and_run_callbacks(&Key::Isolate, &is_isolated.to_string());
     }
 
     pub fn get_maximized(&self) -> Option<bool> {
@@ -370,20 +365,14 @@ impl DesktopFile {
             .borrow()
             .desktop_entry(&Key::Profile.to_string())
             .and_then(map_to_path_option)
-            .and_then(|profile_path| {
-                if profile_path.is_dir() || self.build_profile_path().is_ok() {
-                    return Some(profile_path);
-                }
-                None
-            })
     }
 
-    pub fn set_profile_path(&self, path: &Path) {
-        if let Some(old_profile_path) = self.get_profile_path()
-            && old_profile_path != path
+    pub fn set_profile_path(&self, path: Option<&Path>) {
+        if let Some(old_profile_path) = &self.get_profile_path()
+            && old_profile_path != path.unwrap_or(&PathBuf::new())
             && old_profile_path.is_dir()
         {
-            match fs::remove_dir_all(&old_profile_path) {
+            match fs::remove_dir_all(old_profile_path) {
                 Ok(()) => {
                     debug!( old_profile_path = %old_profile_path.display(), "Removed old browser profile");
                 }
@@ -395,7 +384,7 @@ impl DesktopFile {
 
         self.set_value_on_desktop_file_and_run_callbacks(
             &Key::Profile,
-            path.to_string_lossy().as_ref(),
+            &path.unwrap_or(&PathBuf::new()).to_string_lossy(),
         );
     }
 
@@ -496,21 +485,15 @@ impl DesktopFile {
         }
     }
 
-    pub fn build_profile_path(&self) -> Result<PathBuf> {
+    pub fn build_profile_path(&self, browser: &Rc<Browser>) -> Result<PathBuf> {
         debug!("Building profile path");
 
-        let browser = self.get_browser().context("No browser on DesktopFile")?;
-        let is_isolated = self.get_isolated().unwrap_or(false);
-
-        if !is_isolated {
-            bail!("Isolate is not set")
-        }
         if !browser.can_isolate {
             bail!("Browser cannot isolate")
         }
 
         let id = self.get_id().context("No id on DesktopFile")?;
-        let profile_path = browser.get_profile_path()?.join(&id);
+        let profile_path = browser.get_profile_dir_path()?.join(&id);
 
         if !profile_path.is_dir() {
             debug!(
@@ -681,9 +664,7 @@ impl DesktopFile {
                 config::APP_NAME.get_value()
             );
 
-            if self.get_isolated().is_some()
-                && let Some(profile_path) = self.get_profile_path()
-            {
+            if let Some(profile_path) = self.get_profile_path() {
                 debug!(
                     profile_path = profile_path.to_string_lossy().to_string(),
                     "Updating profile config"
@@ -767,10 +748,6 @@ impl DesktopFile {
             field: Key::BrowserId,
             message: "Missing".to_string(),
         })?;
-        let isolate = self.get_isolated().ok_or(ValidationError {
-            field: Key::Isolate,
-            message: "Missing".to_string(),
-        })?;
         let maximize = self.get_maximized().ok_or(ValidationError {
             field: Key::Maximize,
             message: "Missing".to_string(),
@@ -779,19 +756,15 @@ impl DesktopFile {
             field: Key::Icon,
             message: "Missing".to_string(),
         })?;
-        let profile_path = self
-            .get_profile_path()
-            .or_else(|| {
-                if isolate {
-                    None
-                } else {
-                    Some(PathBuf::default())
-                }
-            })
-            .ok_or(ValidationError {
+        let profile_path = self.get_profile_path();
+
+        if profile_path.is_some() && !browser.can_isolate {
+            return Err(ValidationError {
                 field: Key::Profile,
-                message: "Missing".to_string(),
-            })?;
+                message: "Profile path is set but browser cannot isolate".to_string(),
+            }
+            .into());
+        }
 
         Ok(DesktopFileEntries {
             name,
@@ -801,7 +774,6 @@ impl DesktopFile {
             url,
             url_path,
             domain,
-            isolate,
             maximize,
             icon_path: icon,
             profile_path,
@@ -903,8 +875,12 @@ impl DesktopFile {
 
         if Self::replace_conditional(
             "is_isolated",
-            entries.isolate,
-            Some(&entries.profile_path.to_string_lossy()),
+            entries.profile_path.is_some(),
+            entries
+                .profile_path
+                .as_ref()
+                .map(|profile_path| profile_path.to_string_lossy())
+                .as_deref(),
             argument_separator,
             &mut d_str,
         )
@@ -937,10 +913,12 @@ impl DesktopFile {
         new_desktop_file.set_version(&entries.version);
         new_desktop_file.set_url(&entries.url);
         new_desktop_file.set_browser(&entries.browser);
-        new_desktop_file.set_isolated(entries.isolate);
         new_desktop_file.set_maximized(entries.maximize);
-        new_desktop_file.set_profile_path(&entries.profile_path);
+        new_desktop_file.set_profile_path(entries.profile_path.as_deref());
 
+        if let Some(profile_path) = &entries.profile_path {
+            new_desktop_file.set_profile_path(Some(profile_path));
+        }
         if let Some(comment) = self.get_comment() {
             new_desktop_file.set_comment(&comment);
         }
@@ -1006,9 +984,8 @@ mod tests {
         desktop_file.set_icon_path(Path::new("../../dev-assets/icons/YouTube.png"));
         desktop_file.set_name("Test app");
         desktop_file.set_url("https://some.nice.url");
-        desktop_file.set_isolated(true);
         desktop_file.set_maximized(true);
-        desktop_file.set_profile_path(profile_path);
+        desktop_file.set_profile_path(Some(profile_path));
 
         desktop_file = desktop_file.to_new_from_browser()?;
 
@@ -1053,7 +1030,6 @@ X-MultipleArgs=false
 X-WAH=true
 X-WAH-BROWSER-ID={browser_id}
 X-WAH-ID=some-test-id
-X-WAH-ISOLATE=true
 X-WAH-MAXIMIZE=true
 X-WAH-PROFILE=/tmp/WebAppHub/test_profile
 X-WAH-URL=https://some.nice.url
@@ -1086,7 +1062,6 @@ X-MultipleArgs=false
 X-WAH=true
 X-WAH-BROWSER-ID={browser_id}
 X-WAH-ID=some-test-id
-X-WAH-ISOLATE=true
 X-WAH-MAXIMIZE=true
 X-WAH-PROFILE=/tmp/WebAppHub/test_profile
 X-WAH-URL=https://some.nice.url

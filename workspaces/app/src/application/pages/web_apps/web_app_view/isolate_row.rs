@@ -2,11 +2,7 @@ use super::form::FormField;
 use common::desktop_file::DesktopFile;
 use gtk::prelude::WidgetExt;
 use libadwaita::SwitchRow;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::rc::Rc;
 use tracing::debug;
 
 pub struct IsolateRow {
@@ -40,54 +36,44 @@ impl IsolateRow {
     }
 
     fn on_active(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
-        self.desktop_file.set_isolated(self.switch_row.is_active());
-
-        self.on_isolation_change(web_app_view);
-    }
-
-    fn on_isolation_change(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         let is_isolated = self.switch_row.is_active();
-        let old_profile_path = self.desktop_file.get_profile_path().unwrap_or_default();
-        let browser_can_isolate = self
-            .desktop_file
-            .get_browser()
-            .is_some_and(|browser| browser.can_isolate);
 
-        let new_profile_path = if is_isolated && browser_can_isolate {
-            match self.desktop_file.build_profile_path() {
+        let new_profile_path = if is_isolated {
+            let Some(browser) = self.desktop_file.get_browser() else {
+                web_app_view.error_message("Failed to get browser...", None);
+                return;
+            };
+
+            match self.desktop_file.build_profile_path(&browser) {
                 Err(error) => {
                     web_app_view.error_message("Could not set isolation", Some(&error));
                     return;
                 }
-                Ok(profile) => profile,
+                Ok(profile_path) => Some(profile_path),
             }
         } else {
-            PathBuf::default()
+            None
         };
 
-        if old_profile_path != new_profile_path && Path::new(&old_profile_path).is_dir() {
-            debug!(
-                path = old_profile_path.display().to_string(),
-                "Deleting profile"
-            );
-            let _ = fs::remove_dir_all(old_profile_path);
-        }
-
-        self.desktop_file.set_profile_path(&new_profile_path);
+        self.desktop_file
+            .set_profile_path(new_profile_path.as_deref());
     }
 
     fn on_reset(&self, web_app_view: &Rc<dyn super::WebAppViewShared>) {
         debug!("Resetting isolate_row");
 
         self.set_from_desktop_file();
-        self.on_isolation_change(web_app_view);
+        self.on_active(web_app_view);
+    }
+
+    fn validate(&self) {
+        self.set_from_desktop_file();
     }
 
     fn set_from_desktop_file(&self) {
         let browser = self.desktop_file.get_browser();
         let browser_can_isolate = browser.as_ref().is_some_and(|browser| browser.can_isolate);
-        let has_isolated = self.desktop_file.get_isolated();
-        let is_isolated = has_isolated.unwrap_or(false);
+        let is_isolated = self.desktop_file.get_profile_path().is_some();
 
         self.switch_row.set_active(is_isolated);
         self.switch_row.set_sensitive(browser_can_isolate);
@@ -99,11 +85,6 @@ impl IsolateRow {
         {
             debug!("Found desktop file with isolate on a browser that is incapable");
             self.switch_row.set_active(false);
-        }
-
-        // SwitchRow has already a setting on load, so sync this if empty
-        if has_isolated.is_none() {
-            self.desktop_file.set_isolated(self.switch_row.is_active());
         }
     }
 }
@@ -122,6 +103,7 @@ impl FormField for IsolateRow {
     }
 
     fn is_valid(&self, _do_dirty_check: bool, _apply_to_field: bool) -> bool {
+        self.validate();
         true
     }
 
