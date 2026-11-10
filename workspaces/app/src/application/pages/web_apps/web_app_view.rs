@@ -280,6 +280,7 @@ impl WebAppView {
                 let toast = self_clone.discard_message(&t!("forms.validation_error"));
                 let self_clone = self_clone.clone();
                 toast.connect_button_clicked(move |_toast| {
+                    self_clone.reset_desktop_file();
                     self_clone.nav_view.pop();
                 });
                 return;
