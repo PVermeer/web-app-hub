@@ -271,7 +271,7 @@ impl WebAppView {
             // Now apply dirty state
             self_clone.apply_form();
 
-            if !self_clone.save() {
+            if !self_clone.save(true) {
                 // Special case, user has to wait it and try again
                 if self_clone.url_row.is_fetching_icon() {
                     return;
@@ -281,6 +281,7 @@ impl WebAppView {
                 let self_clone = self_clone.clone();
                 toast.connect_button_clicked(move |_toast| {
                     self_clone.reset_desktop_file();
+                    self_clone.save(false);
                     self_clone.nav_view.pop();
                 });
                 return;
@@ -298,7 +299,7 @@ impl WebAppView {
         }
 
         self.save_button.connect_clicked(move |_| {
-            self_clone.save();
+            self_clone.save_new();
         });
     }
 
@@ -329,6 +330,7 @@ impl WebAppView {
         self.desktop_file
             .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
                 self_clone.validate(false, false);
+                self_clone.save(false);
             });
     }
 
@@ -340,6 +342,7 @@ impl WebAppView {
             self_clone.validate(false, false);
             self_clone.app_header.reset(self_clone.clone());
             self_clone.change_icon_form_header.is_valid(false, true);
+            self_clone.save(false);
         });
     }
 
@@ -472,16 +475,25 @@ impl WebAppView {
         form_is_valid
     }
 
-    fn save(self: &Rc<Self>) -> bool {
+    /// * `show_messages` - Show all status messages, error messages are always shown
+    fn save(self: &Rc<Self>, show_messages: bool) -> bool {
+        if self.is_new() {
+            return false;
+        }
+
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
 
         if self.url_row.is_fetching_icon() {
-            self.urgent_message(&t!("forms.fetching_icon"));
+            if show_messages {
+                self.urgent_message(&t!("forms.fetching_icon"));
+            }
             return false;
         }
 
         if !self.validate_form(true, true) {
-            self.urgent_message(&t!("forms.validation_error"));
+            if show_messages {
+                self.urgent_message(&t!("forms.validation_error"));
+            }
             return false;
         }
 
@@ -498,11 +510,18 @@ impl WebAppView {
             return false;
         }
 
-        if !self.is_new() {
-            return true;
+        true
+    }
+
+    fn save_new(self: &Rc<Self>) -> bool {
+        *self.is_new.borrow_mut() = false;
+
+        if !self.save(true) {
+            *self.is_new.borrow_mut() = true;
+
+            return false;
         }
 
-        *self.is_new.borrow_mut() = false;
         self.app_header.run_app_button.set_visible(true);
         self.save_button.set_visible(false);
 
