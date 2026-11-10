@@ -305,26 +305,21 @@ impl EntryRowAppExt for EntryRow {
         if apply_to_field {
             match validation {
                 EntryRowValidation::Empty(ref _entry_row) => {
-                    self.set_show_apply_button(false);
                     self.add_css_class("error");
                     self.set_title(&t!("forms.validation.empty", field = &default_title));
                 }
 
                 EntryRowValidation::InvalidUrl(ref _entry_row) => {
-                    self.set_show_apply_button(false);
-
                     self.add_css_class("error");
                     self.set_title(&t!("forms.validation.url", field = &default_title));
                 }
 
                 EntryRowValidation::Dirty(ref _entry_row) => {
-                    self.set_show_apply_button(true);
                     self.add_css_class("error");
                     self.set_title(&t!("forms.validation.dirty", field = &default_title));
                 }
 
                 EntryRowValidation::Valid(ref _entry_row) => {
-                    self.set_show_apply_button(self.is_dirty());
                     self.remove_css_class("error");
                     self.set_title(&default_title);
                 }
@@ -334,6 +329,7 @@ impl EntryRowAppExt for EntryRow {
         // This is a bit weird. Setting this button does not behave like one would think.
         // Need to enable it back (in the same frame???) so it's ready for the next user input.
         // My guess is that it internally resets to the current value.
+        self.set_show_apply_button(self.is_dirty());
         self.set_show_apply_button(true);
 
         debug!(%validation);
