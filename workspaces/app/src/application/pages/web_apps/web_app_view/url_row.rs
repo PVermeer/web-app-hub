@@ -2,7 +2,7 @@ use super::{
     EntryRowAppExt, WebAppViewShared, change_icon_header::ChangeIconHeader, form::FormField,
     icon_picker::IconPicker,
 };
-use common::desktop_file::{self, DesktopFile};
+use common::desktop_file::{self, DesktopFile, Key};
 use gtk::{
     InputPurpose,
     glib::{self},
@@ -64,6 +64,19 @@ impl UrlRow {
 
         self.entry_row
             .connect_apply(move |_entry_row| self_clone.on_apply());
+
+        let self_clone = self.clone();
+
+        self.desktop_file.connect_changed(
+            move |_desktop_file, key, _new_value, _previous_value| {
+                if matches!(key, Key::Icon) {
+                    *self_clone.is_fetching_icon.borrow_mut() = false;
+                    self_clone.change_icon_form_header.set_sensitive(true);
+                    self_clone.spinner.set_visible(false);
+                    self_clone.entry_row.set_sensitive(true);
+                }
+            },
+        );
     }
 
     pub fn is_fetching_icon(&self) -> bool {
@@ -75,28 +88,17 @@ impl UrlRow {
             return;
         }
 
+        *self.is_fetching_icon.borrow_mut() = true;
         self.change_icon_form_header.set_sensitive(false);
         self.desktop_file.set_url(&self.entry_row.text());
-
         self.icon_picker.reset();
-        *self.is_fetching_icon.borrow_mut() = true;
+        self.entry_row.set_sensitive(false);
+        self.spinner.set_visible(true);
 
-        let self_clone = self.clone();
-        let change_icon_form_header = self.change_icon_form_header.clone();
         let icon_picker = self.icon_picker.clone();
 
-        // Bug with clippy, make sure its dropped before await future
-        #[allow(clippy::await_holding_refcell_ref)]
         glib::spawn_future_local(async move {
-            self_clone.entry_row.set_sensitive(false);
-            self_clone.spinner.set_visible(true);
-
             icon_picker.save_first_icon_found().await;
-
-            change_icon_form_header.set_sensitive(true);
-            self_clone.spinner.set_visible(false);
-            self_clone.entry_row.set_sensitive(true);
-            *self_clone.is_fetching_icon.borrow_mut() = false;
         });
     }
 

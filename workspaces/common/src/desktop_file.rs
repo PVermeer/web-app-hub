@@ -604,7 +604,7 @@ impl DesktopFile {
     }
 
     /// Listen for changes on `DesktopFile`
-    pub fn on_change<F>(&self, callback: F)
+    pub fn connect_changed<F>(&self, callback: F)
     where
         F: Fn(&DesktopFile, &Key, &str, &str) + 'static,
     {
@@ -623,8 +623,9 @@ impl DesktopFile {
             return;
         }
 
+        debug!(%key, "Running connect_changed callbacks");
+
         for callback in callbacks_borrow.iter() {
-            debug!(%key, "Running on_change callback");
             callback(self, key, new_value, previous_value);
         }
     }

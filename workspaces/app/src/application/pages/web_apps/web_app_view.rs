@@ -22,7 +22,11 @@ use app_header::AppHeader;
 use browser_row::BrowserRow;
 use button_ext::ButtonAppExt;
 use change_icon_header::ChangeIconHeader;
-use common::desktop_file::{DesktopFile, error::DesktopFileError};
+use common::desktop_file::{
+    DesktopFile,
+    Key::{self},
+    error::DesktopFileError,
+};
 pub use entry_row_ext::EntryRowAppExt;
 use form::FormField;
 use gtk::{Align, EventControllerMotion, prelude::GtkWindowExt};
@@ -51,7 +55,6 @@ pub struct WebAppView {
     desktop_file_original: RefCell<Option<DesktopFile>>,
     app_icon: RefCell<Option<Rc<Icon>>>,
     app_icon_original: RefCell<Option<Rc<Icon>>>,
-    icon_picker: Rc<IconPicker>,
     nav_back_button: Button,
     reset_button: Button,
     toasts: ToastOverlay,
@@ -148,7 +151,6 @@ impl WebAppView {
             desktop_file_original: RefCell::new(None),
             app_icon: RefCell::new(app_icon),
             app_icon_original: RefCell::new(None),
-            icon_picker,
             nav_back_button,
             reset_button,
             toasts: toast_overlay,
@@ -173,7 +175,6 @@ impl WebAppView {
         self.connect_save_button();
         self.connect_delete_button();
         self.connect_desktop_file();
-        self.connect_icon_picker();
 
         // Pick up some possible changes after init
         self.reset_form();
@@ -241,7 +242,9 @@ impl WebAppView {
         let self_clone = self.clone();
 
         self.reset_button.connect_pressed_early(move |_button| {
-            self_clone.reset_desktop_file();
+            if self_clone.reset_desktop_file() {
+                self_clone.save(true);
+            }
         });
     }
 
@@ -328,22 +331,19 @@ impl WebAppView {
         let self_clone = self.clone();
 
         self.desktop_file
-            .on_change(move |_desktop_file, _key, _new_value, _previous_value| {
-                self_clone.validate(false, false);
+            .connect_changed(move |desktop_file, key, _new_value, _previous_value| {
+                if matches!(key, Key::Icon) {
+                    let icon = desktop_file
+                        .get_icon_path()
+                        .and_then(|icon_path| Icon::from_path(&icon_path).ok());
+
+                    self_clone.update_app_icon(icon.as_ref());
+                    self_clone.change_icon_form_header.is_valid(false, true);
+                }
+
+                self_clone.app_header.reset(self_clone.clone());
                 self_clone.save(false);
             });
-    }
-
-    fn connect_icon_picker(self: &Rc<Self>) {
-        let self_clone = self.clone();
-
-        self.icon_picker.connect_changed(move |_icon_picker, icon| {
-            self_clone.update_app_icon(icon);
-            self_clone.validate(false, false);
-            self_clone.app_header.reset(self_clone.clone());
-            self_clone.change_icon_form_header.is_valid(false, true);
-            self_clone.save(false);
-        });
     }
 
     fn is_new(&self) -> bool {
@@ -481,16 +481,20 @@ impl WebAppView {
             return false;
         }
 
+        debug!(id = self.desktop_file.get_id(), "Saving web app");
+
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
 
         if self.url_row.is_fetching_icon() {
+            debug!("Failed to save: fetching icon");
             if show_messages {
                 self.urgent_message(&t!("forms.fetching_icon"));
             }
             return false;
         }
 
-        if !self.validate_form(true, true) {
+        if !self.validate(true, true) {
+            debug!("Failed to save: invalid form");
             if show_messages {
                 self.urgent_message(&t!("forms.validation_error"));
             }

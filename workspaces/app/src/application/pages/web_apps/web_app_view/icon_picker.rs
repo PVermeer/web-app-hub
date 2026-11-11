@@ -29,14 +29,11 @@ use std::{
 };
 use tracing::{debug, error, warn};
 
-type OnChangeCallbackFn = dyn Fn(&IconPicker, Option<&Rc<Icon>>) + 'static;
-
 pub struct IconPicker {
     fetched_icons_ts: RefCell<SystemTime>,
     prefs_page: PreferencesPage,
     app: Rc<App>,
     desktop_file: Rc<DesktopFile>,
-    callbacks: RefCell<Vec<Rc<OnChangeCallbackFn>>>,
     icons: RefCell<HashMap<String, Rc<Icon>>>,
     icons_ordered: RefCell<Vec<(String, Rc<Icon>)>>,
     removed_icon: RefCell<Option<Rc<Icon>>>,
@@ -89,7 +86,6 @@ impl IconPicker {
             prefs_page,
             app: app.clone(),
             desktop_file: desktop_file.clone(),
-            callbacks: RefCell::new(Vec::new()),
             icons,
             icons_ordered,
             removed_icon: RefCell::new(None),
@@ -118,14 +114,6 @@ impl IconPicker {
             });
 
         self
-    }
-
-    pub fn connect_changed<F: Fn(&Self, Option<&Rc<Icon>>) + 'static>(
-        self: &Rc<Self>,
-        callback: F,
-    ) {
-        let callback = Rc::new(callback);
-        self.callbacks.borrow_mut().push(callback);
     }
 
     pub fn show_dialog(self: &Rc<Self>) {
@@ -180,12 +168,6 @@ impl IconPicker {
 
         let first_icon = icons_ordered_borrow.first().map(|(_source, icon)| icon);
         self.save(first_icon);
-    }
-
-    fn run_callbacks(self: &Rc<Self>, icon: Option<&Rc<Icon>>) {
-        for callback in &*self.callbacks.borrow() {
-            callback(self, icon);
-        }
     }
 
     fn get_selected_icon(self: &Rc<Self>) -> Result<Rc<Icon>> {
@@ -488,7 +470,6 @@ impl IconPicker {
         let Some(icon) = icon else {
             debug!("No icon found");
             self.desktop_file.set_icon_path(&PathBuf::default());
-            self.run_callbacks(None);
 
             return;
         };
@@ -496,7 +477,6 @@ impl IconPicker {
         let Some(app_id) = self.desktop_file.get_id() else {
             error!("No id on desktopfile????");
             self.desktop_file.set_icon_path(&PathBuf::default());
-            self.run_callbacks(None);
 
             return;
         };
@@ -508,13 +488,11 @@ impl IconPicker {
         if let Err(error) = icon.save(&save_path) {
             error!(%error, "Failed to save icon from IconPicker");
             self.desktop_file.set_icon_path(&PathBuf::default());
-            self.run_callbacks(None);
 
             return;
         }
 
         self.desktop_file.set_icon_path(&save_path);
-        self.run_callbacks(Some(icon));
     }
 
     fn build_spinner() -> Spinner {
