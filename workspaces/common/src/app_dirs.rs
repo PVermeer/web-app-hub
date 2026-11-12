@@ -11,7 +11,7 @@ use std::{
 };
 use tracing::debug;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct AppDirs {
     pub user_home: PathBuf,
     pub user_data: PathBuf,

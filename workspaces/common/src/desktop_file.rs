@@ -930,7 +930,21 @@ impl DesktopFile {
 }
 impl std::fmt::Display for DesktopFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.desktop_entry.borrow().fmt(f)
+        std::fmt::Display::fmt(&self.desktop_entry.borrow(), f)
+    }
+}
+
+impl std::fmt::Debug for DesktopFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DesktopFile")
+            .field("desktop_entry", &self.desktop_entry)
+            .field("browser_configs", &self.browser_configs)
+            .field("app_dirs", &self.app_dirs)
+            .field(
+                "on_change_callbacks",
+                &self.on_change_callbacks.borrow().len(),
+            )
+            .finish()
     }
 }
 
