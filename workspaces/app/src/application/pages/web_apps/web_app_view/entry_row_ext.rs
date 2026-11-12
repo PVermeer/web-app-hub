@@ -37,6 +37,9 @@ impl Display for EntryRowValidation {
     }
 }
 
+type OnAllCallbackFn = dyn Fn(&EntryRow);
+
+#[derive(Clone)]
 pub struct EntryRowExtEntry {
     entry_row: EntryRow,
     focus_controller: EventControllerFocus,
@@ -44,6 +47,7 @@ pub struct EntryRowExtEntry {
     key: desktop_file::Key,
     default_title: String,
     allow_empty: bool,
+    on_all_callbacks: Vec<Rc<OnAllCallbackFn>>,
     is_applied_once: bool,
 }
 
@@ -54,27 +58,21 @@ struct EntryRowExtEntryWeak {
     key: desktop_file::Key,
     default_title: String,
     allow_empty: bool,
+    on_all_callbacks: Vec<Rc<OnAllCallbackFn>>,
     is_applied_once: bool,
 }
 
 impl EntryRowExtEntryWeak {
-    fn new(
-        entry_row: &EntryRow,
-        focus_controller: &EventControllerFocus,
-        desktop_file: &Rc<DesktopFile>,
-        key: &desktop_file::Key,
-        default_title: &str,
-        allow_empty: bool,
-        is_applied_once: bool,
-    ) -> Self {
+    fn new(entry_row_ext: EntryRowExtEntry) -> Self {
         Self {
-            entry_row: entry_row.downgrade(),
-            focus_controller: focus_controller.downgrade(),
-            desktop_file: Rc::downgrade(desktop_file),
-            key: key.clone(),
-            default_title: default_title.to_string(),
-            allow_empty,
-            is_applied_once,
+            entry_row: entry_row_ext.entry_row.downgrade(),
+            focus_controller: entry_row_ext.focus_controller.downgrade(),
+            desktop_file: Rc::downgrade(&entry_row_ext.desktop_file),
+            key: entry_row_ext.key,
+            default_title: entry_row_ext.default_title,
+            allow_empty: entry_row_ext.allow_empty,
+            on_all_callbacks: entry_row_ext.on_all_callbacks,
+            is_applied_once: entry_row_ext.is_applied_once,
         }
     }
 
@@ -86,6 +84,7 @@ impl EntryRowExtEntryWeak {
             key: self.key.clone(),
             default_title: self.default_title.clone(),
             allow_empty: self.allow_empty,
+            on_all_callbacks: self.on_all_callbacks.clone(),
             is_applied_once: self.is_applied_once,
         })
     }
@@ -104,29 +103,13 @@ fn cleanup_desktop_files() {
     });
 }
 
-fn set_entry_row_ext(
-    entry_row: &EntryRow,
-    focus_controller: &EventControllerFocus,
-    desktop_file: &Rc<DesktopFile>,
-    key: &desktop_file::Key,
-    default_title: &str,
-    allow_empty: bool,
-    is_applied_once: bool,
-) {
+fn set_entry_row_ext(entry_row_ext: EntryRowExtEntry) {
     cleanup_desktop_files();
 
     DESKTOP_FILES.with(|map| {
         map.borrow_mut().insert(
-            entry_row.id(),
-            EntryRowExtEntryWeak::new(
-                entry_row,
-                focus_controller,
-                desktop_file,
-                key,
-                default_title,
-                allow_empty,
-                is_applied_once,
-            ),
+            entry_row_ext.entry_row.id(),
+            EntryRowExtEntryWeak::new(entry_row_ext),
         );
     });
 }
@@ -144,25 +127,7 @@ fn get_entry_row_ext(entry_row: &EntryRow) -> Option<EntryRowExtEntry> {
 fn update_entry_row_ext(entry_row_ext: &EntryRowExtEntry) {
     cleanup_desktop_files();
 
-    let EntryRowExtEntry {
-        entry_row,
-        focus_controller,
-        desktop_file,
-        key,
-        default_title,
-        allow_empty,
-        is_applied_once,
-    } = entry_row_ext;
-
-    set_entry_row_ext(
-        entry_row,
-        focus_controller,
-        desktop_file,
-        key,
-        default_title,
-        *allow_empty,
-        *is_applied_once,
-    );
+    set_entry_row_ext(entry_row_ext.clone());
 }
 
 fn find_apply_button(widget: &impl IsA<Widget>) -> Option<Button> {
@@ -197,6 +162,7 @@ pub trait EntryRowAppExt {
         default_title: &str,
         allow_empty: bool,
     );
+    fn connect_apply_and_leave<F: Fn(&EntryRow) + 'static>(&self, callback: F);
     fn on_changes(&self);
     fn on_apply(&self);
     fn saved_text(&self) -> Option<String>;
@@ -222,15 +188,16 @@ impl EntryRowAppExt for EntryRow {
     ) {
         let focus_controller = EventControllerFocus::new();
 
-        set_entry_row_ext(
-            self,
-            &focus_controller,
-            desktop_file,
-            key,
-            default_title,
+        set_entry_row_ext(EntryRowExtEntry {
+            entry_row: self.clone(),
+            focus_controller: focus_controller.clone(),
+            desktop_file: desktop_file.clone(),
+            key: key.clone(),
+            default_title: default_title.to_string(),
             allow_empty,
-            false,
-        );
+            on_all_callbacks: Vec::new(),
+            is_applied_once: false,
+        });
 
         self.set_show_apply_button(true);
         if let Some(apply_button) = find_apply_button(self) {
@@ -241,12 +208,24 @@ impl EntryRowAppExt for EntryRow {
 
         let entry_row = self.clone();
 
-        self.connect_apply(EntryRowAppExt::on_apply);
         self.connect_changed(EntryRowAppExt::on_changes);
-        self.connect_entry_activated(|entry_row| entry_row.emit_by_name("apply", &[]));
-        focus_controller.connect_leave(move |_| entry_row.emit_by_name("apply", &[]));
+
+        // Map all apply events to a leave event
+        // Then call all our callbacks in our own connect.
+        self.connect_apply(EntryRowAppExt::unfocus);
+        self.connect_entry_activated(EntryRowAppExt::unfocus);
+        focus_controller.connect_leave(move |_| entry_row.on_apply());
 
         self.add_controller(focus_controller);
+    }
+
+    fn connect_apply_and_leave<F: Fn(&EntryRow) + 'static>(&self, callback: F) {
+        let Some(mut entry_row_ext) = self.entry_row_ext() else {
+            return;
+        };
+
+        entry_row_ext.on_all_callbacks.push(Rc::new(callback));
+        update_entry_row_ext(&entry_row_ext);
     }
 
     fn on_changes(&self) {
@@ -267,10 +246,10 @@ impl EntryRowAppExt for EntryRow {
         entry_row_ext.is_applied_once = true;
         update_entry_row_ext(&entry_row_ext);
 
-        if self.is_valid(false, true) {
-            // This is a bit sketchy, would think this would recurse
-            // with the focus_controller but gtk seems to handle it.
-            self.unfocus();
+        self.validate(false, true);
+
+        for callback in entry_row_ext.on_all_callbacks {
+            callback(self);
         }
     }
 
@@ -372,15 +351,8 @@ impl EntryRowAppExt for EntryRow {
     }
 
     fn unfocus(&self) {
-        if let Some(parent) = self.parent()
-            && let Some(entry_row_ext) = self.entry_row_ext()
-        {
-            // Make sure an extra leave signla is not emitted.
-            self.remove_controller(&entry_row_ext.focus_controller);
-
+        if let Some(parent) = self.parent() {
             parent.grab_focus();
-
-            self.add_controller(entry_row_ext.focus_controller);
         }
     }
 
