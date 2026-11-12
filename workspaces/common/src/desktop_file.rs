@@ -604,10 +604,7 @@ impl DesktopFile {
     }
 
     /// Listen for changes on `DesktopFile`
-    pub fn connect_changed<F>(&self, callback: F)
-    where
-        F: Fn(&DesktopFile, &Key, &str, &str) + 'static,
-    {
+    pub fn connect_changed<F: Fn(&DesktopFile, &Key, &str, &str) + 'static>(&self, callback: F) {
         self.on_change_callbacks
             .borrow_mut()
             .push(Rc::new(callback).clone());
@@ -631,7 +628,6 @@ impl DesktopFile {
     }
 
     /// Run update actions when app has been updated, returns true if actions have been applied
-    #[allow(clippy::collapsible_if)]
     pub fn update(&self) -> Result<bool, DesktopFileError> {
         let app_version =
             Version::parse(config::VERSION.get_value()).context("Failed to get app version")?;
