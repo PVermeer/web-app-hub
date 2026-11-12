@@ -39,6 +39,7 @@ impl Display for EntryRowValidation {
 
 pub struct EntryRowExtEntry {
     entry_row: EntryRow,
+    focus_controller: EventControllerFocus,
     desktop_file: Rc<DesktopFile>,
     key: desktop_file::Key,
     default_title: String,
@@ -48,6 +49,7 @@ pub struct EntryRowExtEntry {
 
 struct EntryRowExtEntryWeak {
     entry_row: WeakRef<EntryRow>,
+    focus_controller: WeakRef<EventControllerFocus>,
     desktop_file: Weak<DesktopFile>,
     key: desktop_file::Key,
     default_title: String,
@@ -58,6 +60,7 @@ struct EntryRowExtEntryWeak {
 impl EntryRowExtEntryWeak {
     fn new(
         entry_row: &EntryRow,
+        focus_controller: &EventControllerFocus,
         desktop_file: &Rc<DesktopFile>,
         key: &desktop_file::Key,
         default_title: &str,
@@ -66,6 +69,7 @@ impl EntryRowExtEntryWeak {
     ) -> Self {
         Self {
             entry_row: entry_row.downgrade(),
+            focus_controller: focus_controller.downgrade(),
             desktop_file: Rc::downgrade(desktop_file),
             key: key.clone(),
             default_title: default_title.to_string(),
@@ -77,6 +81,7 @@ impl EntryRowExtEntryWeak {
     fn upgrade(&self) -> Option<EntryRowExtEntry> {
         Some(EntryRowExtEntry {
             entry_row: self.entry_row.upgrade()?,
+            focus_controller: self.focus_controller.upgrade()?,
             desktop_file: self.desktop_file.upgrade()?,
             key: self.key.clone(),
             default_title: self.default_title.clone(),
@@ -101,6 +106,7 @@ fn cleanup_desktop_files() {
 
 fn set_entry_row_ext(
     entry_row: &EntryRow,
+    focus_controller: &EventControllerFocus,
     desktop_file: &Rc<DesktopFile>,
     key: &desktop_file::Key,
     default_title: &str,
@@ -114,6 +120,7 @@ fn set_entry_row_ext(
             entry_row.id(),
             EntryRowExtEntryWeak::new(
                 entry_row,
+                focus_controller,
                 desktop_file,
                 key,
                 default_title,
@@ -139,6 +146,7 @@ fn update_entry_row_ext(entry_row_ext: &EntryRowExtEntry) {
 
     let EntryRowExtEntry {
         entry_row,
+        focus_controller,
         desktop_file,
         key,
         default_title,
@@ -148,6 +156,7 @@ fn update_entry_row_ext(entry_row_ext: &EntryRowExtEntry) {
 
     set_entry_row_ext(
         entry_row,
+        focus_controller,
         desktop_file,
         key,
         default_title,
@@ -211,7 +220,18 @@ impl EntryRowAppExt for EntryRow {
         default_title: &str,
         allow_empty: bool,
     ) {
-        set_entry_row_ext(self, desktop_file, key, default_title, allow_empty, false);
+        let focus_controller = EventControllerFocus::new();
+
+        set_entry_row_ext(
+            self,
+            &focus_controller,
+            desktop_file,
+            key,
+            default_title,
+            allow_empty,
+            false,
+        );
+
         self.set_show_apply_button(true);
         if let Some(apply_button) = find_apply_button(self) {
             // Disable focus so pressing "tab" will go to the next form field instead of the apply button.
@@ -220,7 +240,6 @@ impl EntryRowAppExt for EntryRow {
         }
 
         let entry_row = self.clone();
-        let focus_controller = EventControllerFocus::new();
 
         self.connect_apply(EntryRowAppExt::on_apply);
         self.connect_changed(EntryRowAppExt::on_changes);
@@ -353,8 +372,15 @@ impl EntryRowAppExt for EntryRow {
     }
 
     fn unfocus(&self) {
-        if let Some(parent) = self.parent() {
+        if let Some(parent) = self.parent()
+            && let Some(entry_row_ext) = self.entry_row_ext()
+        {
+            // Make sure an extra leave signla is not emitted.
+            self.remove_controller(&entry_row_ext.focus_controller);
+
             parent.grab_focus();
+
+            self.add_controller(entry_row_ext.focus_controller);
         }
     }
 
