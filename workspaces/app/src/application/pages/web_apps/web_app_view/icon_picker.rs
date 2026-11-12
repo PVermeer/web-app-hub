@@ -128,6 +128,9 @@ impl IconPicker {
             return;
         }
 
+        if *self.is_running.borrow() {
+            error!("Icon picker already running, this should not happen!");
+        }
         *self.is_running.borrow_mut() = true;
 
         self.load_icons(url, false);
@@ -174,6 +177,9 @@ impl IconPicker {
             return;
         }
 
+        if *self.is_running.borrow() {
+            error!("Icon picker already running, this should not happen!");
+        }
         *self.is_running.borrow_mut() = true;
 
         let _ = self.set_online_icons(url, false).await;
