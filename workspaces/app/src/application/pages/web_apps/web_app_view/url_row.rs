@@ -2,7 +2,7 @@ use super::{
     EntryRowAppExt, WebAppViewShared, change_icon_header::ChangeIconHeader, form::FormField,
     icon_picker::IconPicker,
 };
-use common::desktop_file::{self, DesktopFile, Key};
+use common::desktop_file::{self, DesktopFile};
 use gtk::{
     InputPurpose,
     glib::{self},
@@ -12,7 +12,7 @@ use libadwaita::{
     EntryRow, Spinner,
     prelude::{EntryRowExt, PreferencesRowExt},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 use tracing::debug;
 
 pub struct UrlRow {
@@ -21,7 +21,6 @@ pub struct UrlRow {
     icon_picker: Rc<IconPicker>,
     change_icon_form_header: Rc<ChangeIconHeader>,
     spinner: Spinner,
-    is_fetching_icon: RefCell<bool>,
 }
 impl UrlRow {
     pub fn new(
@@ -55,7 +54,6 @@ impl UrlRow {
             icon_picker: icon_picker.clone(),
             change_icon_form_header: change_icon_form_header.clone(),
             spinner,
-            is_fetching_icon: RefCell::new(false),
         })
     }
 
@@ -64,23 +62,6 @@ impl UrlRow {
 
         self.entry_row
             .connect_apply(move |_entry_row| self_clone.on_apply());
-
-        let self_clone = self.clone();
-
-        self.desktop_file.connect_changed(
-            move |_desktop_file, key, _new_value, _previous_value| {
-                if matches!(key, Key::Icon) {
-                    *self_clone.is_fetching_icon.borrow_mut() = false;
-                    self_clone.change_icon_form_header.set_sensitive(true);
-                    self_clone.spinner.set_visible(false);
-                    self_clone.entry_row.set_sensitive(true);
-                }
-            },
-        );
-    }
-
-    pub fn is_fetching_icon(&self) -> bool {
-        *self.is_fetching_icon.borrow()
     }
 
     fn on_apply(self: &Rc<Self>) {
@@ -88,17 +69,21 @@ impl UrlRow {
             return;
         }
 
-        *self.is_fetching_icon.borrow_mut() = true;
+        let url = self.entry_row.text();
         self.change_icon_form_header.set_sensitive(false);
-        self.desktop_file.set_url(&self.entry_row.text());
-        self.icon_picker.reset();
         self.entry_row.set_sensitive(false);
         self.spinner.set_visible(true);
 
-        let icon_picker = self.icon_picker.clone();
+        let self_clone = self.clone();
+        self.icon_picker.reset();
 
         glib::spawn_future_local(async move {
-            icon_picker.save_first_icon_found().await;
+            self_clone.icon_picker.save_first_icon_found(&url).await;
+            self_clone.desktop_file.set_url(&url);
+
+            self_clone.change_icon_form_header.set_sensitive(true);
+            self_clone.spinner.set_visible(false);
+            self_clone.entry_row.set_sensitive(true);
         });
     }
 

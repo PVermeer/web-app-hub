@@ -44,6 +44,7 @@ pub struct IconPicker {
     pref_group_icons_add_button_row: ButtonRow,
     content_box: gtk::Box,
     spinner: Spinner,
+    is_running: RefCell<bool>,
 }
 impl IconPicker {
     pub const DIALOG_SAVE: &str = "save";
@@ -96,15 +97,21 @@ impl IconPicker {
             pref_group_icons_add_button_row,
             content_box,
             spinner,
+            is_running: RefCell::new(false),
         })
         .init()
     }
 
     fn init(self: Rc<Self>) -> Rc<Self> {
         let self_clone = self.clone();
+
         self.pref_group_icons_reset_button
             .connect_clicked(move |_| {
-                self_clone.load_icons(true);
+                let Some(url) = self_clone.desktop_file.get_url() else {
+                    error!("No url on desktop file");
+                    return;
+                };
+                self_clone.load_icons(&url, true);
             });
 
         let self_clone = self.clone();
@@ -116,12 +123,14 @@ impl IconPicker {
         self
     }
 
-    pub fn show_dialog(self: &Rc<Self>) {
+    pub fn show_dialog(self: &Rc<Self>, url: &str) {
         if self.dialog_is_open() {
             return;
         }
 
-        self.load_icons(false);
+        *self.is_running.borrow_mut() = true;
+
+        self.load_icons(url, false);
 
         let dialog = AlertDialog::builder()
             .heading(t!("web_apps.web_app_view.icon.dialog.title"))
@@ -150,24 +159,33 @@ impl IconPicker {
             self_clone.save(icon.as_ref());
         });
 
-        dialog.connect_closed(|dialog| {
+        let self_clone = self.clone();
+
+        dialog.connect_closed(move |dialog| {
             dialog.set_extra_child(None::<&gtk::Widget>);
+            *self_clone.is_running.borrow_mut() = false;
         });
 
         dialog.present(Some(&self.app.window.adw_window));
     }
 
-    pub async fn save_first_icon_found(self: &Rc<Self>) {
+    pub async fn save_first_icon_found(self: &Rc<Self>, url: &str) {
         if self.dialog_is_open() {
             return;
         }
 
-        let _ = self.set_online_icons(false).await;
+        *self.is_running.borrow_mut() = true;
+
+        let _ = self.set_online_icons(url, false).await;
         self.set_icons_ordered();
         let icons_ordered_borrow = self.icons_ordered.borrow();
 
         let first_icon = icons_ordered_borrow.first().map(|(_source, icon)| icon);
         self.save(first_icon);
+    }
+
+    pub fn is_fetching_icon(&self) -> bool {
+        *self.is_running.borrow()
     }
 
     fn get_selected_icon(self: &Rc<Self>) -> Result<Rc<Icon>> {
@@ -232,13 +250,14 @@ impl IconPicker {
         }
     }
 
-    fn load_icons(self: &Rc<Self>, force: bool) {
+    fn load_icons(self: &Rc<Self>, url: &str, force: bool) {
         let self_clone = self.clone();
+        let url = url.to_string();
 
         glib::spawn_future_local(async move {
             self_clone.set_icons_loading();
 
-            if let Err(error) = self_clone.set_online_icons(force).await {
+            if let Err(error) = self_clone.set_online_icons(&url, force).await {
                 error!("{error:?}");
             }
             if let Err(error) = self_clone.set_local_icon() {
@@ -302,17 +321,14 @@ impl IconPicker {
         }
     }
 
-    async fn set_online_icons(self: &Rc<Self>, force: bool) -> Result<()> {
+    async fn set_online_icons(self: &Rc<Self>, url: &str, force: bool) -> Result<()> {
         if !force && self.should_throttle() {
             return Ok(());
         }
 
-        debug!("Fetching online icons");
+        debug!(url, "Fetching online icons");
 
-        let Some(url) = self.desktop_file.get_url() else {
-            bail!("No url on desktop file")
-        };
-        let Ok(mut icon_fetcher) = IconFetcher::new(&self.app, &url) else {
+        let Ok(mut icon_fetcher) = IconFetcher::new(&self.app, url) else {
             bail!("Invalid url")
         };
         let Ok(icons) = icon_fetcher.get_online_icons().await else {
@@ -467,6 +483,8 @@ impl IconPicker {
     }
 
     fn save(self: &Rc<Self>, icon: Option<&Rc<Icon>>) {
+        *self.is_running.borrow_mut() = false;
+
         let Some(icon) = icon else {
             debug!("No icon found");
             self.desktop_file.set_icon_path(&PathBuf::default());

@@ -55,6 +55,7 @@ pub struct WebAppView {
     desktop_file_original: RefCell<Option<DesktopFile>>,
     app_icon: RefCell<Option<Rc<Icon>>>,
     app_icon_original: RefCell<Option<Rc<Icon>>>,
+    icon_picker: Rc<IconPicker>,
     nav_back_button: Button,
     reset_button: Button,
     toasts: ToastOverlay,
@@ -62,7 +63,6 @@ pub struct WebAppView {
     change_icon_form_header: Rc<ChangeIconHeader>,
     save_button: Button,
     delete_button: Button,
-    url_row: Rc<UrlRow>,
     form_fields: Vec<Rc<dyn FormField>>,
 }
 
@@ -151,6 +151,7 @@ impl WebAppView {
             desktop_file_original: RefCell::new(None),
             app_icon: RefCell::new(app_icon),
             app_icon_original: RefCell::new(None),
+            icon_picker,
             nav_back_button,
             reset_button,
             toasts: toast_overlay,
@@ -158,7 +159,6 @@ impl WebAppView {
             change_icon_form_header,
             save_button,
             delete_button,
-            url_row,
             form_fields,
         })
         .init()
@@ -276,7 +276,7 @@ impl WebAppView {
 
             if !self_clone.save(true) {
                 // Special case, user has to wait it and try again
-                if self_clone.url_row.is_fetching_icon() {
+                if self_clone.icon_picker.is_fetching_icon() {
                     return;
                 }
 
@@ -310,7 +310,7 @@ impl WebAppView {
         let self_clone = self.clone();
 
         self.delete_button.connect_clicked(move |_| {
-            if self_clone.url_row.is_fetching_icon() {
+            if self_clone.icon_picker.is_fetching_icon() {
                 return;
             }
 
@@ -358,7 +358,7 @@ impl WebAppView {
     fn reset_desktop_file(self: &Rc<Self>) -> bool {
         debug!("Resetting desktop file");
 
-        if self.url_row.is_fetching_icon() {
+        if self.icon_picker.is_fetching_icon() {
             self.message(&t!("forms.fetching_icon"));
             return false;
         }
@@ -485,7 +485,7 @@ impl WebAppView {
 
         self.app.window.adw_window.set_focus(None::<&gtk::Widget>);
 
-        if self.url_row.is_fetching_icon() {
+        if self.icon_picker.is_fetching_icon() {
             debug!("Failed to save: fetching icon");
             if show_messages {
                 self.urgent_message(&t!("forms.fetching_icon"));

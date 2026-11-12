@@ -6,6 +6,7 @@ use gtk::{
 };
 use libadwaita::ButtonContent;
 use std::rc::Rc;
+use tracing::error;
 
 pub struct ChangeIconHeader {
     pub header: gtk::Box,
@@ -53,7 +54,12 @@ impl ChangeIconHeader {
     }
 
     fn on_click(self: &Rc<Self>) {
-        self.icon_picker.show_dialog();
+        let Some(url) = self.desktop_file.get_url() else {
+            error!("No url on desktop file");
+            return;
+        };
+
+        self.icon_picker.show_dialog(&url);
     }
 
     fn validate(&self, apply_to_fields: bool) -> bool {
