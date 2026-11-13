@@ -79,10 +79,7 @@ impl ChangeIconHeader {
     }
 
     fn is_valid(&self) -> bool {
-        if self.desktop_file.get_url().is_none() {
-            return true;
-        }
-        self.desktop_file.get_icon_path().is_some()
+        self.desktop_file.get_icon_path().is_some() || self.desktop_file.get_url().is_none()
     }
 
     pub fn set_sensitive(&self, can_click: bool) {

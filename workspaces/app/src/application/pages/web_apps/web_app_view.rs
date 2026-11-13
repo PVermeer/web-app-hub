@@ -341,7 +341,12 @@ impl WebAppView {
                     self_clone.change_icon_form_header.is_valid(false, true);
                 }
 
+                if matches!(key, Key::Url) {
+                    self_clone.change_icon_form_header.is_valid(false, true);
+                }
+
                 self_clone.app_header.reset(self_clone.clone());
+                self_clone.validate(false, false);
                 self_clone.save(false);
             });
     }
