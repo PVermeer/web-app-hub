@@ -90,8 +90,7 @@ impl AppHeader {
         let browser_name = self
             .desktop_file
             .get_browser()
-            .map(|browser| browser.get_name_with_installation())
-            .unwrap_or_default();
+            .map_or_default(|browser| browser.get_name_with_installation());
 
         // Update the app header
         if let Some(paintable) = app_image.paintable() {

@@ -420,8 +420,7 @@ impl WebAppView {
                 .desktop_file_original
                 .borrow()
                 .as_ref()
-                .map(std::string::ToString::to_string)
-                .unwrap_or_default()
+                .map_or_default(std::string::ToString::to_string)
         {
             has_changed = true;
         }
