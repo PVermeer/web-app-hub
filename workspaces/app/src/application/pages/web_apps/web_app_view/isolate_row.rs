@@ -1,4 +1,4 @@
-use super::form::FormField;
+use super::{SwitchRowAppExt, form::FormField};
 use common::desktop_file::DesktopFile;
 use gtk::prelude::WidgetExt;
 use libadwaita::SwitchRow;
@@ -16,7 +16,8 @@ impl IsolateRow {
             .title(t!("web_apps.web_app_view.isolate.title"))
             .subtitle(t!("web_apps.web_app_view.isolate.subtitle"))
             .tooltip_text(t!("web_apps.web_app_view.isolate.disabled"))
-            .build();
+            .build()
+            .fix_switch_focus();
 
         Rc::new(Self {
             switch_row,

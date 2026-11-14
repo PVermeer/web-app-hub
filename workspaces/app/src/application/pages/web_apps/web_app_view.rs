@@ -9,6 +9,7 @@ mod isolate_row;
 mod maximize_row;
 mod name_row;
 mod optional_row;
+mod switch_row_ext;
 mod url_row;
 
 use crate::application::{
@@ -43,6 +44,7 @@ use libadwaita::{
 use maximize_row::MaximizeRow;
 use name_row::NameRow;
 use std::{cell::RefCell, rc::Rc};
+pub use switch_row_ext::SwitchRowAppExt;
 use tracing::debug;
 use url_row::UrlRow;
 

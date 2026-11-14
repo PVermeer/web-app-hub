@@ -1,4 +1,4 @@
-use super::form::FormField;
+use super::{SwitchRowAppExt, form::FormField};
 use common::desktop_file::DesktopFile;
 use gtk::prelude::WidgetExt;
 use libadwaita::SwitchRow;
@@ -16,7 +16,8 @@ impl MaximizeRow {
             .title(t!("web_apps.web_app_view.maximize.title"))
             .subtitle(t!("web_apps.web_app_view.maximize.subtitle"))
             .tooltip_text(t!("web_apps.web_app_view.maximize.disabled"))
-            .build();
+            .build()
+            .fix_switch_focus();
 
         Rc::new(Self {
             switch_row,
