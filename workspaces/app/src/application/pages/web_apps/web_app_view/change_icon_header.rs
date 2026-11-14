@@ -6,7 +6,7 @@ use gtk::{
 };
 use libadwaita::ButtonContent;
 use std::rc::Rc;
-use tracing::error;
+use tracing::{debug, error};
 
 pub struct ChangeIconHeader {
     pub header: gtk::Box,
@@ -22,7 +22,10 @@ impl ChangeIconHeader {
             .label(t!("web_apps.web_app_view.button.icon"))
             .icon_name("software-update-available-symbolic")
             .build();
-        let change_icon_button = Button::builder().child(&button_content).build();
+        let change_icon_button = Button::builder()
+            .sensitive(false)
+            .child(&button_content)
+            .build();
 
         let validation_label = Label::builder()
             .label(t!(
@@ -62,6 +65,13 @@ impl ChangeIconHeader {
         self.icon_picker.show_dialog(&url);
     }
 
+    fn on_reset(&self) {
+        debug!("Resetting ChangeIconHeader");
+
+        self.change_icon_button
+            .set_sensitive(self.desktop_file.get_url().is_some());
+    }
+
     fn validate(&self, apply_to_fields: bool) -> bool {
         let is_valid = self.is_valid();
 
@@ -94,7 +104,9 @@ impl FormField for ChangeIconHeader {
 
     fn apply(self: Rc<Self>, _web_app_view: Rc<dyn WebAppViewShared>) {}
 
-    fn reset(&self, _web_app_view: Rc<dyn WebAppViewShared>) {}
+    fn reset(&self, _web_app_view: Rc<dyn WebAppViewShared>) {
+        self.on_reset();
+    }
 
     fn is_valid(&self, _do_dirty_check: bool, apply_to_field: bool) -> bool {
         self.validate(apply_to_field)
