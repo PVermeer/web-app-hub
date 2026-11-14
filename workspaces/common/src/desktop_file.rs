@@ -426,13 +426,15 @@ impl DesktopFile {
         self.set_value_on_desktop_file_and_run_callbacks(&Key::Comment, comment);
     }
 
-    pub fn copy_profile_config_to_profile_path(&self, profile_path: &Path) -> Result<()> {
+    pub fn copy_profile_config_to_profile_path(
+        &self,
+        browser: &Rc<Browser>,
+        profile_path: &Path,
+    ) -> Result<()> {
         debug!(
             profile_path = %profile_path.display(),
             "Setup profile"
         );
-
-        let browser = self.get_browser().context("No browser on DesktopFile")?;
 
         if !profile_path.is_dir() {
             debug!(
@@ -507,7 +509,7 @@ impl DesktopFile {
         }
 
         debug!("Using profile path: {}", &profile_path.display());
-        self.copy_profile_config_to_profile_path(&profile_path)?;
+        self.copy_profile_config_to_profile_path(browser, &profile_path)?;
 
         Ok(profile_path)
     }
@@ -675,7 +677,9 @@ impl DesktopFile {
                     "Updating profile config"
                 );
 
-                self.copy_profile_config_to_profile_path(&profile_path)?;
+                if let Some(browser) = self.get_browser() {
+                    self.copy_profile_config_to_profile_path(&browser, &profile_path)?;
+                }
             }
         } else {
             return Ok(false);
