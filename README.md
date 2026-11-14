@@ -77,7 +77,7 @@ The desktop file supports variable substitution using the `%{variable}` syntax.
 | `%{domain}`      | Domain portion of the URL                         |
 | `%{domain_path}` | Sanitized domain and path combination             |
 | `%{icon}`        | Path to the application icon                      |
-| `%{app_id}`      | Generated application identifier                  |
+| `%{app_id}`      | Desktop file id (file name without `.desktop`)    |
 
 #### Conditional Variables
 
