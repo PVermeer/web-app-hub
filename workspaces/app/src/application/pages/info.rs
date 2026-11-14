@@ -79,8 +79,7 @@ impl InfoPage {
         let zen_browser_keybind = app
             .browser_configs
             .get_browser_by_config_name("zen")
-            .map(|browser| browser.profile_setup_keybind.clone().unwrap_or_default())
-            .unwrap_or_default();
+            .map_or_default(|browser| browser.profile_setup_keybind.clone().unwrap_or_default());
 
         let text_label = Label::builder()
             .use_markup(true)

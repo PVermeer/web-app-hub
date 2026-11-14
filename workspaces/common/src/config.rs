@@ -96,7 +96,7 @@ fn set_from_cargo_toml() {
         .expect("Could not load developer / author")
         .clone();
     let issues_url = format!("{repository}/issues");
-    let bin_name = bin.first().map(|bin| bin.name.clone()).unwrap_or_default();
+    let bin_name = bin.first().map_or_default(|bin| bin.name.clone());
 
     let _ = APP_ID.set(id);
     let _ = VERSION.set(version);

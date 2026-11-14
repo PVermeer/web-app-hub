@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // TODO change these to expects
+
 use anyhow::{Context, Result};
 use common::{
     app_dirs::AppDirs,

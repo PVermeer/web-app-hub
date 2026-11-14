@@ -19,7 +19,7 @@ RUN rpm2cpio libadwaita-*.rpm | sudo cpio -idm -D /
 RUN rm libadwaita-*.rpm
 
 # Dev tools
-RUN dnf install -y git flatpak-builder rpmdevtools rpmlint jq curl gh rustup gcc gcc-c++ make cmake clang python3 python3-pip pipx shfmt shellcheck doxygen nodejs npm vulkan-tools pipewire-utils appstream desktop-file-utils
+RUN dnf install -y git flatpak-builder rpmdevtools rpmlint jq curl gh rustup gcc gcc-c++ make cmake clang python3 python3-pip pipx shellcheck doxygen nodejs npm vulkan-tools pipewire-utils appstream desktop-file-utils
 
 # Libs
 RUN dnf install -y gtk4-devel libdrm-devel OpenCL-ICD-Loader-devel boost-devel intel-mediasdk-devel libappindicator-gtk3-devel libcap-devel libcurl-devel libdrm-devel libevdev-devel libnotify-devel libva-devel libvdpau-devel libX11-devel libxcb-devel libXcursor-devel libXfixes-devel libXi-devel libXinerama-devel libXrandr-devel libXtst-devel mesa-libGL-devel miniupnpc-devel numactl-devel openssl-devel opus-devel pulseaudio-libs-devel rpm-build pipewire-devel libadwaita-devel python3-devel

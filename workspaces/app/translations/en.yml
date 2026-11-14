@@ -24,10 +24,10 @@ web_apps:
       header:
         name: No name...
     name:
-      title: Web app name
-      validate: Name is empty
+      title: Web App Name
+      validate: Please enter a name for your app
     url:
-      title: Website URL
+      title: Website URL (e.g., https://example.com)
       validate: Please enter a valid URL (e.g., https://example.com)
     isolate:
       title: Isolate
@@ -70,6 +70,7 @@ web_apps:
               utility: Utility
     icon:
       title: Icons
+      validate: No icon found, please add an icon
       dialog:
         title: Pick an icon
         save: Save
@@ -159,11 +160,17 @@ app_menu:
       cancel: Cancel
       text: |
         This will reset the config files (e.g.: browser configs).
-        It will not remove your create web apps.
+        It will not remove your created web apps.
 
 forms:
   apply_changes: Apply changes
   select_option: Select an option
   select_icon: Select an icon
   force_close: Discard and close
+  fetching_icon: Fetchin icon, please wait and try again
   validation_error: Please review the fields
+  save_error: Failed to save
+  validation:
+    empty: "%{field} is required"
+    dirty: "%{field} is not applied"
+    url: "Enter a valid url (e.g. https://example.org)"
