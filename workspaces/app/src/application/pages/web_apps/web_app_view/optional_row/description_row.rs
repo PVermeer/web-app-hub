@@ -3,10 +3,7 @@ use crate::application::pages::web_apps::web_app_view::{
 };
 use common::desktop_file::{self, DesktopFile};
 use gtk::{InputPurpose, prelude::EditableExt};
-use libadwaita::{
-    EntryRow,
-    prelude::{EntryRowExt, PreferencesRowExt},
-};
+use libadwaita::{EntryRow, prelude::PreferencesRowExt};
 use std::rc::Rc;
 use tracing::debug;
 
@@ -43,7 +40,7 @@ impl DescriptionRow {
         let self_clone = self.clone();
 
         self.entry_row
-            .connect_apply(move |_entry_row| self_clone.on_apply());
+            .connect_apply_and_leave(move |_entry_row| self_clone.on_apply());
     }
 
     fn on_apply(&self) {
