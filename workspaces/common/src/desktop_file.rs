@@ -779,8 +779,14 @@ impl DesktopFile {
     fn to_new_from_browser(&self) -> Result<DesktopFile, DesktopFileError> {
         let entries = &self.get_entries()?;
         let save_path = self.get_save_path()?;
-        let app_name_short = config::APP_NAME_SHORT.get_value();
-        let app_id = format!("{}-{}", app_name_short, entries.app_id);
+        // Use the desktop file id (its file name without extension) as app id.
+        // It starts with the browser's flatpak id, which KWin requires of
+        // sandboxed apps or it replaces the app id with the flatpak id.
+        let app_id = save_path
+            .file_stem()
+            .context("Failed to get desktop file id")?
+            .to_string_lossy()
+            .to_string();
         let browser = self.get_browser();
         // Edge case for firefox-esr that does not support 'param=profile-path'.
         // Normal firefox does supports this. Remove this when it's safe.
@@ -988,10 +994,10 @@ X-WAH-VERSION={app_version}
             r"
 [Desktop Entry]
 Categories=Network
-Exec=flatpak run org.mozilla.firefox --class=wah-some-test-id --name=wah-some-test-id --profile=/tmp/WebAppHub/test_profile --no-remote https://some.nice.url
+Exec=flatpak run org.mozilla.firefox --class=org.mozilla.firefox.firefox-wah-some-test-id --name=org.mozilla.firefox.firefox-wah-some-test-id --profile=/tmp/WebAppHub/test_profile --no-remote https://some.nice.url
 Icon=../../dev-assets/icons/YouTube.png
 Name=Test app
-StartupWMClass=wah-some-test-id
+StartupWMClass=org.mozilla.firefox.firefox-wah-some-test-id
 Terminal=false
 Type=Application
 Version=1.0
