@@ -534,7 +534,7 @@ impl DesktopFile {
             match fs::remove_file(&desktop_entry.path) {
                 Ok(()) => {}
                 Err(error) => {
-                    error!("Failed to remove desktop file before saving new: {error:?}");
+                    error!(%error, "Failed to remove desktop file before saving new");
                 }
             }
         }
@@ -542,8 +542,16 @@ impl DesktopFile {
         let new_desktop_entry = new_desktop_file.desktop_entry.borrow();
         let save_path = new_desktop_entry.path.clone();
 
-        debug!("Saving desktop file to: {}", save_path.display());
-        fs::write(&save_path, new_desktop_entry.to_string()).context("Saving desktop file")?;
+        debug!(
+            id = new_desktop_file.get_id(),
+            name = new_desktop_file.get_name(),
+            path = %save_path.display(),
+            "Saving desktop file"
+        );
+
+        fs::write(&save_path, new_desktop_entry.to_string())
+            .context("Failed to save desktop file")?;
+
         *desktop_entry = new_desktop_entry.clone();
 
         Ok(())

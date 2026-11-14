@@ -172,22 +172,37 @@ impl IconPicker {
         dialog.present(Some(&self.app.window.adw_window));
     }
 
-    pub async fn save_first_icon_found(self: &Rc<Self>, url: &str) {
-        if self.dialog_is_open() {
-            return;
+    /// This method has a sync and a async block and returns a future for the async block
+    /// The sync block updates state so this can accurately polled.
+    /// This now behaves more like `Promise.then()` in java-/typescript.
+    pub fn save_first_icon_found(self: &Rc<Self>, url: &str) -> impl Future<Output = ()> + 'static {
+        let should_run = !self.dialog_is_open();
+
+        if should_run {
+            if *self.is_running.borrow() {
+                error!("Icon picker already running, this should not happen!");
+            }
+
+            *self.is_running.borrow_mut() = true;
         }
 
-        if *self.is_running.borrow() {
-            error!("Icon picker already running, this should not happen!");
+        let self_clone = self.clone();
+        let url = url.to_string();
+
+        async move {
+            if !should_run {
+                return;
+            }
+
+            let _ = self_clone.set_online_icons(&url, false).await;
+
+            self_clone.set_icons_ordered();
+
+            let icons_ordered_borrow = self_clone.icons_ordered.borrow();
+            let first_icon = icons_ordered_borrow.first().map(|(_source, icon)| icon);
+
+            self_clone.save(first_icon);
         }
-        *self.is_running.borrow_mut() = true;
-
-        let _ = self.set_online_icons(url, false).await;
-        self.set_icons_ordered();
-        let icons_ordered_borrow = self.icons_ordered.borrow();
-
-        let first_icon = icons_ordered_borrow.first().map(|(_source, icon)| icon);
-        self.save(first_icon);
     }
 
     pub fn is_fetching_icon(&self) -> bool {

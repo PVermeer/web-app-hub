@@ -11,6 +11,8 @@ pub trait ButtonAppExt {
 }
 
 impl ButtonAppExt for Button {
+    /// This callback will be run before other callback in the save frame.
+    /// This can be used to run before widget leave events.
     fn connect_pressed_early<F: Fn(&Self) + 'static>(&self, callback: F) {
         let callback = Rc::new(callback);
 

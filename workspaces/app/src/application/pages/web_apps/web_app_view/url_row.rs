@@ -77,10 +77,12 @@ impl UrlRow {
         let self_clone = self.clone();
         self.icon_picker.reset();
 
+        // Run eager (sync) code first then schedule the lazy (async) part.
+        let future = self_clone.icon_picker.save_first_icon_found(&url);
         glib::spawn_future_local(async move {
-            self_clone.icon_picker.save_first_icon_found(&url).await;
-            self_clone.desktop_file.set_url(&url);
+            future.await;
 
+            self_clone.desktop_file.set_url(&url);
             self_clone.change_icon_form_header.set_sensitive(true);
             self_clone.spinner.set_visible(false);
             self_clone.entry_row.set_sensitive(true);

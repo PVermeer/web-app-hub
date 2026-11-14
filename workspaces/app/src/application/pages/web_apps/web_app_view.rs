@@ -262,7 +262,8 @@ impl WebAppView {
         let self_clone = self.clone();
 
         self.nav_back_button.connect_pressed_early(move |_button| {
-            // Before dirty state
+            self_clone.apply_form();
+
             if self_clone.is_new() {
                 if !self_clone.reset_desktop_file() {
                     return;
@@ -270,9 +271,6 @@ impl WebAppView {
                 self_clone.nav_view.pop();
                 return;
             }
-
-            // Now apply dirty state
-            self_clone.apply_form();
 
             if !self_clone.save(true) {
                 // Special case, user has to wait it and try again
