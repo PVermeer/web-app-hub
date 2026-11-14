@@ -104,6 +104,8 @@ impl FormField for ChangeIconHeader {
 
     fn apply(self: Rc<Self>, _web_app_view: Rc<dyn WebAppViewShared>) {}
 
+    fn touch(&self) {}
+
     fn reset(&self, _web_app_view: Rc<dyn WebAppViewShared>) {
         self.on_reset();
     }

@@ -173,6 +173,8 @@ impl FormField for BrowserRow {
         self.on_select(&web_app_view);
     }
 
+    fn touch(&self) {}
+
     fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_reset(&web_app_view);
     }

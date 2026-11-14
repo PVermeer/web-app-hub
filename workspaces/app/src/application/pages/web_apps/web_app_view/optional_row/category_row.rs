@@ -188,6 +188,8 @@ impl FormField for CategoryRow {
         self.on_select(&web_app_view);
     }
 
+    fn touch(&self) {}
+
     fn reset(&self, _web_app_view: Rc<dyn WebAppViewShared>) {
         self.on_reset();
     }

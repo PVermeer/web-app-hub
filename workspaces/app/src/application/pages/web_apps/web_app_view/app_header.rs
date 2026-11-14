@@ -148,6 +148,8 @@ impl FormField for AppHeader {
 
     fn apply(self: Rc<Self>, _web_app_view: Rc<dyn super::WebAppViewShared>) {}
 
+    fn touch(&self) {}
+
     fn reset(&self, web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_reset(&web_app_view);
     }

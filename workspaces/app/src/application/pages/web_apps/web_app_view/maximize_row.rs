@@ -78,6 +78,8 @@ impl FormField for MaximizeRow {
         self.on_active();
     }
 
+    fn touch(&self) {}
+
     fn reset(&self, _web_app_view: Rc<dyn super::WebAppViewShared>) {
         self.on_reset();
     }

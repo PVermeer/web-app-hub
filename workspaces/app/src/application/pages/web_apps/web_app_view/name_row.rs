@@ -65,6 +65,10 @@ impl FormField for NameRow {
         self.on_apply();
     }
 
+    fn touch(&self) {
+        self.entry_row.touch();
+    }
+
     fn reset(&self, _web_app_view: Rc<dyn WebAppViewShared>) {
         self.on_reset();
     }

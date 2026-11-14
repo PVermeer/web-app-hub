@@ -440,6 +440,12 @@ impl WebAppView {
         }
     }
 
+    fn touch_form(self: &Rc<Self>) {
+        for field in &self.form_fields {
+            field.clone().touch();
+        }
+    }
+
     fn reset_form(self: &Rc<Self>) {
         for field in &self.form_fields {
             field.reset(self.clone());
@@ -526,7 +532,7 @@ impl WebAppView {
 
         if !self.save(true) {
             *self.is_new.borrow_mut() = true;
-
+            self.touch_form();
             return false;
         }
 

@@ -171,6 +171,7 @@ pub trait EntryRowAppExt {
     fn is_valid(&self, do_dirty_check: bool, apply_to_field: bool) -> bool;
     fn is_dirty(&self) -> bool;
     fn unfocus(&self);
+    fn touch(&self);
     fn reset_touched(&self);
 }
 
@@ -354,6 +355,15 @@ impl EntryRowAppExt for EntryRow {
         if let Some(parent) = self.parent() {
             parent.grab_focus();
         }
+    }
+
+    fn touch(&self) {
+        let Some(mut entry_row_ext) = self.entry_row_ext() else {
+            return;
+        };
+
+        entry_row_ext.is_applied_once = true;
+        update_entry_row_ext(&entry_row_ext);
     }
 
     fn reset_touched(&self) {

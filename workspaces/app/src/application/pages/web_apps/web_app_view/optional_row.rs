@@ -122,6 +122,8 @@ impl FormField for OptionalRow {
         }
     }
 
+    fn touch(&self) {}
+
     fn reset(&self, web_app_view: Rc<dyn WebAppViewShared>) {
         for field in &self.form_fields {
             field.reset(web_app_view.clone());
