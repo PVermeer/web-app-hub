@@ -25,10 +25,8 @@ web_apps:
         name: Geen naam...
     name:
       title: Naam van de webapp
-      validate: Naam is leeg
     url:
       title: Website-URL
-      validate: Voer een geldige URL in (bijv. https://example.com)
     isolate:
       title: Isoleren
       subtitle: Gebruik een geïsoleerd profiel
@@ -162,8 +160,11 @@ app_menu:
         Het zal je gemaakte webapps niet verwijderen.
 
 forms:
-  apply_changes: Wijzigingen niet toegepast
-  select_option: Kies een optie
-  select_icon: Kies een pictogram
-  force_close: Sluiten zonder opslaan
+  force_close: Sluiten zonder op te slaan
+  fetching_icon: Pictogram ophalen, even geduld en probeer het opnieuw
   validation_error: Controleer de velden
+  save_error: Opslaan mislukt
+  validation:
+    empty: "%{field} is verplicht"
+    dirty: "%{field} is niet toegepast"
+    url: "Voer een geldige URL in (https://example.org)"

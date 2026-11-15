@@ -25,10 +25,8 @@ web_apps:
         name: Sin nombre...
     name:
       title: Nombre de la aplicación web
-      validate: El nombre está vacío
     url:
       title: Enlace del sitio web
-      validate: Por favor, introduzca un enlace válido (p.ej., https://ejemplo.com)
     isolate:
       title: Aislar
       subtitle: Usar un perfil aislado
@@ -162,8 +160,11 @@ app_menu:
         Esta acción no eliminará las aplicaciones web que haya creado.
 
 forms:
-  apply_changes: Aplicar cambios
-  select_option: Seleccione una opción
-  select_icon: Seleccione un icono
   force_close: Descartar y cerrar
+  fetching_icon: Obteniendo el icono, espere e inténtelo de nuevo
   validation_error: Por favor, revise los campos
+  save_error: Error al guardar
+  validation:
+    empty: "%{field} es obligatorio"
+    dirty: "%{field} no se ha aplicado"
+    url: "Introduzca una URL válida (p. ej., https://example.org)"

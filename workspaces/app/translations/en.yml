@@ -25,10 +25,8 @@ web_apps:
         name: No name...
     name:
       title: Web App Name
-      validate: Please enter a name for your app
     url:
       title: Website URL (e.g., https://example.com)
-      validate: Please enter a valid URL (e.g., https://example.com)
     isolate:
       title: Isolate
       subtitle: Use an isolated profile
@@ -70,7 +68,6 @@ web_apps:
               utility: Utility
     icon:
       title: Icons
-      validate: No icon found, please add an icon
       dialog:
         title: Pick an icon
         save: Save
@@ -163,9 +160,6 @@ app_menu:
         It will not remove your created web apps.
 
 forms:
-  apply_changes: Apply changes
-  select_option: Select an option
-  select_icon: Select an icon
   force_close: Discard and close
   fetching_icon: Fetching icon, please wait and try again
   validation_error: Please review the fields
