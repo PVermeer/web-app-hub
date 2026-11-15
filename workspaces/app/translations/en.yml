@@ -167,10 +167,10 @@ forms:
   select_option: Select an option
   select_icon: Select an icon
   force_close: Discard and close
-  fetching_icon: Fetchin icon, please wait and try again
+  fetching_icon: Fetching icon, please wait and try again
   validation_error: Please review the fields
   save_error: Failed to save
   validation:
     empty: "%{field} is required"
     dirty: "%{field} is not applied"
-    url: "Enter a valid url (e.g. https://example.org)"
+    url: "Enter a valid URL (e.g. https://example.org)"
