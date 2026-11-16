@@ -1,3 +1,16 @@
+## [1.4.0] - 2026-11-16
+
+### 🚀 Features
+
+- *(web-app-view)* Validation is now displayed on the form fields (#77)
+
+### 🐛 Bug Fixes
+
+- *(desktop-file)* Flatpak firefox apps match again on kde taskbar (#78)
+
+### ⚙️ Miscellaneous Tasks
+
+- *(dev)* Install browsers script added flathub remote
 ## [1.3.0] - 2026-10-25
 
 ### 🚀 Features
@@ -9,6 +22,7 @@
 - *(dev)* Update dev-container
 - *(clippy)* Fix clippy errors
 - *(dev)* Updated dev-container
+- *(release)* V1.3.0
 
 ### 💼 Other
 
@@ -76,16 +90,3 @@ This reverts commit f80487b1e31314c17473fac0d43c0294f014236f.
 ### 💼 Other
 
 - Changed environment check to optional
-## [1.1.0] - 2026-07-06
-
-### 🚀 Features
-
-- *(icon-picker)* Added google favicon api lookup
-
-### ⚙️ Miscellaneous Tasks
-
-- *(release)* V1.1.0
-
-### 💼 Other
-
-- *(app)* Only do dev things on debug builds
