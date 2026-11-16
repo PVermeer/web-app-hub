@@ -77,6 +77,7 @@ DisplayName=Some custom installation
 StorageType=harddisk
 ' | sudo tee /etc/flatpak/installations.d/some_custom_installation.conf
 
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 flatpak --installation="some_custom_installation" remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
 flatpak_browsers=(
