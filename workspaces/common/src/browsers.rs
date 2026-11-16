@@ -7,7 +7,7 @@ use anyhow::{Context, Result, bail};
 use freedesktop_desktop_entry::DesktopEntry;
 use gtk::Image;
 use serde::Deserialize;
-use std::{cell::OnceCell, collections::HashMap, fs, path::Path, rc::Rc};
+use std::{cell::OnceCell, collections::HashMap, fmt::Debug, fs, path::Path, rc::Rc};
 use std::{fmt::Write as _, path::PathBuf};
 use tracing::{debug, error, info};
 
@@ -19,14 +19,20 @@ pub trait BrowserIconTheme {
     fn add_search_path(&self, path: &Path);
 }
 
-#[derive(PartialEq)]
+impl Debug for dyn BrowserIconTheme {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "dyn BrowserIconTheme {{}}")
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Installation {
     Flatpak(String),
     System(String),
     None,
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Base {
     Chromium,
     Firefox,
@@ -73,6 +79,7 @@ pub struct BrowserYaml {
     issues: HashMap<String, Vec<String>>,
 }
 
+#[derive(Debug)]
 struct BrowserConfig {
     config_yaml: BrowserYaml,
     config_name: String,
@@ -80,6 +87,7 @@ struct BrowserConfig {
     desktop_file: DesktopEntry,
 }
 
+#[derive(Debug)]
 pub struct Browser {
     pub id: String,
     pub name: String,
@@ -209,7 +217,7 @@ impl Browser {
         Image::from_icon_name(Self::FALLBACK_IMAGE)
     }
 
-    pub fn get_profile_path(&self) -> Result<PathBuf> {
+    pub fn get_profile_dir_path(&self) -> Result<PathBuf> {
         if !self.can_isolate {
             bail!("Browser cannot isolate")
         }
@@ -362,6 +370,7 @@ impl Browser {
     }
 }
 
+#[derive(Debug)]
 pub struct BrowserConfigs {
     all_browsers: OnceCell<Vec<Rc<Browser>>>,
     installed_browsers: OnceCell<Vec<Rc<Browser>>>,
@@ -614,6 +623,10 @@ impl BrowserConfigs {
                 uninstalled_browsers.push(browser);
             }
         }
+
+        // Debug no browser
+        // let _ = self.installed_browsers.set(Vec::new());
+        // let _ = self.uninstalled_browsers.set(Vec::new());
 
         let _ = self.installed_browsers.set(installed_browsers.clone());
         let _ = self.uninstalled_browsers.set(uninstalled_browsers.clone());

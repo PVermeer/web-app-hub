@@ -1,16 +1,10 @@
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(
-    clippy::dbg_macro,
-    clippy::unwrap_used,
-    // clippy::expect_used,
-    clippy::todo,
-    clippy::panic
+#![allow(
+    clippy::expect_used, // TODO This should not be allowed
+    clippy::must_use_candidate,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::new_without_default
 )]
-#![allow(clippy::must_use_candidate)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
-#![allow(clippy::new_without_default)]
 
 pub mod app_dirs;
 pub mod assets;

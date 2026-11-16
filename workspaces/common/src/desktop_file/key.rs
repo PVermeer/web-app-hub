@@ -11,7 +11,6 @@ pub enum Key {
     Url,
     Id,
     BrowserId,
-    Isolate,
     Maximize,
     Profile,
     Name,
@@ -21,6 +20,7 @@ pub enum Key {
     Categories,
     Comment,
 }
+
 impl Key {
     pub fn to_ui_string(&self) -> &str {
         match self {
@@ -29,7 +29,6 @@ impl Key {
             Self::Id => "App ID",
             Self::Url => "Website URL",
             Self::BrowserId => "Browser",
-            Self::Isolate => "Isolation",
             Self::Maximize => "Maximize",
             Self::Profile => "Profile",
             Self::Name => "Web app name",
@@ -41,6 +40,7 @@ impl Key {
         }
     }
 }
+
 impl Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let identifier = config::APP_NAME_SHORT.get_value().to_uppercase();
@@ -51,7 +51,6 @@ impl Display for Key {
             Self::Id => write!(f, "X-{identifier}-ID"),
             Self::Url => write!(f, "X-{identifier}-URL"),
             Self::BrowserId => write!(f, "X-{identifier}-BROWSER-ID"),
-            Self::Isolate => write!(f, "X-{identifier}-ISOLATE"),
             Self::Maximize => write!(f, "X-{identifier}-MAXIMIZE"),
             Self::Profile => write!(f, "X-{identifier}-PROFILE"),
             Self::Name => write!(f, "Name"),

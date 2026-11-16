@@ -14,11 +14,12 @@ use category::Category;
 use error::{DesktopFileError, ValidationError};
 use freedesktop_desktop_entry::DesktopEntry;
 use gtk::{Image, prelude::WidgetExt};
-use key::Key;
+pub use key::Key;
 use rand::{RngExt, distr::Alphanumeric, rng};
 use regex::Regex;
 use semver::Version;
 use std::{
+    cell::RefCell,
     fs::{self},
     path::{Path, PathBuf},
     rc::Rc,
@@ -35,17 +36,19 @@ pub struct DesktopFileEntries {
     url: String,
     url_path: String,
     domain: String,
-    isolate: bool,
     maximize: bool,
     icon_path: PathBuf,
-    profile_path: PathBuf,
+    profile_path: Option<PathBuf>,
 }
+
+type OnChangeCallbackFn = dyn Fn(&DesktopFile, &Key, &str, &str);
 
 #[derive(Clone)]
 pub struct DesktopFile {
-    desktop_entry: DesktopEntry,
+    desktop_entry: RefCell<DesktopEntry>,
     browser_configs: Rc<BrowserConfigs>,
     app_dirs: Rc<AppDirs>,
+    on_change_callbacks: RefCell<Vec<Rc<OnChangeCallbackFn>>>,
 }
 impl DesktopFile {
     pub fn is_owned(desktop_file_path: &Path) -> Result<bool> {
@@ -72,9 +75,10 @@ impl DesktopFile {
         desktop_entry.add_desktop_entry(Key::Version.to_string(), version);
 
         Self {
-            desktop_entry,
+            desktop_entry: RefCell::new(desktop_entry),
             browser_configs: browser_configs.clone(),
             app_dirs: app_dirs.clone(),
+            on_change_callbacks: RefCell::new(Vec::new()),
         }
     }
 
@@ -86,9 +90,10 @@ impl DesktopFile {
         let desktop_entry = DesktopEntry::from_path(path, None::<&[String]>)?;
 
         Ok(Self {
-            desktop_entry,
+            desktop_entry: RefCell::new(desktop_entry),
             browser_configs: browser_configs.clone(),
             app_dirs: app_dirs.clone(),
+            on_change_callbacks: RefCell::new(Vec::new()),
         })
     }
 
@@ -101,31 +106,84 @@ impl DesktopFile {
         let desktop_entry = DesktopEntry::from_str(path, str, None::<&[String]>)?;
 
         Ok(Self {
-            desktop_entry,
+            desktop_entry: RefCell::new(desktop_entry),
             browser_configs: browser_configs.clone(),
             app_dirs: app_dirs.clone(),
+            on_change_callbacks: RefCell::new(Vec::new()),
         })
     }
 
-    pub fn get_path(&self) -> PathBuf {
-        self.desktop_entry.path.clone()
+    pub fn set_from_desktop_file(&self, desktop_entry: &DesktopFile) {
+        // Run path methods to ensure paths are valid
+        self.set_icon_path(&desktop_entry.get_icon_path().unwrap_or_default());
+        self.set_profile_path(desktop_entry.get_profile_path().as_deref());
+
+        *self.desktop_entry.borrow_mut() = desktop_entry.desktop_entry.borrow().clone();
     }
 
-    pub fn set_path(&mut self, path: &Path) {
-        self.desktop_entry.path = path.to_path_buf();
+    pub fn get_by_key(&self, key: &Key) -> Option<String> {
+        let borrow = self.desktop_entry.borrow();
+        borrow
+            .desktop_entry(&key.to_string())
+            .map(std::string::ToString::to_string)
+    }
+
+    /// For some reason this method does exist in the desktop-entry library
+    fn remove_key(&self, key: &Key) {
+        if let Some(keymap) = self
+            .desktop_entry
+            .borrow_mut()
+            .groups
+            .0
+            .get_mut("Desktop Entry")
+        {
+            keymap.0.remove(&key.to_string());
+        }
+    }
+
+    fn set_value_on_desktop_file_and_run_callbacks(&self, key: &Key, new_value: &str) {
+        let previous_value = self.get_by_key(key).unwrap_or_default();
+
+        if new_value.is_empty() {
+            self.remove_key(key);
+        } else {
+            self.desktop_entry
+                .borrow_mut()
+                .add_desktop_entry(key.to_string(), new_value.to_string());
+        }
+
+        debug!(
+            id = self.get_id(),
+            new_value,
+            previous_value,
+            "Set '{}' on desktop file",
+            &key.to_string(),
+        );
+
+        self.run_on_change_callbacks(key, new_value, &previous_value);
+    }
+
+    pub fn get_path(&self) -> PathBuf {
+        self.desktop_entry.borrow().path.clone()
+    }
+
+    pub fn set_path(&self, path: &Path) {
+        self.desktop_entry.borrow_mut().path = path.to_path_buf();
 
         debug!("Set a new 'path' for desktop file: {}", path.display());
     }
 
     pub fn get_is_owned_app(&self) -> bool {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Gwa.to_string())
             .and_then(map_to_bool_option)
             .is_some_and(|is_owned| is_owned)
     }
 
-    pub fn set_is_owned_app(&mut self) {
+    fn set_is_owned_app(&self) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Gwa.to_string(), true.to_string());
 
         debug!(
@@ -133,6 +191,7 @@ impl DesktopFile {
             &Key::Gwa.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Gwa.to_string())
                 .unwrap_or_default()
         );
@@ -140,32 +199,25 @@ impl DesktopFile {
 
     pub fn get_name(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Name.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_name(&mut self, id: &str) {
-        self.desktop_entry
-            .add_desktop_entry(Key::Name.to_string(), id.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Name.to_string(),
-            &self
-                .desktop_entry
-                .desktop_entry(&Key::Name.to_string())
-                .unwrap_or_default()
-        );
+    pub fn set_name(&self, id: &str) {
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Name, id);
     }
 
     pub fn get_version(&self) -> Option<Version> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Version.to_string())
             .map(|result| Version::parse(result).unwrap_or(Version::new(0, 0, 0)))
     }
 
-    pub fn set_version(&mut self, version: &Version) {
+    fn set_version(&self, version: &Version) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Version.to_string(), version.to_string());
 
         debug!(
@@ -173,6 +225,7 @@ impl DesktopFile {
             &Key::Version.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Version.to_string())
                 .unwrap_or_default()
         );
@@ -180,18 +233,21 @@ impl DesktopFile {
 
     pub fn get_exec(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Exec.to_string())
             .and_then(map_to_string_option)
     }
 
     pub fn get_id(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Id.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_id(&mut self, id: &str) {
+    fn set_id(&self, id: &str) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Id.to_string(), id.to_string());
 
         debug!(
@@ -199,6 +255,7 @@ impl DesktopFile {
             &Key::Id.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Id.to_string())
                 .unwrap_or_default()
         );
@@ -206,26 +263,33 @@ impl DesktopFile {
 
     pub fn get_url(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Url.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_url(&mut self, url: &str) {
+    pub fn set_url(&self, url: &str) {
+        let key = Key::Url;
+        let value = url;
+        let previous_value = self.get_by_key(&key).unwrap_or_default();
+
         self.desktop_entry
-            .add_desktop_entry(Key::Url.to_string(), url.to_string());
+            .borrow_mut()
+            .add_desktop_entry(key.to_string(), value.to_string());
 
         debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Url.to_string(),
-            &self
-                .desktop_entry
-                .desktop_entry(&Key::Url.to_string())
-                .unwrap_or_default()
+            value,
+            previous_value,
+            "Set '{}' on desktop file",
+            &key.to_string(),
         );
+
+        self.run_on_change_callbacks(&key, value, &previous_value);
     }
 
     pub fn get_browser_id(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::BrowserId.to_string())
             .and_then(map_to_string_option)
     }
@@ -235,57 +299,25 @@ impl DesktopFile {
             .and_then(|browser_id| self.browser_configs.get_browser_by_id(&browser_id))
     }
 
-    pub fn set_browser(&mut self, browser: &Rc<Browser>) {
-        self.desktop_entry
-            .add_desktop_entry(Key::BrowserId.to_string(), browser.id.clone());
+    pub fn set_browser(&self, browser: &Rc<Browser>) {
+        if !browser.can_isolate {
+            self.set_profile_path(None);
+        } else if self.get_profile_path().is_some() {
+            self.set_profile_path(self.build_profile_path(browser).ok().as_deref());
+        }
 
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::BrowserId.to_string(),
-            &self
-                .desktop_entry
-                .desktop_entry(&Key::BrowserId.to_string())
-                .unwrap_or_default()
-        );
-    }
-
-    pub fn get_isolated(&self) -> Option<bool> {
-        self.desktop_entry
-            .desktop_entry(&Key::Isolate.to_string())
-            .and_then(map_to_bool_option)
-    }
-
-    pub fn set_isolated(&mut self, is_isolated: bool) {
-        self.desktop_entry
-            .add_desktop_entry(Key::Isolate.to_string(), is_isolated.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Isolate.to_string(),
-            &self
-                .desktop_entry
-                .desktop_entry(&Key::Isolate.to_string())
-                .unwrap_or_default()
-        );
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::BrowserId, &browser.id);
     }
 
     pub fn get_maximized(&self) -> Option<bool> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Maximize.to_string())
             .and_then(map_to_bool_option)
     }
 
-    pub fn set_maximized(&mut self, is_maximized: bool) {
-        let key = Key::Maximize.to_string();
-
-        self.desktop_entry
-            .add_desktop_entry(key.clone(), is_maximized.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &key,
-            &self.desktop_entry.desktop_entry(&key).unwrap_or_default()
-        );
+    pub fn set_maximized(&self, is_maximized: bool) {
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Maximize, &is_maximized.to_string());
     }
 
     pub fn get_icon(&self) -> Image {
@@ -302,59 +334,74 @@ impl DesktopFile {
 
     pub fn get_icon_path(&self) -> Option<PathBuf> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Icon.to_string())
             .and_then(map_to_path_option)
-            .and_then(|icon_path| icon_path.is_file().then_some(icon_path))
     }
 
-    pub fn set_icon_path(&mut self, path: &Path) {
-        self.desktop_entry
-            .add_desktop_entry(Key::Icon.to_string(), path.to_string_lossy().to_string());
+    pub fn set_icon_path(&self, path: &Path) {
+        if let Some(old_icon_path) = self.get_icon_path()
+            && old_icon_path != path
+            && old_icon_path.is_file()
+        {
+            match fs::remove_file(&old_icon_path) {
+                Ok(()) => {
+                    debug!( old_icon_path = %old_icon_path.display(), "Removed old icon");
+                }
+                Err(error) => {
+                    error!(%error, old_icon_path = %old_icon_path.display(), "Failed to remove old icon file when setting a new path");
+                }
+            }
+        }
 
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Icon.to_string(),
-            &self
-                .desktop_entry
-                .desktop_entry(&Key::Icon.to_string())
-                .unwrap_or_default()
+        self.set_value_on_desktop_file_and_run_callbacks(
+            &Key::Icon,
+            path.to_string_lossy().as_ref(),
         );
     }
 
     pub fn get_profile_path(&self) -> Option<PathBuf> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Profile.to_string())
             .and_then(map_to_path_option)
-            .and_then(|profile_path| {
-                if profile_path.is_dir() || self.build_profile_path().is_ok() {
-                    return Some(profile_path);
-                }
-                None
-            })
     }
 
-    pub fn set_profile_path(&mut self, path: &Path) {
-        self.desktop_entry
-            .add_desktop_entry(Key::Profile.to_string(), path.to_string_lossy().to_string());
+    pub fn set_profile_path(&self, path: Option<&Path>) {
+        if let Some(old_profile_path) = &self.get_profile_path()
+            && old_profile_path != path.unwrap_or(&PathBuf::new())
+            && old_profile_path.is_dir()
+        {
+            match fs::remove_dir_all(old_profile_path) {
+                Ok(()) => {
+                    debug!( old_profile_path = %old_profile_path.display(), "Removed old browser profile");
+                }
+                Err(error) => {
+                    error!(%error, old_icon_path = %old_profile_path.display(), "Failed to remove old profile dir when setting a new dir");
+                }
+            }
+        }
 
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Profile.to_string(),
-            &self
-                .desktop_entry
-                .desktop_entry(&Key::Profile.to_string())
-                .unwrap_or_default()
+        self.set_value_on_desktop_file_and_run_callbacks(
+            &Key::Profile,
+            &path.unwrap_or(&PathBuf::new()).to_string_lossy(),
         );
     }
 
     pub fn get_category(&self) -> Option<String> {
         self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Categories.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_category(&mut self, category: &Category) {
+    pub fn set_category(&self, category: &Category) {
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Categories, &category.to_string());
+    }
+
+    fn set_category_str(&self, category: &str) {
         self.desktop_entry
+            .borrow_mut()
             .add_desktop_entry(Key::Categories.to_string(), category.to_string());
 
         debug!(
@@ -362,52 +409,32 @@ impl DesktopFile {
             &Key::Categories.to_string(),
             &self
                 .desktop_entry
+                .borrow()
                 .desktop_entry(&Key::Categories.to_string())
                 .unwrap_or_default()
         );
     }
 
-    fn set_category_str(&mut self, category: &str) {
+    pub fn get_comment(&self) -> Option<String> {
         self.desktop_entry
-            .add_desktop_entry(Key::Categories.to_string(), category.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Categories.to_string(),
-            &self
-                .desktop_entry
-                .desktop_entry(&Key::Categories.to_string())
-                .unwrap_or_default()
-        );
-    }
-
-    pub fn get_description(&self) -> Option<String> {
-        self.desktop_entry
+            .borrow()
             .desktop_entry(&Key::Comment.to_string())
             .and_then(map_to_string_option)
     }
 
-    pub fn set_description(&mut self, description: &str) {
-        self.desktop_entry
-            .add_desktop_entry(Key::Comment.to_string(), description.to_string());
-
-        debug!(
-            "Set '{}' on desktop file: {}",
-            &Key::Comment.to_string(),
-            &self
-                .desktop_entry
-                .desktop_entry(&Key::Comment.to_string())
-                .unwrap_or_default()
-        );
+    pub fn set_comment(&self, comment: &str) {
+        self.set_value_on_desktop_file_and_run_callbacks(&Key::Comment, comment);
     }
 
-    pub fn copy_profile_config_to_profile_path(&self, profile_path: &Path) -> Result<()> {
+    pub fn copy_profile_config_to_profile_path(
+        &self,
+        browser: &Rc<Browser>,
+        profile_path: &Path,
+    ) -> Result<()> {
         debug!(
             profile_path = %profile_path.display(),
             "Setup profile"
         );
-
-        let browser = self.get_browser().context("No browser on DesktopFile")?;
 
         if !profile_path.is_dir() {
             debug!(
@@ -460,21 +487,15 @@ impl DesktopFile {
         }
     }
 
-    pub fn build_profile_path(&self) -> Result<PathBuf> {
+    pub fn build_profile_path(&self, browser: &Rc<Browser>) -> Result<PathBuf> {
         debug!("Building profile path");
 
-        let browser = self.get_browser().context("No browser on DesktopFile")?;
-        let is_isolated = self.get_isolated().unwrap_or(false);
-
-        if !is_isolated {
-            bail!("Isolate is not set")
-        }
         if !browser.can_isolate {
             bail!("Browser cannot isolate")
         }
 
         let id = self.get_id().context("No id on DesktopFile")?;
-        let profile_path = browser.get_profile_path()?.join(&id);
+        let profile_path = browser.get_profile_dir_path()?.join(&id);
 
         if !profile_path.is_dir() {
             debug!(
@@ -488,39 +509,52 @@ impl DesktopFile {
         }
 
         debug!("Using profile path: {}", &profile_path.display());
-        self.copy_profile_config_to_profile_path(&profile_path)?;
+        self.copy_profile_config_to_profile_path(browser, &profile_path)?;
 
         Ok(profile_path)
     }
 
     pub fn validate(&self) -> Result<(), DesktopFileError> {
-        match self.to_new_from_browser() {
-            Err(error) => {
-                error!(validation_error = error.to_string(), "Invalid DesktopFile");
-                Err(error)
-            }
-            Ok(_) => Ok(()),
+        if let Err(error) = self.get_validated_entries() {
+            error!(
+                path = %self.get_save_path().unwrap_or_default().display(),
+                validation_error = error.to_string(),
+                "Invalid DesktopFile"
+            );
+            Err(error)
+        } else {
+            debug!(path = %self.get_save_path().unwrap_or_default().display(), "Desktop file is valid");
+            Ok(())
         }
     }
 
-    pub fn save(&mut self) -> Result<(), DesktopFileError> {
+    pub fn save(&self) -> Result<(), DesktopFileError> {
         let new_desktop_file = self.to_new_from_browser()?;
+        let mut desktop_entry = self.desktop_entry.borrow_mut();
 
-        if self.desktop_entry.path.is_file() && !self.desktop_entry.path.is_symlink() {
-            match fs::remove_file(&self.desktop_entry.path) {
+        if desktop_entry.path.is_file() && !desktop_entry.path.is_symlink() {
+            match fs::remove_file(&desktop_entry.path) {
                 Ok(()) => {}
                 Err(error) => {
-                    error!("Failed to remove desktop file before saving new: {error:?}");
+                    error!(%error, "Failed to remove desktop file before saving new");
                 }
             }
         }
 
-        let save_path = new_desktop_file.desktop_entry.path.clone();
+        let new_desktop_entry = new_desktop_file.desktop_entry.borrow();
+        let save_path = new_desktop_entry.path.clone();
 
-        debug!("Saving desktop file to: {}", save_path.display());
-        fs::write(&save_path, new_desktop_file.desktop_entry.to_string())
-            .context("Saving desktop file")?;
-        self.desktop_entry = new_desktop_file.desktop_entry;
+        debug!(
+            id = new_desktop_file.get_id(),
+            name = new_desktop_file.get_name(),
+            path = %save_path.display(),
+            "Saving desktop file"
+        );
+
+        fs::write(&save_path, new_desktop_entry.to_string())
+            .context("Failed to save desktop file")?;
+
+        *desktop_entry = new_desktop_entry.clone();
 
         Ok(())
     }
@@ -528,12 +562,15 @@ impl DesktopFile {
     pub fn delete(&self) -> Result<()> {
         let mut is_error = false;
 
-        if self.desktop_entry.path.is_file() {
-            match fs::remove_file(&self.desktop_entry.path) {
-                Ok(()) => {}
-                Err(error) => {
-                    error!("Failed to remove desktop file: {error:?}");
-                    is_error = true;
+        {
+            let desktop_entry = self.desktop_entry.borrow();
+            if desktop_entry.path.is_file() {
+                match fs::remove_file(&desktop_entry.path) {
+                    Ok(()) => {}
+                    Err(error) => {
+                        error!("Failed to remove desktop file: {error:?}");
+                        is_error = true;
+                    }
                 }
             }
         }
@@ -568,14 +605,40 @@ impl DesktopFile {
 
         info!(
             "Succesfully removed web app: {}",
-            self.get_name().unwrap_or_default()
+            self.get_name().unwrap_or(
+                self.get_id()
+                    .unwrap_or("Failed to get name or id".to_string())
+            )
         );
         Ok(())
     }
 
+    /// Listen for changes on `DesktopFile`
+    pub fn connect_changed<F: Fn(&DesktopFile, &Key, &str, &str) + 'static>(&self, callback: F) {
+        self.on_change_callbacks
+            .borrow_mut()
+            .push(Rc::new(callback).clone());
+    }
+
+    fn run_on_change_callbacks(&self, key: &Key, new_value: &str, previous_value: &str) {
+        let callbacks_borrow = self.on_change_callbacks.borrow();
+        if callbacks_borrow.is_empty() {
+            return;
+        }
+
+        if new_value == previous_value && !matches!(key, Key::Icon) {
+            return;
+        }
+
+        debug!(%key, "Running connect_changed callbacks");
+
+        for callback in callbacks_borrow.iter() {
+            callback(self, key, new_value, previous_value);
+        }
+    }
+
     /// Run update actions when app has been updated, returns true if actions have been applied
-    #[allow(clippy::collapsible_if)]
-    pub fn update(&mut self) -> Result<bool, DesktopFileError> {
+    pub fn update(&self) -> Result<bool, DesktopFileError> {
         let app_version =
             Version::parse(config::VERSION.get_value()).context("Failed to get app version")?;
         let desktop_file_version = match self.get_version() {
@@ -608,15 +671,15 @@ impl DesktopFile {
                 config::APP_NAME.get_value()
             );
 
-            if self.get_isolated().is_some()
-                && let Some(profile_path) = self.get_profile_path()
-            {
+            if let Some(profile_path) = self.get_profile_path() {
                 debug!(
                     profile_path = profile_path.to_string_lossy().to_string(),
                     "Updating profile config"
                 );
 
-                self.copy_profile_config_to_profile_path(&profile_path)?;
+                if let Some(browser) = self.get_browser() {
+                    self.copy_profile_config_to_profile_path(&browser, &profile_path)?;
+                }
             }
         } else {
             return Ok(false);
@@ -627,7 +690,21 @@ impl DesktopFile {
         Ok(true)
     }
 
-    fn get_entries(&self) -> Result<DesktopFileEntries, DesktopFileError> {
+    pub fn validate_url(url: &str) -> Result<Url> {
+        Url::parse(url)
+            .map_err(|error| anyhow!(error.to_string()))
+            .and_then(|url| {
+                if url.domain().is_none() {
+                    return Err(anyhow!("Failed to get domain part"));
+                }
+                if url.host_str().is_none() {
+                    return Err(anyhow!("Failed to get host string"));
+                }
+                Ok(url)
+            })
+    }
+
+    fn get_validated_entries(&self) -> Result<DesktopFileEntries, DesktopFileError> {
         let name = self.get_name().ok_or(ValidationError {
             field: Key::Name,
             message: "Missing".to_string(),
@@ -640,6 +717,7 @@ impl DesktopFile {
             field: Key::Version,
             message: "Missing".to_string(),
         })?;
+
         let url = self
             .get_url()
             .ok_or(ValidationError {
@@ -647,13 +725,12 @@ impl DesktopFile {
                 message: "Missing".to_string(),
             })
             .and_then(|url| {
-                let _ = Url::parse(&url).map_err(|_| ValidationError {
+                let _ = Self::validate_url(&url).map_err(|_| ValidationError {
                     field: Key::Url,
                     message: "Invalid".to_string(),
                 })?;
                 Ok(url)
             })?;
-
         let url_object = self
             .get_url()
             .ok_or(ValidationError {
@@ -680,10 +757,6 @@ impl DesktopFile {
             field: Key::BrowserId,
             message: "Missing".to_string(),
         })?;
-        let isolate = self.get_isolated().ok_or(ValidationError {
-            field: Key::Isolate,
-            message: "Missing".to_string(),
-        })?;
         let maximize = self.get_maximized().ok_or(ValidationError {
             field: Key::Maximize,
             message: "Missing".to_string(),
@@ -692,19 +765,15 @@ impl DesktopFile {
             field: Key::Icon,
             message: "Missing".to_string(),
         })?;
-        let profile_path = self
-            .get_profile_path()
-            .or_else(|| {
-                if isolate {
-                    None
-                } else {
-                    Some(PathBuf::default())
-                }
-            })
-            .ok_or(ValidationError {
+        let profile_path = self.get_profile_path();
+
+        if profile_path.is_some() && !browser.can_isolate {
+            return Err(ValidationError {
                 field: Key::Profile,
-                message: "Missing".to_string(),
-            })?;
+                message: "Profile path is set but browser cannot isolate".to_string(),
+            }
+            .into());
+        }
 
         Ok(DesktopFileEntries {
             name,
@@ -714,7 +783,6 @@ impl DesktopFile {
             url,
             url_path,
             domain,
-            isolate,
             maximize,
             icon_path: icon,
             profile_path,
@@ -777,7 +845,7 @@ impl DesktopFile {
     }
 
     fn to_new_from_browser(&self) -> Result<DesktopFile, DesktopFileError> {
-        let entries = &self.get_entries()?;
+        let entries = &self.get_validated_entries()?;
         let save_path = self.get_save_path()?;
         let app_name_short = config::APP_NAME_SHORT.get_value();
         let app_id = format!("{}-{}", app_name_short, entries.app_id);
@@ -816,8 +884,12 @@ impl DesktopFile {
 
         if Self::replace_conditional(
             "is_isolated",
-            entries.isolate,
-            Some(&entries.profile_path.to_string_lossy()),
+            entries.profile_path.is_some(),
+            entries
+                .profile_path
+                .as_ref()
+                .map(|profile_path| profile_path.to_string_lossy())
+                .as_deref(),
             argument_separator,
             &mut d_str,
         )
@@ -842,7 +914,7 @@ impl DesktopFile {
             )));
         }
 
-        let mut new_desktop_file =
+        let new_desktop_file =
             Self::from_string(&save_path, &d_str, &self.browser_configs, &self.app_dirs)?;
 
         new_desktop_file.set_is_owned_app();
@@ -850,12 +922,14 @@ impl DesktopFile {
         new_desktop_file.set_version(&entries.version);
         new_desktop_file.set_url(&entries.url);
         new_desktop_file.set_browser(&entries.browser);
-        new_desktop_file.set_isolated(entries.isolate);
         new_desktop_file.set_maximized(entries.maximize);
-        new_desktop_file.set_profile_path(&entries.profile_path);
+        new_desktop_file.set_profile_path(entries.profile_path.as_deref());
 
-        if let Some(description) = self.get_description() {
-            new_desktop_file.set_description(&description);
+        if let Some(profile_path) = &entries.profile_path {
+            new_desktop_file.set_profile_path(Some(profile_path));
+        }
+        if let Some(comment) = self.get_comment() {
+            new_desktop_file.set_comment(&comment);
         }
         if let Some(category) = self.get_category() {
             new_desktop_file.set_category_str(&category);
@@ -868,7 +942,21 @@ impl DesktopFile {
 }
 impl std::fmt::Display for DesktopFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.desktop_entry.fmt(f)
+        std::fmt::Display::fmt(&self.desktop_entry.borrow(), f)
+    }
+}
+
+impl std::fmt::Debug for DesktopFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DesktopFile")
+            .field("desktop_entry", &self.desktop_entry)
+            .field("browser_configs", &self.browser_configs)
+            .field("app_dirs", &self.app_dirs)
+            .field(
+                "on_change_callbacks",
+                &self.on_change_callbacks.borrow().len(),
+            )
+            .finish()
     }
 }
 
@@ -919,9 +1007,8 @@ mod tests {
         desktop_file.set_icon_path(Path::new("../../dev-assets/icons/YouTube.png"));
         desktop_file.set_name("Test app");
         desktop_file.set_url("https://some.nice.url");
-        desktop_file.set_isolated(true);
         desktop_file.set_maximized(true);
-        desktop_file.set_profile_path(profile_path);
+        desktop_file.set_profile_path(Some(profile_path));
 
         desktop_file = desktop_file.to_new_from_browser()?;
 
@@ -966,7 +1053,6 @@ X-MultipleArgs=false
 X-WAH=true
 X-WAH-BROWSER-ID={browser_id}
 X-WAH-ID=some-test-id
-X-WAH-ISOLATE=true
 X-WAH-MAXIMIZE=true
 X-WAH-PROFILE=/tmp/WebAppHub/test_profile
 X-WAH-URL=https://some.nice.url
@@ -999,7 +1085,6 @@ X-MultipleArgs=false
 X-WAH=true
 X-WAH-BROWSER-ID={browser_id}
 X-WAH-ID=some-test-id
-X-WAH-ISOLATE=true
 X-WAH-MAXIMIZE=true
 X-WAH-PROFILE=/tmp/WebAppHub/test_profile
 X-WAH-URL=https://some.nice.url

@@ -30,18 +30,19 @@ pub struct IconFetcher {
 }
 impl IconFetcher {
     pub fn new(app: &Rc<App>, url: &str) -> Result<Self> {
-        let Some(url) = Url::parse(url).ok() else {
+        let Some(parsed_url) = Url::parse(url).ok() else {
+            error!(url, "Invalid url");
             bail!("Invalid url")
         };
-        let base_url = if url.has_path() {
-            url.get_base_url().ok()
+        let base_url = if parsed_url.has_path() {
+            parsed_url.get_base_url().ok()
         } else {
             None
         };
 
         Ok(Self {
             app: app.clone(),
-            url,
+            url: parsed_url,
             base_url,
             icon_urls: HashSet::new(),
             manifest_urls: HashMap::new(),

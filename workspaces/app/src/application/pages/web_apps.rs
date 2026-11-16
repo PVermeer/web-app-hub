@@ -26,6 +26,7 @@ pub struct WebAppsPage {
     prefs_page: PreferencesPage,
     app_section: RefCell<PreferencesGroup>,
 }
+
 impl NavPage for WebAppsPage {
     fn get_navpage(&self) -> &NavigationPage {
         &self.nav_page
@@ -35,6 +36,7 @@ impl NavPage for WebAppsPage {
         Some(&self.nav_row)
     }
 }
+
 impl WebAppsPage {
     pub fn new() -> Rc<Self> {
         let title = t!("web_apps.title");
@@ -84,22 +86,13 @@ impl WebAppsPage {
         let app_clone = app.clone();
 
         new_app_button.connect_clicked(move |_| {
-            let desktop_file = Rc::new(RefCell::new(DesktopFile::new(
+            let desktop_file = Rc::new(DesktopFile::new(
                 &app_clone.browser_configs,
                 &app_clone.dirs,
-            )));
+            ));
             let app_page = WebAppView::new(&app_clone, &self_clone.nav_view, &desktop_file, true);
-            app_page.init();
 
-            let nav_page = app_page.get_navpage();
-            let app_page_clone = app_page.clone();
-            nav_page.connect_unrealize(move |_| {
-                if app_page_clone.get_is_new() {
-                    let _ = desktop_file.borrow().delete();
-                }
-            });
-
-            self_clone.nav_view.push(nav_page);
+            self_clone.nav_view.push(app_page.get_navpage());
         });
 
         let pref_group = PreferencesGroup::builder()
@@ -159,11 +152,10 @@ impl WebAppsPage {
 
         let app_clone = app.clone();
         let nav_view_clone = self.nav_view.clone();
-        let desktop_file_rc = Rc::new(RefCell::new(desktop_file));
+        let desktop_file_rc = Rc::new(desktop_file);
 
         app_row.connect_activated(move |_| {
             let app_page = WebAppView::new(&app_clone, &nav_view_clone, &desktop_file_rc, false);
-            app_page.init();
             self.nav_view.push(app_page.get_navpage());
         });
 
@@ -198,7 +190,7 @@ impl WebAppsPage {
                 continue;
             }
 
-            let Ok(mut desktop_file) =
+            let Ok(desktop_file) =
                 DesktopFile::from_path(&file.path(), &app.browser_configs, &app.dirs)
             else {
                 error!(path = file_path_string, "Failed to read desktop file");
@@ -239,11 +231,8 @@ impl WebAppsPage {
             if is_updated {
                 info!(file_name = &file_name, "Updated DesktopFile");
                 app_has_updated = true;
-            } else {
-                info!(file_name = &file_name, "Validating DesktopFile");
-                if desktop_file.validate().is_err() {
-                    has_error = true;
-                }
+            } else if desktop_file.validate().is_err() {
+                has_error = true;
             }
 
             owned_desktop_files.push((desktop_file, has_error));

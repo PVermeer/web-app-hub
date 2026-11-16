@@ -1,13 +1,3 @@
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(
-    clippy::dbg_macro,
-    clippy::unwrap_used,
-    // clippy::expect_used,
-    clippy::todo,
-    clippy::panic
-)]
-
 mod application;
 
 use application::App;
@@ -22,7 +12,7 @@ use tracing_subscriber::{FmtSubscriber, util::SubscriberInitExt};
 
 #[macro_use]
 extern crate rust_i18n;
-i18n!("translations", fallback = "en");
+i18n!();
 
 fn init_logging() {
     let mut log_level = if cfg!(debug_assertions) {
@@ -52,8 +42,7 @@ fn init_locale() {
         let language_stem = language
             .split('_')
             .next()
-            .map(std::string::ToString::to_string)
-            .unwrap_or_default();
+            .map_or_default(std::string::ToString::to_string);
         let mut locale = String::new();
 
         // Create fallback (e.g. `en_GB` -> `en` when en_GB does not exists)
@@ -65,8 +54,7 @@ fn init_locale() {
             let lang_stem = lang
                 .split('_')
                 .next()
-                .map(std::string::ToString::to_string)
-                .unwrap_or_default();
+                .map_or_default(std::string::ToString::to_string);
             if language_stem == lang_stem {
                 locale = lang_stem;
             }

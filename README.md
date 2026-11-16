@@ -108,6 +108,7 @@ profiles/
 Contributions are welcome!
 
 - Open a Pull Request (PR) against the main branch and explain your changes.
+- `workspaces/app/translations/TODO.yml` automatically tracks translations. It's ok to commit changes to this file as long as `en.yml` (the fallback) is correct.
 
 ### Bug Reports & Feature Requests
 
@@ -134,6 +135,8 @@ Want to help translate the app?
 - Include your language code (e.g., `nl.yml` for Dutch or `nl_BE` to be more specific).
 - `en.yml` Is the default translation file.
 - You may use AI to translate the default `en.yml` file to your language. Please check and correct the translations.
+
+In `workspaces/app/translations/TODO.yml` translation are automatically tracked for missing and extra translation keys. It's ok to commit this file without resolving resolving the missing translations. This app uses `en.yml` as a fallback.
 
 Translation file names follow the list from `$ locale --all-locales` (e.g., `en_GB`). The first part (language code) is used as a fallback if the second part (country code) doesn't exist. `en.yml` Already exists, thus adding `en_GB.yml` will add British translation but `en_US` users will still get `en.yml` translations. This works the same for the translation key in the browser config files.
 

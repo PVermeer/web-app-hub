@@ -1,13 +1,32 @@
+#![allow(clippy::unwrap_used)] // TODO change these to expects
+#![allow(clippy::expect_used)]
+
 use anyhow::{Context, Result};
 use common::{
     app_dirs::AppDirs,
     config::{self},
     utils::{self, OnceLockExt},
 };
+use serde::Serialize;
 use std::{
+    collections::{HashMap, HashSet},
     fs::{self},
     path::{Path, PathBuf},
 };
+
+#[allow(unused_macros)]
+macro_rules! debug {
+    ($val:expr $(,)?) => {{
+        let value = &$val;
+        let output = format!("{:#?}", value);
+
+        for line in output.lines() {
+            println!("cargo:warning=Debug: {}", line);
+        }
+
+        value
+    }};
+}
 
 fn main() -> Result<()> {
     println!("cargo:warning=Debug: App build script is running!");
@@ -26,6 +45,8 @@ fn main() -> Result<()> {
 
     install_app_desktop_file(&app_dirs)?;
     install_app_icon(&app_dirs)?;
+
+    check_translations();
 
     Ok(())
 }
@@ -183,4 +204,74 @@ fn icon_file_name() -> String {
     let file_name = format!("{app_id}.{extension}");
 
     file_name
+}
+
+fn check_translations() {
+    #[derive(Serialize)]
+    struct TranslationCheckYaml {
+        keys_not_translated: HashMap<String, HashSet<String>>,
+        extra_keys_in_translations: HashMap<String, HashMap<String, String>>,
+    }
+
+    let mut used_in_source = HashMap::new();
+    let source_path = Path::new(".")
+        .canonicalize()
+        .expect("Failed to create source path for i18n");
+
+    let config =
+        rust_i18n_support::I18nConfig::load(&source_path).expect("Failed to load i18n config");
+
+    rust_i18n_extract::iter::iter_crate(&source_path.to_string_lossy(), |path, source| {
+        rust_i18n_extract::extractor::extract(&mut used_in_source, path, source, config.clone())
+    })
+    .expect("Failed to extract source files for i18n");
+
+    let mut messages: Vec<_> = used_in_source.iter().collect();
+    messages.sort_by_key(|(_k, m)| m.index);
+
+    let translations_path = Path::new(&source_path).join(&config.load_path);
+    let output_file_name = "TODO.yml";
+    let output_file = translations_path.join(output_file_name);
+    let _ = fs::remove_file(&output_file);
+
+    let mut missing_keys: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut extra_keys: HashMap<String, HashMap<String, String>> = HashMap::new();
+
+    let ignore_file = |file_name: &str| file_name.ends_with(output_file_name);
+    let translations =
+        rust_i18n_support::load_locales(&translations_path.to_string_lossy(), ignore_file);
+
+    for key in used_in_source.keys() {
+        for (locale, translations) in &translations {
+            if !translations.contains_key(key) {
+                missing_keys
+                    .entry(locale.clone())
+                    .or_default()
+                    .insert(key.clone());
+            }
+        }
+    }
+
+    for (locale, translations) in translations {
+        for (key, value) in translations {
+            if key.starts_with('_') {
+                continue;
+            }
+
+            if !used_in_source.contains_key(&key) {
+                extra_keys
+                    .entry(locale.clone())
+                    .or_default()
+                    .insert(key, value);
+            }
+        }
+    }
+
+    let translation_todo_yml = serde_yaml::to_string(&TranslationCheckYaml {
+        keys_not_translated: missing_keys,
+        extra_keys_in_translations: extra_keys,
+    })
+    .expect("Failed to parse result to yaml in i18n");
+
+    fs::write(&output_file, &translation_todo_yml).expect("Failed to write yml to fs for i18n");
 }

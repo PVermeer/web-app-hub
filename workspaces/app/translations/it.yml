@@ -25,10 +25,8 @@ web_apps:
         name: Nessun nome...
     name:
       title: Nome web app
-      validate: Il nome è vuoto
     url:
       title: URL del sito web
-      validate: Inserisci un URL valido (es. https://example.com)
     isolate:
       title: Isola
       subtitle: Usa un profilo isolato
@@ -94,9 +92,9 @@ web_apps:
 
 browsers:
   title: Browser
-  # install_type:
-  #   system: System
-  #   flatpak: Flatpak
+  install_type:
+    system: Sistema
+    flatpak: Flatpak
   no_browsers:
     title: Nessun browser compatibile trovato
     description: Prova ad installarne uno!
@@ -161,9 +159,12 @@ app_menu:
         Questo reimposterà i file di configurazione (es.: configurazioni del browser).
         Non rimuoverà le tue web app create.
 
-# forms:
-#   apply_changes: Apply changes
-#   select_option: Select an option
-#   select_icon: Select an icon
-#   force_close: Discard and close
-#   validation_error: Please review the fields
+forms:
+  force_close: Scarta e chiudi
+  fetching_icon: Recupero dell'icona in corso, attendi e riprova
+  validation_error: Controlla i campi
+  save_error: Salvataggio non riuscito
+  validation:
+    empty: "%{field} è obbligatorio"
+    dirty: "%{field} non è stato applicato"
+    url: "Inserisci un URL valido (es. https://example.org)"

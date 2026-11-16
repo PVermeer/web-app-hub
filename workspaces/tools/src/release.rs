@@ -1,12 +1,4 @@
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-// #![warn(
-//     clippy::dbg_macro,
-//     clippy::unwrap_used,
-//     clippy::expect_used,
-//     clippy::todo,
-//     clippy::panic
-// )]
+#![allow(clippy::unwrap_used)] // TODO change these to expects
 
 use anyhow::{Context, Result, bail};
 use chrono::DateTime;
@@ -326,8 +318,7 @@ fn generate_changelog() -> Result<(String, Version)> {
             for feat in &features {
                 let scope = feat
                     .scope()
-                    .map(|scope| format!("{}: ", scope.as_str()))
-                    .unwrap_or_default();
+                    .map_or_default(|scope| format!("{}: ", scope.as_str()));
                 let feature_message = &feat.description();
                 let _ = write!(
                     release_xml,
@@ -354,8 +345,7 @@ fn generate_changelog() -> Result<(String, Version)> {
             for fix in &fixes {
                 let scope = fix
                     .scope()
-                    .map(|scope| format!("{}: ", scope.as_str()))
-                    .unwrap_or_default();
+                    .map_or_default(|scope| format!("{}: ", scope.as_str()));
                 let feature_message = &fix.description();
                 let _ = write!(
                     release_xml,

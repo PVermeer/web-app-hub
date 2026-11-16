@@ -42,6 +42,7 @@ pub struct App {
 }
 impl App {
     pub fn new(adw_application: &libadwaita::Application) -> Rc<Self> {
+        #![allow(clippy::expect_used)] // App cannot continue without these
         Rc::new({
             let display = gdk::Display::default().expect("Failed to connect to display");
             let icon_theme = Rc::new(AppIconTheme::for_display(&display));

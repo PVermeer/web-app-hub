@@ -162,11 +162,7 @@ pub mod command {
             return false;
         };
 
-        if !response.success {
-            return false;
-        }
-
-        true
+        response.success
     }
 
     pub fn run_command_background(command: &str) -> Result<()> {

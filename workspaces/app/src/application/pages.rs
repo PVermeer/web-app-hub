@@ -9,11 +9,12 @@ use home::HomePage;
 use info::InfoPage;
 use libadwaita::{
     ActionRow, Clamp, HeaderBar, NavigationPage, NavigationSplitView, NavigationView,
-    PreferencesPage, ToastOverlay, ToolbarView,
+    PreferencesPage, Toast, ToastOverlay, ToastPriority, ToolbarView,
     gtk::{self, Image, Orientation, ScrolledWindow, prelude::WidgetExt},
     prelude::ActionRowExt,
 };
 use std::rc::Rc;
+use tracing::error;
 use web_apps::WebAppsPage;
 
 #[derive(Clone)]
@@ -184,5 +185,71 @@ pub trait NavPage {
             toolbar,
             header,
         }
+    }
+}
+
+pub trait ToastOverlayAppExt {
+    const TOAST_MESSAGE_TIMEOUT: u32 = 4;
+
+    fn toast_overlay(&self) -> &ToastOverlay;
+
+    fn message(&self, message: &str) {
+        let overlay = self.toast_overlay();
+
+        let toast = Toast::builder()
+            .title(message)
+            .priority(ToastPriority::Normal)
+            .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+            .build();
+
+        overlay.add_toast(toast);
+    }
+
+    fn urgent_message(&self, message: &str) {
+        let overlay = self.toast_overlay();
+
+        let toast = Toast::builder()
+            .title(message)
+            .priority(ToastPriority::High)
+            .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+            .build();
+
+        overlay.dismiss_all();
+        overlay.add_toast(toast);
+    }
+
+    fn discard_message(&self, message: &str) -> Toast {
+        let overlay = self.toast_overlay();
+
+        let toast = Toast::builder()
+            .title(message)
+            .button_label(t!("forms.force_close"))
+            .priority(ToastPriority::High)
+            .timeout(Self::TOAST_MESSAGE_TIMEOUT)
+            .build();
+
+        overlay.dismiss_all();
+        overlay.add_toast(toast.clone());
+
+        toast
+    }
+
+    fn error(&self, message: &str, error: Option<&anyhow::Error>) {
+        let overlay = self.toast_overlay();
+
+        if let Some(error) = error {
+            error!("{error:?}");
+        }
+        let toast = Toast::new(&format!("ERROR: {message}"));
+        toast.set_timeout(Self::TOAST_MESSAGE_TIMEOUT);
+        toast.set_priority(ToastPriority::High);
+
+        overlay.dismiss_all();
+        overlay.add_toast(toast);
+    }
+}
+impl ToastOverlayAppExt for ToastOverlay {
+    fn toast_overlay(&self) -> &ToastOverlay {
+        self
     }
 }

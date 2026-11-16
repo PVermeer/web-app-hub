@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // TODO change these to expects
+
 use std::{fs::File, time::SystemTime};
 
 fn main() {

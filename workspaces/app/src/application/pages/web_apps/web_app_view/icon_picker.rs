@@ -1,4 +1,4 @@
-mod icon;
+pub mod icon;
 mod icon_fetcher;
 
 use crate::application::App;
@@ -23,18 +23,17 @@ use libadwaita::{
 use std::{
     cell::RefCell,
     collections::HashMap,
-    fs,
+    path::PathBuf,
     rc::Rc,
     time::{Duration, SystemTime},
 };
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
 pub struct IconPicker {
-    init: RefCell<bool>,
     fetched_icons_ts: RefCell<SystemTime>,
     prefs_page: PreferencesPage,
     app: Rc<App>,
-    desktop_file: Rc<RefCell<DesktopFile>>,
+    desktop_file: Rc<DesktopFile>,
     icons: RefCell<HashMap<String, Rc<Icon>>>,
     icons_ordered: RefCell<Vec<(String, Rc<Icon>)>>,
     removed_icon: RefCell<Option<Rc<Icon>>>,
@@ -45,6 +44,7 @@ pub struct IconPicker {
     pref_group_icons_add_button_row: ButtonRow,
     content_box: gtk::Box,
     spinner: Spinner,
+    is_running: RefCell<bool>,
 }
 impl IconPicker {
     pub const DIALOG_SAVE: &str = "save";
@@ -53,7 +53,7 @@ impl IconPicker {
     pub const CURRENT_ICON_SOURCE: &str = "current";
     pub const ICON_MAX_SIZE: i32 = 64;
 
-    pub fn new(app: &Rc<App>, desktop_file: &Rc<RefCell<DesktopFile>>) -> Rc<Self> {
+    pub fn new(app: &Rc<App>, desktop_file: &Rc<DesktopFile>) -> Rc<Self> {
         let icons = RefCell::new(HashMap::new());
         let icons_ordered = RefCell::new(Vec::new());
         let content_box = gtk::Box::builder()
@@ -83,7 +83,6 @@ impl IconPicker {
         );
 
         Rc::new(Self {
-            init: RefCell::new(false),
             fetched_icons_ts,
             prefs_page,
             app: app.clone(),
@@ -98,21 +97,21 @@ impl IconPicker {
             pref_group_icons_add_button_row,
             content_box,
             spinner,
+            is_running: RefCell::new(false),
         })
+        .init()
     }
 
-    pub fn init(self: &Rc<Self>) {
-        let mut is_init = self.init.borrow_mut();
-        self.load_icons(false);
-
-        if *is_init {
-            return;
-        }
-
+    fn init(self: Rc<Self>) -> Rc<Self> {
         let self_clone = self.clone();
+
         self.pref_group_icons_reset_button
             .connect_clicked(move |_| {
-                self_clone.load_icons(true);
+                let Some(url) = self_clone.desktop_file.get_url() else {
+                    error!("No url on desktop file");
+                    return;
+                };
+                self_clone.load_icons(&url, true);
             });
 
         let self_clone = self.clone();
@@ -121,19 +120,20 @@ impl IconPicker {
                 self_clone.load_icon_file_picker();
             });
 
-        *is_init = true;
+        self
     }
 
-    pub fn show_dialog<Success, Fail>(
-        self: &Rc<Self>,
-        success_cb: Option<Success>,
-        fail_cb: Option<Fail>,
-    ) -> AlertDialog
-    where
-        Success: Fn() + 'static,
-        Fail: Fn() + 'static,
-    {
-        self.init();
+    pub fn show_dialog(self: &Rc<Self>, url: &str) {
+        if self.dialog_is_open() {
+            return;
+        }
+
+        if *self.is_running.borrow() {
+            error!("Icon picker already running, this should not happen!");
+        }
+        *self.is_running.borrow_mut() = true;
+
+        self.load_icons(url, false);
 
         let dialog = AlertDialog::builder()
             .heading(t!("web_apps.web_app_view.icon.dialog.title"))
@@ -156,46 +156,57 @@ impl IconPicker {
         dialog.set_close_response(Self::DIALOG_CANCEL);
 
         let self_clone = self.clone();
-        dialog.connect_response(
-            Some(Self::DIALOG_SAVE),
-            move |_, _| match (|| -> Result<()> {
-                let icon = self_clone.get_selected_icon()?;
-                self_clone.save(&icon)?;
-                Ok(())
-            })() {
-                Ok(()) => {
-                    if let Some(success_cb) = &success_cb {
-                        success_cb();
-                    }
-                }
-                Err(error) => {
-                    error!("Error saving icon: {error:?}");
-                    if let Some(fail_cb) = &fail_cb {
-                        fail_cb();
-                    }
-                }
-            },
-        );
 
-        dialog.connect_closed(|dialog| {
+        dialog.connect_response(Some(Self::DIALOG_SAVE), move |_, _| {
+            let icon = self_clone.get_selected_icon().ok();
+            self_clone.save(icon.as_ref());
+        });
+
+        let self_clone = self.clone();
+
+        dialog.connect_closed(move |dialog| {
             dialog.set_extra_child(None::<&gtk::Widget>);
+            *self_clone.is_running.borrow_mut() = false;
         });
 
         dialog.present(Some(&self.app.window.adw_window));
-        dialog
     }
 
-    pub async fn save_first_icon_found(self: &Rc<Self>) -> Result<()> {
-        self.set_online_icons(false).await?;
-        self.set_icons_ordered();
-        let icons_ordered_borrow = self.icons_ordered.borrow();
+    /// This method has a sync and a async block and returns a future for the async block
+    /// The sync block updates state so this can accurately polled.
+    /// This now behaves more like `Promise.then()` in java-/typescript.
+    pub fn save_first_icon_found(self: &Rc<Self>, url: &str) -> impl Future<Output = ()> + 'static {
+        let should_run = !self.dialog_is_open();
 
-        let Some((_source, icon)) = icons_ordered_borrow.first() else {
-            bail!("No icons found")
-        };
+        if should_run {
+            if *self.is_running.borrow() {
+                error!("Icon picker already running, this should not happen!");
+            }
 
-        self.save(icon)?;
-        Ok(())
+            *self.is_running.borrow_mut() = true;
+        }
+
+        let self_clone = self.clone();
+        let url = url.to_string();
+
+        async move {
+            if !should_run {
+                return;
+            }
+
+            let _ = self_clone.set_online_icons(&url, false).await;
+
+            self_clone.set_icons_ordered();
+
+            let icons_ordered_borrow = self_clone.icons_ordered.borrow();
+            let first_icon = icons_ordered_borrow.first().map(|(_source, icon)| icon);
+
+            self_clone.save(first_icon);
+        }
+    }
+
+    pub fn is_fetching_icon(&self) -> bool {
+        *self.is_running.borrow()
     }
 
     fn get_selected_icon(self: &Rc<Self>) -> Result<Rc<Icon>> {
@@ -260,13 +271,14 @@ impl IconPicker {
         }
     }
 
-    fn load_icons(self: &Rc<Self>, force: bool) {
+    fn load_icons(self: &Rc<Self>, url: &str, force: bool) {
         let self_clone = self.clone();
+        let url = url.to_string();
 
         glib::spawn_future_local(async move {
             self_clone.set_icons_loading();
 
-            if let Err(error) = self_clone.set_online_icons(force).await {
+            if let Err(error) = self_clone.set_online_icons(&url, force).await {
                 error!("{error:?}");
             }
             if let Err(error) = self_clone.set_local_icon() {
@@ -330,17 +342,14 @@ impl IconPicker {
         }
     }
 
-    async fn set_online_icons(self: &Rc<Self>, force: bool) -> Result<()> {
+    async fn set_online_icons(self: &Rc<Self>, url: &str, force: bool) -> Result<()> {
         if !force && self.should_throttle() {
             return Ok(());
         }
 
-        debug!("Fetching online icons");
+        debug!(url, "Fetching online icons");
 
-        let Some(url) = self.desktop_file.borrow().get_url() else {
-            bail!("No url on desktop file")
-        };
-        let Ok(mut icon_fetcher) = IconFetcher::new(&self.app, &url) else {
+        let Ok(mut icon_fetcher) = IconFetcher::new(&self.app, url) else {
             bail!("Invalid url")
         };
         let Ok(icons) = icon_fetcher.get_online_icons().await else {
@@ -361,11 +370,11 @@ impl IconPicker {
     }
 
     fn set_local_icon(self: &Rc<Self>) -> Result<()> {
-        let Some(current_icon_path) = self.desktop_file.borrow().get_icon_path() else {
+        let Some(current_icon_path) = self.desktop_file.get_icon_path() else {
             bail!("No icon saved")
         };
         let current_icon =
-            Rc::new(Icon::from_path(&current_icon_path).context("Could not load current image")?);
+            Icon::from_path(&current_icon_path).context("Could not load current image")?;
 
         let mut icons_borrow = self.icons.borrow_mut();
         let mut removed_icon_borrow = self.removed_icon.borrow_mut();
@@ -485,10 +494,7 @@ impl IconPicker {
                     }
                 };
 
-                self_clone
-                    .icons
-                    .borrow_mut()
-                    .insert(filename.clone(), Rc::new(icon));
+                self_clone.icons.borrow_mut().insert(filename.clone(), icon);
 
                 self_clone.set_icons_ordered();
                 self_clone.reload_icon_flowbox();
@@ -497,36 +503,35 @@ impl IconPicker {
         );
     }
 
-    fn save(self: &Rc<Self>, icon: &Rc<Icon>) -> Result<()> {
-        let mut desktop_file_borrow = self.desktop_file.borrow_mut();
-        if let Some(old_icon_path) = desktop_file_borrow.get_icon_path()
-            && old_icon_path.is_file()
-        {
-            fs::remove_file(old_icon_path).context("Failed to remove old icon")?;
-        }
+    fn save(self: &Rc<Self>, icon: Option<&Rc<Icon>>) {
+        *self.is_running.borrow_mut() = false;
 
-        let app_id = desktop_file_borrow
-            .get_id()
-            .context("No file id on DesktopFile")?;
+        let Some(icon) = icon else {
+            debug!("No icon found");
+            self.desktop_file.set_icon_path(&PathBuf::default());
+
+            return;
+        };
+
+        let Some(app_id) = self.desktop_file.get_id() else {
+            error!("No id on desktopfile????");
+            self.desktop_file.set_icon_path(&PathBuf::default());
+
+            return;
+        };
 
         let icon_dir = &self.app.dirs.app_data_icons;
         let file_name = sanitize_filename::sanitize(format!("{app_id}.png"));
         let save_path = icon_dir.join(&file_name);
 
-        debug!(
-            "Saving icon '{}' to fs: {}",
-            &file_name,
-            save_path.display()
-        );
+        if let Err(error) = icon.save(&save_path) {
+            error!(%error, "Failed to save icon from IconPicker");
+            self.desktop_file.set_icon_path(&PathBuf::default());
 
-        icon.pixbuf
-            .savev(save_path.clone(), "png", &[])
-            .context("Failed to save icon to fs")?;
+            return;
+        }
 
-        desktop_file_borrow.set_icon_path(&save_path);
-        drop(desktop_file_borrow);
-
-        Ok(())
+        self.desktop_file.set_icon_path(&save_path);
     }
 
     fn build_spinner() -> Spinner {
@@ -567,7 +572,7 @@ impl IconPicker {
 
     fn build_pref_row_icons_flow_box() -> FlowBox {
         FlowBox::builder()
-            .height_request(96)
+            .hexpand(true)
             .column_spacing(20)
             .row_spacing(10)
             .homogeneous(false)
@@ -587,5 +592,21 @@ impl IconPicker {
             .build();
 
         PreferencesRow::builder().child(&status_page).build()
+    }
+
+    fn dialog_is_open(&self) -> bool {
+        let is_open = self.content_box.parent().is_some();
+        if is_open {
+            let message = "Dialog already open";
+            warn!(message);
+
+            return true;
+        }
+
+        false
+    }
+
+    pub fn reset(&self) {
+        *self.fetched_icons_ts.borrow_mut() = SystemTime::UNIX_EPOCH;
     }
 }

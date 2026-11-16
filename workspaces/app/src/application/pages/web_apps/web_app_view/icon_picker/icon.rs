@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Result, anyhow, bail};
 use gtk::{
     gdk_pixbuf::{Pixbuf, PixbufFormat},
     gio::{
@@ -7,7 +7,8 @@ use gtk::{
     },
     glib,
 };
-use std::{hash::Hash, path::PathBuf};
+use std::{hash::Hash, path::PathBuf, rc::Rc};
+use tracing::{debug, error};
 
 /// Icon structure where icons can be compared
 #[derive(Debug)]
@@ -37,7 +38,7 @@ impl Hash for Icon {
 impl Icon {
     const SCALE_HEIGHT: i32 = 512;
 
-    pub fn from_path(path: &PathBuf) -> Result<Icon> {
+    pub fn from_path(path: &PathBuf) -> Result<Rc<Icon>> {
         let file = gio::File::for_path(path);
 
         let pixbuf = if let Some(pixbuf_format) = Self::get_pixbuf_format_from_file(&file)
@@ -57,11 +58,11 @@ impl Icon {
 
         let is_transparent = Self::has_transparent_background(&pixbuf).unwrap_or(false);
 
-        Ok(Self {
+        Ok(Rc::new(Self {
             pixbuf,
             source: path.to_string_lossy().to_string(),
             is_transparent,
-        })
+        }))
     }
 
     pub fn from_bytes(bytes: &Vec<u8>, mimetype: Option<String>, source: &str) -> Result<Icon> {
@@ -91,6 +92,15 @@ impl Icon {
             pixbuf,
             source: source.to_string(),
             is_transparent,
+        })
+    }
+
+    pub fn save(&self, save_path: &PathBuf) -> Result<()> {
+        debug!(path = %save_path.display(), "Saving icon to fs");
+
+        self.pixbuf.savev(save_path, "png", &[]).map_err(|error| {
+            error!(%error, path = %save_path.display(), "Failed to save icon");
+            anyhow!(error)
         })
     }
 

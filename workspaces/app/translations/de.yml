@@ -25,10 +25,8 @@ web_apps:
         name: Kein Name...
     name:
       title: Name der Web-App
-      validate: Name ist leer
     url:
       title: Website-URL
-      validate: Bitte geben Sie eine gültige URL ein (z.B. https://example.com)
     isolate:
       title: Isolieren
       subtitle: Ein isoliertes Profil verwenden
@@ -94,9 +92,9 @@ web_apps:
 
 browsers:
   title: Browser
-  # install_type:
-  #   system: System
-  #   flatpak: Flatpak
+  install_type:
+    system: System
+    flatpak: Flatpak
   no_browsers:
     title: Keine kompatiblen Browser gefunden
     description: Versuchen Sie, einen zu installieren!
@@ -161,9 +159,12 @@ app_menu:
         Dadurch werden die Konfigurationsdateien zurückgesetzt (z. B. Browser-Konfigurationen).
         Ihre erstellten Web-Apps werden nicht entfernt.
 
-# forms:
-#   apply_changes: Apply changes
-#   select_option: Select an option
-#   select_icon: Select an icon
-#   force_close: Discard and close
-#   validation_error: Please review the fields
+forms:
+  force_close: Verwerfen und schließen
+  fetching_icon: Symbol wird abgerufen. Bitte warten und erneut versuchen.
+  validation_error: Bitte überprüfen Sie die Felder
+  save_error: Speichern fehlgeschlagen
+  validation:
+    empty: "%{field} ist erforderlich"
+    dirty: "%{field} wurde nicht übernommen"
+    url: "Geben Sie eine gültige URL ein (z. B. https://example.org)"
